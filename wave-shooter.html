@@ -200,7 +200,7 @@ async function initWebcam() {
         webcamState.video.srcObject = stream;
         await new Promise(r => { webcamState.video.onloadedmetadata = () => { webcamState.canvas.width = webcamState.video.videoWidth; webcamState.canvas.height = webcamState.video.videoHeight; r(); }; });
         webcamState.initialized = true; webcamState.active = true;
-        statusEl.textContent = 'Camera ready! Move left/right to control.'; statusEl.style.color = '#00ff00';
+        statusEl.textContent = 'Camera ready! Stand in LEFT / CENTER / RIGHT zone.'; statusEl.style.color = '#00ff00';
         document.getElementById('webcamContainer').classList.remove('hidden');
         requestAnimationFrame(trackMotion);
         return true;
@@ -266,7 +266,8 @@ function trackMotion() {
     if (maxEdges > 1000) {
         webcamState.targetLane = bodyLane;
     }
-    document.getElementById('positionMarker').style.left = (webcamState.targetLane * 90) + 'px';
+    // Position marker: 3 zones at 30px, 90px, 150px (centered in 200px container)
+    document.getElementById('positionMarker').style.left = (30 + webcamState.targetLane * 60) + 'px';
 
     // Wave gesture detection (pre-game only)
     if (!gameState.running && !webcamState.isReady && webcamState.previousFrame) {
@@ -320,7 +321,7 @@ function selectControlMode(mode) {
         stopWebcam(); document.getElementById('cameraStatus').textContent = '';
         indicator.style.display = 'none'; btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
     } else {
-        instr.innerHTML = 'MOVE: Move your body LEFT/RIGHT in the camera<br>AUTO-FIRE: Always Active<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
+        instr.innerHTML = 'MOVE: Stand in LEFT / CENTER / RIGHT zone<br>AUTO-FIRE: Always Active<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
         initWebcam(); indicator.style.display = 'block';
         indicator.textContent = 'WAVE YOUR HAND ABOVE YOUR HEAD!'; indicator.classList.remove('ready');
         btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none';
@@ -409,11 +410,11 @@ function update() {
 
     // Player movement
     if (controlMode === 'camera' && webcamState.active) {
-        // Lane-based movement: 3 lanes (left, center, right)
+        // Lane-based movement: 3 lanes matching enemy lanes
         const lanePositions = [
-            PLAY_AREA.width * 0.25,
+            PLAY_AREA.width * 0.33,
             PLAY_AREA.width * 0.5,
-            PLAY_AREA.width * 0.75
+            PLAY_AREA.width * 0.67
         ];
         const targetX = lanePositions[webcamState.targetLane];
         const dx = targetX - gameState.player.x;
