@@ -191,6 +191,129 @@
         .hidden {
             display: none !important;
         }
+
+        .control-mode-selection {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-btn {
+            font-family: 'Orbitron', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            padding: 20px 30px;
+            background: linear-gradient(135deg, #1a0a2e, #2a1a4e);
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            min-width: 150px;
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(135deg, #2a1a4e, #3a2a5e);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+
+        .control-btn.selected {
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
+            color: #0a0015;
+            border-color: #ffffff;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.8);
+        }
+
+        .control-icon {
+            font-size: 36px;
+        }
+
+        #webcamContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 3px solid #00ffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            z-index: 1000;
+            background: #000;
+        }
+
+        #webcamVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        #webcamCanvas {
+            display: none;
+        }
+
+        #positionIndicator {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        #positionMarker {
+            position: absolute;
+            width: 20px;
+            height: 8px;
+            background: #ff00ff;
+            box-shadow: 0 0 10px #ff00ff;
+            transition: left 0.1s ease-out;
+        }
+
+        .webcam-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            color: #00ffff;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);
+            z-index: 1;
+        }
+
+        .camera-status {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            color: #ff00ff;
+            margin-top: 10px;
+            min-height: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .control-mode-selection {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .control-btn {
+                min-width: 200px;
+                padding: 15px 25px;
+                font-size: 14px;
+            }
+            #webcamContainer {
+                width: 120px;
+                height: 90px;
+                bottom: 10px;
+                right: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -222,12 +345,35 @@
         <div id="startScreen">
             <h1 class="game-title">WAVE ASSAULT</h1>
             <p class="subtitle">SURVIVE THE ONSLAUGHT</p>
+
+            <div class="control-mode-selection">
+                <button class="control-btn selected" id="keyboardModeBtn">
+                    <span class="control-icon">⌨️</span>
+                    <span>KEYBOARD</span>
+                </button>
+                <button class="control-btn" id="cameraModeBtn">
+                    <span class="control-icon">📷</span>
+                    <span>CAMERA</span>
+                </button>
+            </div>
+            <div class="camera-status" id="cameraStatus"></div>
+
             <button class="btn" id="startBtn">START GAME</button>
-            <div class="instructions">
+            <div class="instructions" id="instructions">
                 MOVE: Arrow Keys / A-D / Mouse / Touch<br>
                 AUTO-FIRE: Always Active<br>
                 SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>
                 STOP ENEMIES: They cost 1 ship if they pass OR hit you!
+            </div>
+        </div>
+
+        <!-- Webcam container (hidden until camera mode active) -->
+        <div id="webcamContainer" class="hidden">
+            <div class="webcam-label">CAMERA</div>
+            <video id="webcamVideo" autoplay playsinline muted></video>
+            <canvas id="webcamCanvas"></canvas>
+            <div id="positionIndicator">
+                <div id="positionMarker"></div>
             </div>
         </div>
 
@@ -291,6 +437,23 @@
             wave: {
                 delay: 300,
             }
+        };
+
+        // Control mode: 'keyboard' or 'camera'
+        let controlMode = 'keyboard';
+
+        // Webcam state
+        let webcamState = {
+            active: false,
+            stream: null,
+            video: null,
+            canvas: null,
+            ctx: null,
+            previousFrame: null,
+            detectedX: 0.5, // Normalized position (0-1)
+            smoothedX: 0.5,
+            motionThreshold: 30,
+            initialized: false
         };
 
         // Game state
@@ -515,6 +678,185 @@
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
 
+        // ============ WEBCAM CONTROL FUNCTIONS ============
+
+        // Initialize webcam
+        async function initWebcam() {
+            try {
+                const statusEl = document.getElementById('cameraStatus');
+                statusEl.textContent = 'Requesting camera access...';
+
+                webcamState.video = document.getElementById('webcamVideo');
+                webcamState.canvas = document.getElementById('webcamCanvas');
+                webcamState.ctx = webcamState.canvas.getContext('2d', { willReadFrequently: true });
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 320 },
+                        height: { ideal: 240 },
+                        facingMode: 'user'
+                    },
+                    audio: false
+                });
+
+                webcamState.stream = stream;
+                webcamState.video.srcObject = stream;
+
+                await new Promise((resolve) => {
+                    webcamState.video.onloadedmetadata = () => {
+                        webcamState.canvas.width = webcamState.video.videoWidth;
+                        webcamState.canvas.height = webcamState.video.videoHeight;
+                        resolve();
+                    };
+                });
+
+                webcamState.initialized = true;
+                webcamState.active = true;
+                statusEl.textContent = 'Camera ready! Move left/right to control.';
+                statusEl.style.color = '#00ff00';
+
+                // Show webcam container
+                document.getElementById('webcamContainer').classList.remove('hidden');
+
+                // Start motion tracking loop
+                requestAnimationFrame(trackMotion);
+
+                console.log('Webcam initialized:', webcamState.canvas.width, 'x', webcamState.canvas.height);
+                return true;
+
+            } catch (error) {
+                console.error('Webcam error:', error);
+                const statusEl = document.getElementById('cameraStatus');
+                statusEl.textContent = 'Camera access denied. Using keyboard mode.';
+                statusEl.style.color = '#ff0000';
+
+                // Fall back to keyboard mode
+                selectControlMode('keyboard');
+                return false;
+            }
+        }
+
+        // Stop webcam
+        function stopWebcam() {
+            if (webcamState.stream) {
+                webcamState.stream.getTracks().forEach(track => track.stop());
+                webcamState.stream = null;
+            }
+            webcamState.active = false;
+            webcamState.initialized = false;
+            webcamState.previousFrame = null;
+            document.getElementById('webcamContainer').classList.add('hidden');
+        }
+
+        // Motion tracking - detects horizontal position based on movement
+        function trackMotion() {
+            if (!webcamState.active || !webcamState.initialized) return;
+
+            const video = webcamState.video;
+            const canvas = webcamState.canvas;
+            const ctx = webcamState.ctx;
+
+            if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                requestAnimationFrame(trackMotion);
+                return;
+            }
+
+            // Draw current frame
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = currentFrame.data;
+
+            if (webcamState.previousFrame) {
+                const prevData = webcamState.previousFrame.data;
+                let totalMotion = 0;
+                let weightedX = 0;
+
+                // Analyze frame for motion (horizontal position detection)
+                const sampleStep = 4; // Sample every 4th pixel for performance
+                const height = canvas.height;
+                const width = canvas.width;
+
+                for (let y = 0; y < height; y += sampleStep) {
+                    for (let x = 0; x < width; x += sampleStep) {
+                        const i = (y * width + x) * 4;
+
+                        // Calculate difference between frames
+                        const dr = Math.abs(data[i] - prevData[i]);
+                        const dg = Math.abs(data[i + 1] - prevData[i + 1]);
+                        const db = Math.abs(data[i + 2] - prevData[i + 2]);
+                        const diff = dr + dg + db;
+
+                        if (diff > webcamState.motionThreshold) {
+                            totalMotion += diff;
+                            // Weight by x position (mirrored because camera is mirrored)
+                            weightedX += diff * (width - x);
+                        }
+                    }
+                }
+
+                // Calculate center of motion
+                if (totalMotion > 1000) { // Minimum motion threshold
+                    const centerX = weightedX / totalMotion;
+                    webcamState.detectedX = centerX / width;
+
+                    // Smooth the detected position
+                    const smoothing = 0.3;
+                    webcamState.smoothedX = webcamState.smoothedX * (1 - smoothing) + webcamState.detectedX * smoothing;
+
+                    // Update position indicator
+                    const marker = document.getElementById('positionMarker');
+                    const containerWidth = document.getElementById('webcamContainer').offsetWidth;
+                    marker.style.left = (webcamState.smoothedX * (containerWidth - 20)) + 'px';
+                }
+            }
+
+            // Store current frame for next comparison
+            webcamState.previousFrame = currentFrame;
+
+            requestAnimationFrame(trackMotion);
+        }
+
+        // Select control mode
+        function selectControlMode(mode) {
+            controlMode = mode;
+
+            // Update button states
+            document.getElementById('keyboardModeBtn').classList.toggle('selected', mode === 'keyboard');
+            document.getElementById('cameraModeBtn').classList.toggle('selected', mode === 'camera');
+
+            // Update instructions
+            const instructions = document.getElementById('instructions');
+            if (mode === 'keyboard') {
+                instructions.innerHTML = `
+                    MOVE: Arrow Keys / A-D / Mouse / Touch<br>
+                    AUTO-FIRE: Always Active<br>
+                    SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>
+                    STOP ENEMIES: They cost 1 ship if they pass OR hit you!
+                `;
+                stopWebcam();
+                document.getElementById('cameraStatus').textContent = '';
+            } else {
+                instructions.innerHTML = `
+                    MOVE: Move your body LEFT/RIGHT in the camera<br>
+                    AUTO-FIRE: Always Active<br>
+                    SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>
+                    STOP ENEMIES: They cost 1 ship if they pass OR hit you!
+                `;
+                initWebcam();
+            }
+        }
+
+        // Control mode button event listeners
+        document.getElementById('keyboardModeBtn').addEventListener('click', () => {
+            selectControlMode('keyboard');
+        });
+
+        document.getElementById('cameraModeBtn').addEventListener('click', () => {
+            selectControlMode('camera');
+        });
+
+        // ============ END WEBCAM CONTROL FUNCTIONS ============
+
         // Collision detection
         function checkCollision(a, b, aWidth, aHeight, bWidth, bHeight) {
             return a.x < b.x + bWidth &&
@@ -538,20 +880,31 @@
                 }
             });
 
-            // Move player
-            if (gameState.keys['ArrowLeft'] || gameState.keys['a'] || gameState.keys['A']) {
-                gameState.player.x -= CONFIG.player.speed;
+            // Move player based on control mode
+            if (controlMode === 'camera' && webcamState.active) {
+                // Camera mode: map webcam position to play area
+                const targetX = webcamState.smoothedX * PLAY_AREA.width;
+                const dx = targetX - gameState.player.x;
+                // Smooth camera movement with higher responsiveness
+                if (Math.abs(dx) > 5) {
+                    gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.2, CONFIG.player.speed * 1.5);
+                }
+            } else {
+                // Keyboard mode: use keyboard and mouse controls
+                if (gameState.keys['ArrowLeft'] || gameState.keys['a'] || gameState.keys['A']) {
+                    gameState.player.x -= CONFIG.player.speed;
+                }
+                if (gameState.keys['ArrowRight'] || gameState.keys['d'] || gameState.keys['D']) {
+                    gameState.player.x += CONFIG.player.speed;
+                }
+
+                const targetX = gameState.mouseX;
+                const dx = targetX - gameState.player.x;
+                if (Math.abs(dx) > 5) {
+                    gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.15, CONFIG.player.speed);
+                }
             }
-            if (gameState.keys['ArrowRight'] || gameState.keys['d'] || gameState.keys['D']) {
-                gameState.player.x += CONFIG.player.speed;
-            }
-            
-            const targetX = gameState.mouseX;
-            const dx = targetX - gameState.player.x;
-            if (Math.abs(dx) > 5) {
-                gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.15, CONFIG.player.speed);
-            }
-            
+
             // Clamp to larger play area bounds
             gameState.player.x = Math.max(50, Math.min(PLAY_AREA.width - 50, gameState.player.x));
 
@@ -1071,8 +1424,8 @@
 
         // Start game
         function startGame() {
-            console.log('Starting game!');
-            
+            console.log('Starting game with control mode:', controlMode);
+
             gameState.running = true;
             gameState.player = createPlayer();
             gameState.bullets = [];
@@ -1091,9 +1444,20 @@
             gameState.stars = createStars();
             gameState.keys = {};
 
+            // Initialize player position to center if using camera mode
+            if (controlMode === 'camera') {
+                webcamState.smoothedX = 0.5;
+                webcamState.detectedX = 0.5;
+            }
+
             document.getElementById('startScreen').classList.add('hidden');
             document.getElementById('gameOverScreen').classList.add('hidden');
-            
+
+            // Show webcam container during gameplay if camera mode
+            if (controlMode === 'camera' && webcamState.active) {
+                document.getElementById('webcamContainer').classList.remove('hidden');
+            }
+
             updateHUD();
             updateWave();
             updateCrowdDisplay();
