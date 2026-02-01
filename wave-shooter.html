@@ -212,65 +212,72 @@ function trackMotion() {
 
     cx.drawImage(video, 0, 0, cvs.width, cvs.height);
     const frame = cx.getImageData(0, 0, cvs.width, cvs.height), data = frame.data;
-    const h = cvs.height, w = cvs.width, step = 4;
+    const h = cvs.height, w = cvs.width, step = 3;
 
-    // === SIMPLE 5-LANE DETECTION ===
-    // Divide camera into 5 vertical lanes, find which has the most motion/presence
+    // === EDGE-BASED 5-LANE DETECTION ===
+    // Find which lane has the most edges (body contours)
     const LANES = 5;
     const laneWidth = Math.floor(w / LANES);
-    const laneScores = [0, 0, 0, 0, 0];
+    const laneEdges = [0, 0, 0, 0, 0];
 
-    if (webcamState.previousFrame) {
+    // Count edges (brightness changes) per lane
+    for (let lane = 0; lane < LANES; lane++) {
+        const laneStart = lane * laneWidth + 2;
+        const laneEnd = Math.min(laneStart + laneWidth - 2, w - 2);
+        for (let y = Math.floor(h * 0.1); y < Math.floor(h * 0.9); y += step) {
+            for (let x = laneStart; x < laneEnd; x += step) {
+                const i = (y * w + x) * 4;
+                const here = (data[i] + data[i+1] + data[i+2]) / 3;
+                // Check horizontal edge
+                const right = (data[i+12] + data[i+13] + data[i+14]) / 3;
+                const hEdge = Math.abs(here - right);
+                // Check vertical edge
+                const below = (data[((y+step) * w + x) * 4] + data[((y+step) * w + x) * 4 + 1] + data[((y+step) * w + x) * 4 + 2]) / 3;
+                const vEdge = Math.abs(here - below);
+                if (hEdge > 20) laneEdges[lane] += hEdge;
+                if (vEdge > 20) laneEdges[lane] += vEdge;
+            }
+        }
+    }
+
+    // Find lane with most edges (mirrored for flipped video)
+    let maxEdges = 0, bodyLane = webcamState.targetLane;
+    for (let i = 0; i < LANES; i++) {
+        if (laneEdges[i] > maxEdges) {
+            maxEdges = laneEdges[i];
+            bodyLane = LANES - 1 - i; // Mirror
+        }
+    }
+
+    // Only update if significant edges detected
+    if (maxEdges > 1000) {
+        webcamState.targetLane = bodyLane;
+    }
+    document.getElementById('positionMarker').style.left = (webcamState.targetLane * 45) + 'px';
+
+    // Wave gesture detection (pre-game only)
+    if (!gameState.running && !webcamState.isReady && webcamState.previousFrame) {
         const prev = webcamState.previousFrame.data;
-        // Check each lane for motion
-        for (let lane = 0; lane < LANES; lane++) {
-            const laneStart = lane * laneWidth;
-            const laneEnd = laneStart + laneWidth;
-            for (let y = Math.floor(h * 0.2); y < Math.floor(h * 0.8); y += step) {
-                for (let x = laneStart; x < laneEnd; x += step) {
-                    const i = (y * w + x) * 4;
-                    const diff = Math.abs(data[i] - prev[i]) + Math.abs(data[i+1] - prev[i+1]) + Math.abs(data[i+2] - prev[i+2]);
-                    if (diff > 30) laneScores[lane] += diff;
-                }
+        let topMotion = 0;
+        for (let y = 0; y < Math.floor(h * 0.35); y += step) {
+            for (let x = 0; x < w; x += step) {
+                const i = (y * w + x) * 4;
+                const diff = Math.abs(data[i] - prev[i]) + Math.abs(data[i+1] - prev[i+1]) + Math.abs(data[i+2] - prev[i+2]);
+                if (diff > 30) topMotion += diff;
             }
         }
-
-        // Find lane with most activity (mirrored since camera is flipped)
-        let maxScore = 0, activeLane = webcamState.currentLane;
-        for (let i = 0; i < LANES; i++) {
-            if (laneScores[i] > maxScore && laneScores[i] > 2000) {
-                maxScore = laneScores[i];
-                activeLane = LANES - 1 - i; // Mirror
+        if (topMotion > 5000) {
+            webcamState.armsUpFrames++;
+            const indicator = document.getElementById('armsUpIndicator');
+            indicator.textContent = `WAVING... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 20 * 100))}%`;
+            if (webcamState.armsUpFrames >= 20) {
+                webcamState.isReady = true; captureFace();
+                indicator.textContent = 'READY! CLICK START!'; indicator.classList.add('ready');
+                document.getElementById('startBtn').style.opacity = '1';
+                document.getElementById('startBtn').style.pointerEvents = 'auto';
             }
-        }
-        webcamState.targetLane = activeLane;
-
-        // Update position indicator
-        document.getElementById('positionMarker').style.left = (activeLane * 45) + 'px';
-
-        // Wave gesture detection (pre-game only)
-        if (!gameState.running && !webcamState.isReady) {
-            let topMotion = 0;
-            for (let y = 0; y < Math.floor(h * 0.35); y += step) {
-                for (let x = 0; x < w; x += step) {
-                    const i = (y * w + x) * 4;
-                    const diff = Math.abs(data[i] - prev[i]) + Math.abs(data[i+1] - prev[i+1]) + Math.abs(data[i+2] - prev[i+2]);
-                    if (diff > 30) topMotion += diff;
-                }
-            }
-            if (topMotion > 5000) {
-                webcamState.armsUpFrames++;
-                const indicator = document.getElementById('armsUpIndicator');
-                indicator.textContent = `WAVING... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 20 * 100))}%`;
-                if (webcamState.armsUpFrames >= 20) {
-                    webcamState.isReady = true; captureFace();
-                    indicator.textContent = 'READY! CLICK START!'; indicator.classList.add('ready');
-                    document.getElementById('startBtn').style.opacity = '1';
-                    document.getElementById('startBtn').style.pointerEvents = 'auto';
-                }
-            } else {
-                webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 1);
-            }
+        } else {
+            webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 1);
         }
     }
     webcamState.previousFrame = frame;
