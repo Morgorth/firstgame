@@ -130,7 +130,179 @@ const CONFIG = {
 };
 
 // ╔════════════════════════════════════════════════════════════════════════════╗
-// ║                      SECTION 2: STATE MANAGEMENT                           ║
+// ║                      SECTION 2: AUDIO SYSTEM                               ║
+// ╚════════════════════════════════════════════════════════════════════════════╝
+
+let audioCtx = null;
+let audioState = {
+    musicPlaying: false,
+    musicGain: null,
+    musicInterval: null,
+    baseNoteInterval: 300, // ms between notes
+    currentNoteInterval: 300
+};
+
+function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioState.musicGain = audioCtx.createGain();
+    audioState.musicGain.gain.value = 0.3;
+    audioState.musicGain.connect(audioCtx.destination);
+}
+
+// === SOUND GENERATORS ===
+
+function playNote(freq, duration, type = 'sine', volume = 0.3, delay = 0) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(audioCtx.currentTime + delay);
+    osc.stop(audioCtx.currentTime + delay + duration);
+}
+
+function playSpaceKill() {
+    // Descending electronic blip
+    playNote(800, 0.1, 'square', 0.15);
+    playNote(600, 0.1, 'square', 0.12, 0.05);
+    playNote(400, 0.15, 'square', 0.1, 0.1);
+}
+
+function playUnicornKill() {
+    // Sparkly chime
+    playNote(1200, 0.15, 'sine', 0.2);
+    playNote(1500, 0.15, 'sine', 0.15, 0.05);
+    playNote(1800, 0.2, 'sine', 0.12, 0.1);
+}
+
+function playSpacePowerup() {
+    // Ascending power-up arpeggio
+    playNote(400, 0.1, 'sine', 0.25);
+    playNote(600, 0.1, 'sine', 0.25, 0.08);
+    playNote(800, 0.1, 'sine', 0.25, 0.16);
+    playNote(1000, 0.15, 'sine', 0.3, 0.24);
+    playNote(1200, 0.25, 'sine', 0.2, 0.32);
+}
+
+function playUnicornPowerup() {
+    // Magical fairy chime
+    playNote(800, 0.15, 'sine', 0.2);
+    playNote(1200, 0.15, 'sine', 0.2, 0.1);
+    playNote(1000, 0.15, 'sine', 0.2, 0.2);
+    playNote(1400, 0.2, 'sine', 0.25, 0.3);
+    playNote(1600, 0.3, 'sine', 0.2, 0.4);
+}
+
+function playSpaceHit() {
+    // Harsh alarm/explosion
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+    // Add noise burst
+    playNote(100, 0.15, 'square', 0.2);
+}
+
+function playUnicornHit() {
+    // Sad descending whimper
+    playNote(600, 0.15, 'sine', 0.25);
+    playNote(400, 0.2, 'sine', 0.2, 0.1);
+    playNote(300, 0.25, 'triangle', 0.15, 0.25);
+}
+
+// === THEMED SOUND TRIGGERS ===
+
+function playSoundKill() {
+    if (gameTheme === 'unicorn') playUnicornKill();
+    else playSpaceKill();
+}
+
+function playSoundPowerup() {
+    if (gameTheme === 'unicorn') playUnicornPowerup();
+    else playSpacePowerup();
+}
+
+function playSoundHit() {
+    if (gameTheme === 'unicorn') playUnicornHit();
+    else playSpaceHit();
+}
+
+// === BACKGROUND MUSIC ===
+
+const spaceNotes = [130.81, 146.83, 164.81, 174.61, 196.00, 220.00, 246.94, 261.63]; // C3 to C4
+const unicornNotes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]; // C4 to C5
+
+function playMusicNote() {
+    if (!audioCtx || !gameState.running) return;
+    const notes = gameTheme === 'unicorn' ? unicornNotes : spaceNotes;
+    const waveType = gameTheme === 'unicorn' ? 'sine' : 'square';
+    const idx = Math.floor(Math.random() * notes.length);
+    const duration = audioState.currentNoteInterval / 1000 * 0.8;
+
+    playNote(notes[idx], duration, waveType, 0.15);
+
+    // Occasionally add harmony
+    if (Math.random() < 0.3) {
+        const harmIdx = (idx + 2) % notes.length;
+        playNote(notes[harmIdx], duration * 0.5, waveType, 0.08, duration * 0.2);
+    }
+}
+
+function startMusic() {
+    if (!audioCtx) initAudio();
+    if (audioState.musicPlaying) return;
+    audioState.musicPlaying = true;
+    audioState.currentNoteInterval = audioState.baseNoteInterval;
+    scheduleNextNote();
+}
+
+function scheduleNextNote() {
+    if (!audioState.musicPlaying || !gameState.running) return;
+    playMusicNote();
+    audioState.musicInterval = setTimeout(scheduleNextNote, audioState.currentNoteInterval);
+}
+
+function stopMusic() {
+    audioState.musicPlaying = false;
+    if (audioState.musicInterval) {
+        clearTimeout(audioState.musicInterval);
+        audioState.musicInterval = null;
+    }
+}
+
+function updateMusicTempo() {
+    if (!audioState.musicPlaying || gameState.enemies.length === 0) return;
+
+    // Find the closest enemy to the bottom
+    let closestY = 0;
+    gameState.enemies.forEach(e => {
+        if (e.y > closestY) closestY = e.y;
+    });
+
+    // Calculate proximity ratio (0 = top, 1 = bottom)
+    const proximity = Math.max(0, closestY / PLAY_AREA.height);
+
+    // Speed up music as enemies get closer (300ms -> 100ms)
+    const minInterval = 100;
+    const maxInterval = 300;
+    audioState.currentNoteInterval = maxInterval - (proximity * (maxInterval - minInterval));
+}
+
+// ╔════════════════════════════════════════════════════════════════════════════╗
+// ║                      SECTION 3: STATE MANAGEMENT                           ║
 // ╚════════════════════════════════════════════════════════════════════════════╝
 
 let controlMode = 'keyboard';
@@ -441,6 +613,7 @@ function update() {
                     if (Math.random() < chance) gameState.powerups.push(createPowerup(enemy.x, enemy.y));
                     for (let i = 0; i < 10; i++) gameState.particles.push(createParticle(enemy.x, enemy.y, enemy.color));
                     enemy.health = -999;
+                    playSoundKill();
                 }
             }
         });
@@ -451,6 +624,7 @@ function update() {
                     if (gameState.crowdSize < CONFIG.player.maxCrowd) { gameState.crowdSize++; updateCrowdDisplay(); }
                     for (let i = 0; i < 8; i++) gameState.particles.push(createParticle(pu.x, pu.y, '#ffff00'));
                     pu.active = false;
+                    playSoundPowerup();
                 }
             }
         });
@@ -463,6 +637,7 @@ function update() {
             gameState.crowdSize = Math.max(0, gameState.crowdSize - dmg); updateCrowdDisplay(); gameState.enemiesKilled++;
             gameState.hitEffect = 20; gameState.screenShake = { x: 10, y: 10 };
             for (let i = 0; i < 15; i++) gameState.particles.push(createParticle(gameState.player.x, gameState.player.y, '#ff0000'));
+            playSoundHit();
             if (gameState.crowdSize <= 0) gameOver();
             return false;
         }
@@ -470,6 +645,7 @@ function update() {
             const dmg = Math.ceil(e.points / 10);
             gameState.crowdSize = Math.max(0, gameState.crowdSize - dmg); updateCrowdDisplay(); gameState.enemiesKilled++;
             gameState.hitEffect = 15; gameState.screenShake = { x: 5, y: 5 };
+            playSoundHit();
             if (gameState.crowdSize <= 0) gameOver();
             return false;
         }
@@ -491,6 +667,7 @@ function update() {
     // Hit effect decay
     if (gameState.hitEffect > 0) { gameState.hitEffect--; gameState.screenShake.x *= 0.9; gameState.screenShake.y *= 0.9; }
     updateHUD();
+    updateMusicTempo();
 }
 
 // ╔════════════════════════════════════════════════════════════════════════════╗
@@ -700,6 +877,7 @@ function updateCrowdDisplay() {
 // ╚════════════════════════════════════════════════════════════════════════════╝
 
 function startGame() {
+    initAudio();
     gameState = { ...gameState, running: true, player: createPlayer(), bullets: [], enemies: [], powerups: [], particles: [],
         score: 0, wave: 1, waveTimer: 0, enemiesInWave: 0, enemiesKilled: 0, frameCount: 0, lastShot: 0,
         crowdSize: CONFIG.player.startCrowd, stars: createStars(), hitEffect: 0, screenShake: { x: 0, y: 0 } };
@@ -708,10 +886,12 @@ function startGame() {
     document.getElementById('gameOverScreen').classList.add('hidden');
     if (controlMode === 'camera' && webcamState.active) document.getElementById('webcamContainer').classList.remove('hidden');
     updateHUD(); updateWave(); updateCrowdDisplay(); spawnWave();
+    startMusic();
 }
 
 function gameOver() {
     gameState.running = false;
+    stopMusic();
     document.getElementById('finalScore').textContent = gameState.score;
     document.getElementById('finalWave').textContent = gameState.wave;
     document.getElementById('gameOverScreen').classList.remove('hidden');
