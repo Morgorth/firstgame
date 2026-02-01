@@ -125,9 +125,8 @@ let controlMode = 'keyboard';
 
 let webcamState = {
     active: false, stream: null, video: null, canvas: null, ctx: null,
-    previousFrame: null, detectedX: 0.5, smoothedX: 0.5, motionThreshold: 25,
-    initialized: false, bodyCenter: 0.5, lastBodyPositions: [],
-    armsUpDetected: false, armsUpFrames: 0, isReady: false, playerFaceImage: null
+    previousFrame: null, detectedX: 0.5, smoothedX: 0.5,
+    initialized: false, armsUpFrames: 0, isReady: false, playerFaceImage: null
 };
 
 let gameState = {
@@ -213,62 +212,87 @@ function trackMotion() {
 
     cx.drawImage(video, 0, 0, cvs.width, cvs.height);
     const frame = cx.getImageData(0, 0, cvs.width, cvs.height), data = frame.data;
-    const h = cvs.height, w = cvs.width, step = 4;
-    const bodyTop = Math.floor(h * 0.15), bodyBottom = Math.floor(h * 0.85);
-    const bodyLeft = Math.floor(w * 0.1), bodyRight = Math.floor(w * 0.9);
+    const h = cvs.height, w = cvs.width, step = 3;
 
-    let totalW = 0, weightedX = 0, motionCols = new Array(Math.floor(w / step)).fill(0);
+    // === DIRECT BODY POSITION TRACKING ===
+    // Find body silhouette by detecting darker regions (body) against lighter background
+    // Or significant contrast changes indicating body edges
+    const bodyTop = Math.floor(h * 0.1), bodyBottom = Math.floor(h * 0.9);
+    const margin = Math.floor(w * 0.05);
 
-    if (webcamState.previousFrame) {
-        const prev = webcamState.previousFrame.data;
-        // Body motion detection
+    // Calculate average brightness per column
+    const colWeight = new Array(w).fill(0);
+    let totalWeight = 0, weightedSum = 0;
+
+    // First pass: calculate frame average brightness for threshold
+    let avgBrightness = 0, sampleCount = 0;
+    for (let y = bodyTop; y < bodyBottom; y += step * 2) {
+        for (let x = margin; x < w - margin; x += step * 2) {
+            const i = (y * w + x) * 4;
+            avgBrightness += (data[i] + data[i+1] + data[i+2]) / 3;
+            sampleCount++;
+        }
+    }
+    avgBrightness /= sampleCount;
+
+    // Second pass: find columns with significant body presence (darker than average or high contrast)
+    for (let x = margin; x < w - margin; x += step) {
+        let colScore = 0;
         for (let y = bodyTop; y < bodyBottom; y += step) {
-            for (let x = bodyLeft; x < bodyRight; x += step) {
+            const i = (y * w + x) * 4;
+            const brightness = (data[i] + data[i+1] + data[i+2]) / 3;
+            // Score based on difference from background (body is usually darker or different)
+            const diff = Math.abs(brightness - avgBrightness);
+            if (diff > 15) colScore += diff;
+            // Also detect edges (high local contrast)
+            if (x > margin + step) {
+                const prevI = (y * w + x - step) * 4;
+                const prevBright = (data[prevI] + data[prevI+1] + data[prevI+2]) / 3;
+                const edge = Math.abs(brightness - prevBright);
+                if (edge > 20) colScore += edge * 2;
+            }
+        }
+        colWeight[x] = colScore;
+        totalWeight += colScore;
+        // Mirror the x position since video is flipped
+        weightedSum += colScore * (w - x);
+    }
+
+    // Calculate body center position
+    if (totalWeight > 5000) {
+        const rawX = weightedSum / totalWeight / w;
+        // Light smoothing for stability (20% old, 80% new)
+        webcamState.smoothedX = webcamState.smoothedX * 0.2 + rawX * 0.8;
+        // Clamp to usable range (0.15 - 0.85 mapped to 0-1)
+        const mappedX = Math.max(0, Math.min(1, (webcamState.smoothedX - 0.15) / 0.7));
+        webcamState.detectedX = mappedX;
+        document.getElementById('positionMarker').style.left = (mappedX * 180) + 'px';
+    }
+
+    // === WAVE GESTURE DETECTION (pre-game only, uses motion) ===
+    if (!gameState.running && !webcamState.isReady && webcamState.previousFrame) {
+        const prev = webcamState.previousFrame.data;
+        let topMotion = 0;
+        const topRegion = Math.floor(h * 0.35);
+        for (let y = 0; y < topRegion; y += step) {
+            for (let x = 0; x < w; x += step) {
                 const i = (y * w + x) * 4;
                 const diff = Math.abs(data[i] - prev[i]) + Math.abs(data[i+1] - prev[i+1]) + Math.abs(data[i+2] - prev[i+2]);
-                if (diff > webcamState.motionThreshold) motionCols[Math.floor(x / step)] += diff;
+                if (diff > 25) topMotion += diff;
             }
         }
-        let activeCols = 0, firstCol = -1, lastCol = -1;
-        for (let col = 0; col < motionCols.length; col++) {
-            if (motionCols[col] > 500) {
-                activeCols++; if (firstCol === -1) firstCol = col; lastCol = col;
-                totalW += motionCols[col]; weightedX += motionCols[col] * (w - col * step);
+        if (topMotion > 5000) {
+            webcamState.armsUpFrames++;
+            const indicator = document.getElementById('armsUpIndicator');
+            indicator.textContent = `WAVING... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 20 * 100))}%`;
+            if (webcamState.armsUpFrames >= 20) {
+                webcamState.isReady = true; captureFace();
+                indicator.textContent = 'READY! CLICK START!'; indicator.classList.add('ready');
+                document.getElementById('startBtn').style.opacity = '1';
+                document.getElementById('startBtn').style.pointerEvents = 'auto';
             }
-        }
-        if (activeCols >= 4 && (lastCol - firstCol) >= 3 && totalW > 3000) {
-            webcamState.detectedX = (weightedX / totalW) / w;
-            webcamState.lastBodyPositions.push(webcamState.detectedX);
-            if (webcamState.lastBodyPositions.length > 5) webcamState.lastBodyPositions.shift();
-            const avg = webcamState.lastBodyPositions.reduce((a, b) => a + b, 0) / webcamState.lastBodyPositions.length;
-            webcamState.smoothedX = webcamState.smoothedX * 0.6 + avg * 0.4;
-            document.getElementById('positionMarker').style.left = (webcamState.smoothedX * 180) + 'px';
-        }
-
-        // Wave gesture detection (pre-game)
-        if (!gameState.running && !webcamState.isReady) {
-            let topMotion = 0;
-            const topRegion = Math.floor(h * 0.35);
-            for (let y = 0; y < topRegion; y += step) {
-                for (let x = 0; x < w; x += step) {
-                    const i = (y * w + x) * 4;
-                    const diff = Math.abs(data[i] - prev[i]) + Math.abs(data[i+1] - prev[i+1]) + Math.abs(data[i+2] - prev[i+2]);
-                    if (diff > webcamState.motionThreshold) topMotion += diff;
-                }
-            }
-            if (topMotion > 5000) {
-                webcamState.armsUpFrames++;
-                const indicator = document.getElementById('armsUpIndicator');
-                indicator.textContent = `WAVING... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 20 * 100))}%`;
-                if (webcamState.armsUpFrames >= 20) {
-                    webcamState.isReady = true; captureFace();
-                    indicator.textContent = 'READY! CLICK START!'; indicator.classList.add('ready');
-                    document.getElementById('startBtn').style.opacity = '1';
-                    document.getElementById('startBtn').style.pointerEvents = 'auto';
-                }
-            } else {
-                webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 1);
-            }
+        } else {
+            webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 1);
         }
     }
     webcamState.previousFrame = frame;
@@ -365,8 +389,11 @@ function update() {
 
     // Player movement
     if (controlMode === 'camera' && webcamState.active) {
-        const dx = webcamState.smoothedX * PLAY_AREA.width - gameState.player.x;
-        if (Math.abs(dx) > 3) gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.35, CONFIG.player.speed * 2.5);
+        // Direct position mapping - detectedX is already normalized 0-1
+        const targetX = 50 + webcamState.detectedX * (PLAY_AREA.width - 100);
+        const dx = targetX - gameState.player.x;
+        // Fast, direct movement with minimal smoothing
+        gameState.player.x += dx * 0.5;
     } else {
         if (gameState.keys['ArrowLeft'] || gameState.keys['a']) gameState.player.x -= CONFIG.player.speed;
         if (gameState.keys['ArrowRight'] || gameState.keys['d']) gameState.player.x += CONFIG.player.speed;
