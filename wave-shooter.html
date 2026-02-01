@@ -145,8 +145,8 @@ let webcamState = {
 let gameState = {
     running: false, player: null, bullets: [], enemies: [], powerups: [], particles: [],
     score: 0, wave: 1, waveTimer: 0, enemiesInWave: 0, enemiesKilled: 0,
-    frameCount: 0, lastShot: 0, crowdSize: 1, mouseX: canvas.width / 2,
-    stars: [], keys: {}, hitEffect: 0, screenShake: { x: 0, y: 0 }
+    frameCount: 0, lastShot: 0, crowdSize: 1,
+    stars: [], hitEffect: 0, screenShake: { x: 0, y: 0 }
 };
 
 // ╔════════════════════════════════════════════════════════════════════════════╗
@@ -357,17 +357,9 @@ document.getElementById('unicornThemeBtn').addEventListener('click', () => selec
 // ║                        SECTION 5: INPUT HANDLING                           ║
 // ╚════════════════════════════════════════════════════════════════════════════╝
 
-function handleInput(e) {
-    if (!gameState.running) return;
-    const rect = canvas.getBoundingClientRect();
-    let x = e.type.includes('mouse') ? e.clientX - rect.left : (e.preventDefault(), e.touches[0].clientX - rect.left);
-    gameState.mouseX = (x / canvas.width) * PLAY_AREA.width;
-}
-canvas.addEventListener('mousemove', handleInput);
-canvas.addEventListener('touchmove', handleInput, { passive: false });
-canvas.addEventListener('touchstart', handleInput, { passive: false });
-window.addEventListener('keydown', e => gameState.keys[e.key] = true);
-window.addEventListener('keyup', e => gameState.keys[e.key] = false);
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key] = true; e.preventDefault(); });
+window.addEventListener('keyup', e => { keys[e.key] = false; });
 
 // ╔════════════════════════════════════════════════════════════════════════════╗
 // ║                    SECTION 6: GAME LOGIC & COLLISIONS                      ║
@@ -421,14 +413,8 @@ function update() {
         // Smooth movement to target lane
         gameState.player.x += dx * 0.2;
     } else {
-        const usingKeyboard = gameState.keys['ArrowLeft'] || gameState.keys['a'] || gameState.keys['ArrowRight'] || gameState.keys['d'];
-        if (usingKeyboard) {
-            if (gameState.keys['ArrowLeft'] || gameState.keys['a']) gameState.player.x -= CONFIG.player.speed;
-            if (gameState.keys['ArrowRight'] || gameState.keys['d']) gameState.player.x += CONFIG.player.speed;
-        } else {
-            const dx = gameState.mouseX - gameState.player.x;
-            if (Math.abs(dx) > 5) gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.15, CONFIG.player.speed);
-        }
+        if (keys['ArrowLeft'] || keys['a'] || keys['A']) gameState.player.x -= CONFIG.player.speed;
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) gameState.player.x += CONFIG.player.speed;
     }
     gameState.player.x = Math.max(50, Math.min(PLAY_AREA.width - 50, gameState.player.x));
 
@@ -716,7 +702,7 @@ function updateCrowdDisplay() {
 function startGame() {
     gameState = { ...gameState, running: true, player: createPlayer(), bullets: [], enemies: [], powerups: [], particles: [],
         score: 0, wave: 1, waveTimer: 0, enemiesInWave: 0, enemiesKilled: 0, frameCount: 0, lastShot: 0,
-        crowdSize: CONFIG.player.startCrowd, mouseX: PLAY_AREA.width / 2, stars: createStars(), keys: {}, hitEffect: 0, screenShake: { x: 0, y: 0 } };
+        crowdSize: CONFIG.player.startCrowd, stars: createStars(), hitEffect: 0, screenShake: { x: 0, y: 0 } };
     if (controlMode === 'camera') { webcamState.currentLane = 1; webcamState.targetLane = 1; }
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameOverScreen').classList.add('hidden');
