@@ -384,7 +384,7 @@
                 </button>
             </div>
             <div class="camera-status" id="cameraStatus"></div>
-            <div class="ready-indicator" id="armsUpIndicator">RAISE BOTH ARMS TO START!</div>
+            <div class="ready-indicator" id="armsUpIndicator">WAVE YOUR HAND ABOVE YOUR HEAD!</div>
 
             <button class="btn" id="startBtn">START GAME</button>
             <div class="instructions" id="instructions">
@@ -893,17 +893,14 @@
                 }
             }
 
-            // ARMS UP DETECTION (for ready pose before game starts)
+            // WAVE GESTURE DETECTION (wave hand above head to start)
             if (!gameState.running && webcamState.previousFrame && !webcamState.isReady) {
                 const prevData = webcamState.previousFrame.data;
-                const topRegion = Math.floor(height * 0.25); // Top 25% of frame
-                const leftZone = Math.floor(width * 0.35);
-                const rightZone = Math.floor(width * 0.65);
+                const topRegion = Math.floor(height * 0.35); // Top 35% of frame
 
-                let leftArmMotion = 0;
-                let rightArmMotion = 0;
+                let topMotion = 0;
 
-                // Check for motion in top-left and top-right regions (raised arms)
+                // Check for any motion in top region (waving hand above head)
                 for (let y = 0; y < topRegion; y += sampleStep) {
                     for (let x = 0; x < width; x += sampleStep) {
                         const i = (y * width + x) * 4;
@@ -913,20 +910,23 @@
                         const diff = dr + dg + db;
 
                         if (diff > webcamState.motionThreshold) {
-                            // Mirrored: right side of camera = left arm
-                            if (x > rightZone) leftArmMotion += diff;
-                            else if (x < leftZone) rightArmMotion += diff;
+                            topMotion += diff;
                         }
                     }
                 }
 
-                // Both arms need significant motion in top region
-                const armsUpThreshold = 2000;
-                const bothArmsUp = leftArmMotion > armsUpThreshold && rightArmMotion > armsUpThreshold;
+                // Significant motion in top region = waving
+                const waveThreshold = 5000;
+                const isWaving = topMotion > waveThreshold;
 
-                if (bothArmsUp) {
+                if (isWaving) {
                     webcamState.armsUpFrames++;
-                    if (webcamState.armsUpFrames >= 15) { // Hold pose for ~0.5 seconds
+                    // Update indicator to show progress
+                    const indicator = document.getElementById('armsUpIndicator');
+                    const progress = Math.min(100, Math.floor((webcamState.armsUpFrames / 20) * 100));
+                    indicator.textContent = `WAVING... ${progress}%`;
+
+                    if (webcamState.armsUpFrames >= 20) { // Wave for ~0.7 seconds
                         webcamState.armsUpDetected = true;
                         webcamState.isReady = true;
 
@@ -934,7 +934,6 @@
                         captureFace();
 
                         // Update UI
-                        const indicator = document.getElementById('armsUpIndicator');
                         indicator.textContent = 'READY! CLICK START!';
                         indicator.classList.add('ready');
 
@@ -944,7 +943,12 @@
                         startBtn.style.pointerEvents = 'auto';
                     }
                 } else {
-                    webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 2);
+                    webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 1);
+                    if (webcamState.armsUpFrames > 0) {
+                        const indicator = document.getElementById('armsUpIndicator');
+                        const progress = Math.min(100, Math.floor((webcamState.armsUpFrames / 20) * 100));
+                        indicator.textContent = `WAVE YOUR HAND! ${progress}%`;
+                    }
                 }
             }
 
@@ -1024,7 +1028,7 @@
                 `;
                 initWebcam();
                 armsIndicator.style.display = 'block';
-                armsIndicator.textContent = 'RAISE BOTH ARMS TO START!';
+                armsIndicator.textContent = 'WAVE YOUR HAND ABOVE YOUR HEAD!';
                 armsIndicator.classList.remove('ready');
                 // Dim start button until ready
                 startBtn.style.opacity = '0.5';
