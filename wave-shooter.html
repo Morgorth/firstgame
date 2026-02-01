@@ -421,10 +421,14 @@ function update() {
         // Smooth movement to target lane
         gameState.player.x += dx * 0.2;
     } else {
-        if (gameState.keys['ArrowLeft'] || gameState.keys['a']) gameState.player.x -= CONFIG.player.speed;
-        if (gameState.keys['ArrowRight'] || gameState.keys['d']) gameState.player.x += CONFIG.player.speed;
-        const dx = gameState.mouseX - gameState.player.x;
-        if (Math.abs(dx) > 5) gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.15, CONFIG.player.speed);
+        const usingKeyboard = gameState.keys['ArrowLeft'] || gameState.keys['a'] || gameState.keys['ArrowRight'] || gameState.keys['d'];
+        if (usingKeyboard) {
+            if (gameState.keys['ArrowLeft'] || gameState.keys['a']) gameState.player.x -= CONFIG.player.speed;
+            if (gameState.keys['ArrowRight'] || gameState.keys['d']) gameState.player.x += CONFIG.player.speed;
+        } else {
+            const dx = gameState.mouseX - gameState.player.x;
+            if (Math.abs(dx) > 5) gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.15, CONFIG.player.speed);
+        }
     }
     gameState.player.x = Math.max(50, Math.min(PLAY_AREA.width - 50, gameState.player.x));
 
