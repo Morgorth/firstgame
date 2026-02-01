@@ -297,6 +297,33 @@
             min-height: 20px;
         }
 
+        .ready-indicator {
+            font-family: 'Orbitron', monospace;
+            font-size: 16px;
+            color: #ffff00;
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: 2px dashed #ffff00;
+            border-radius: 10px;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .ready-indicator.ready {
+            background: linear-gradient(135deg, #00ff00, #00cc00);
+            border: 2px solid #00ff00;
+            color: #000;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        #armsUpIndicator {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .control-mode-selection {
                 flex-direction: column;
@@ -357,6 +384,7 @@
                 </button>
             </div>
             <div class="camera-status" id="cameraStatus"></div>
+            <div class="ready-indicator" id="armsUpIndicator">RAISE BOTH ARMS TO START!</div>
 
             <button class="btn" id="startBtn">START GAME</button>
             <div class="instructions" id="instructions">
@@ -452,8 +480,17 @@
             previousFrame: null,
             detectedX: 0.5, // Normalized position (0-1)
             smoothedX: 0.5,
-            motionThreshold: 30,
-            initialized: false
+            motionThreshold: 25,
+            initialized: false,
+            // Body tracking: track center of mass of the person
+            bodyCenter: 0.5,
+            lastBodyPositions: [], // For averaging body position
+            // Ready pose detection (arms up)
+            armsUpDetected: false,
+            armsUpFrames: 0, // Count frames with arms up for confirmation
+            isReady: false, // Player confirmed ready
+            // Face capture
+            playerFaceImage: null
         };
 
         // Game state
@@ -475,6 +512,9 @@
             mouseX: canvas.width / 2,
             stars: [],
             keys: {},
+            // Hit effect state
+            hitEffect: 0, // Duration of hit effect (frames)
+            screenShake: { x: 0, y: 0 },
         };
 
         // Create player
@@ -748,7 +788,7 @@
             document.getElementById('webcamContainer').classList.add('hidden');
         }
 
-        // Motion tracking - detects horizontal position based on movement
+        // Motion tracking - detects full body horizontal position
         function trackMotion() {
             if (!webcamState.active || !webcamState.initialized) return;
 
@@ -766,18 +806,29 @@
             const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = currentFrame.data;
 
+            const height = canvas.height;
+            const width = canvas.width;
+            const sampleStep = 4;
+
+            // BODY DETECTION: Find where the person is by detecting darker/different pixels
+            // Focus on the torso region (middle 60% of height) to ignore arm movements
+            const bodyTop = Math.floor(height * 0.15);
+            const bodyBottom = Math.floor(height * 0.85);
+
+            // Also narrow horizontal range to center 80% (ignore edges)
+            const bodyLeft = Math.floor(width * 0.1);
+            const bodyRight = Math.floor(width * 0.9);
+
+            let totalWeight = 0;
+            let weightedX = 0;
+            let motionColumns = new Array(Math.floor(width / sampleStep)).fill(0);
+
             if (webcamState.previousFrame) {
                 const prevData = webcamState.previousFrame.data;
-                let totalMotion = 0;
-                let weightedX = 0;
 
-                // Analyze frame for motion (horizontal position detection)
-                const sampleStep = 4; // Sample every 4th pixel for performance
-                const height = canvas.height;
-                const width = canvas.width;
-
-                for (let y = 0; y < height; y += sampleStep) {
-                    for (let x = 0; x < width; x += sampleStep) {
+                // Analyze motion in the body region only
+                for (let y = bodyTop; y < bodyBottom; y += sampleStep) {
+                    for (let x = bodyLeft; x < bodyRight; x += sampleStep) {
                         const i = (y * width + x) * 4;
 
                         // Calculate difference between frames
@@ -787,26 +838,113 @@
                         const diff = dr + dg + db;
 
                         if (diff > webcamState.motionThreshold) {
-                            totalMotion += diff;
-                            // Weight by x position (mirrored because camera is mirrored)
-                            weightedX += diff * (width - x);
+                            const colIndex = Math.floor(x / sampleStep);
+                            motionColumns[colIndex] += diff;
                         }
                     }
                 }
 
-                // Calculate center of motion
-                if (totalMotion > 1000) { // Minimum motion threshold
-                    const centerX = weightedX / totalMotion;
+                // Count columns with significant motion (body movement = multiple columns moving together)
+                let activeColumns = 0;
+                let firstActiveCol = -1;
+                let lastActiveCol = -1;
+                const columnThreshold = 500;
+
+                for (let col = 0; col < motionColumns.length; col++) {
+                    if (motionColumns[col] > columnThreshold) {
+                        activeColumns++;
+                        if (firstActiveCol === -1) firstActiveCol = col;
+                        lastActiveCol = col;
+
+                        // Weight by column position (mirrored)
+                        const colX = col * sampleStep;
+                        totalWeight += motionColumns[col];
+                        weightedX += motionColumns[col] * (width - colX);
+                    }
+                }
+
+                // Only respond to WIDE motion (body moving, not just hands)
+                // Require at least 5 active columns spread across the detection area
+                const motionWidth = lastActiveCol - firstActiveCol;
+                const isBodyMotion = activeColumns >= 4 && motionWidth >= 3;
+
+                if (isBodyMotion && totalWeight > 3000) {
+                    const centerX = weightedX / totalWeight;
                     webcamState.detectedX = centerX / width;
 
-                    // Smooth the detected position
-                    const smoothing = 0.3;
-                    webcamState.smoothedX = webcamState.smoothedX * (1 - smoothing) + webcamState.detectedX * smoothing;
+                    // Add to position history for smoothing
+                    webcamState.lastBodyPositions.push(webcamState.detectedX);
+                    if (webcamState.lastBodyPositions.length > 5) {
+                        webcamState.lastBodyPositions.shift();
+                    }
+
+                    // Average recent positions for stability
+                    const avgPosition = webcamState.lastBodyPositions.reduce((a, b) => a + b, 0)
+                                       / webcamState.lastBodyPositions.length;
+
+                    // Smooth the movement with faster response
+                    const smoothing = 0.4;
+                    webcamState.smoothedX = webcamState.smoothedX * (1 - smoothing) + avgPosition * smoothing;
 
                     // Update position indicator
                     const marker = document.getElementById('positionMarker');
                     const containerWidth = document.getElementById('webcamContainer').offsetWidth;
                     marker.style.left = (webcamState.smoothedX * (containerWidth - 20)) + 'px';
+                }
+            }
+
+            // ARMS UP DETECTION (for ready pose before game starts)
+            if (!gameState.running && webcamState.previousFrame && !webcamState.isReady) {
+                const prevData = webcamState.previousFrame.data;
+                const topRegion = Math.floor(height * 0.25); // Top 25% of frame
+                const leftZone = Math.floor(width * 0.35);
+                const rightZone = Math.floor(width * 0.65);
+
+                let leftArmMotion = 0;
+                let rightArmMotion = 0;
+
+                // Check for motion in top-left and top-right regions (raised arms)
+                for (let y = 0; y < topRegion; y += sampleStep) {
+                    for (let x = 0; x < width; x += sampleStep) {
+                        const i = (y * width + x) * 4;
+                        const dr = Math.abs(data[i] - prevData[i]);
+                        const dg = Math.abs(data[i + 1] - prevData[i + 1]);
+                        const db = Math.abs(data[i + 2] - prevData[i + 2]);
+                        const diff = dr + dg + db;
+
+                        if (diff > webcamState.motionThreshold) {
+                            // Mirrored: right side of camera = left arm
+                            if (x > rightZone) leftArmMotion += diff;
+                            else if (x < leftZone) rightArmMotion += diff;
+                        }
+                    }
+                }
+
+                // Both arms need significant motion in top region
+                const armsUpThreshold = 2000;
+                const bothArmsUp = leftArmMotion > armsUpThreshold && rightArmMotion > armsUpThreshold;
+
+                if (bothArmsUp) {
+                    webcamState.armsUpFrames++;
+                    if (webcamState.armsUpFrames >= 15) { // Hold pose for ~0.5 seconds
+                        webcamState.armsUpDetected = true;
+                        webcamState.isReady = true;
+
+                        // Capture face when ready
+                        captureFace();
+
+                        // Update UI
+                        const indicator = document.getElementById('armsUpIndicator');
+                        indicator.textContent = 'READY! CLICK START!';
+                        indicator.classList.add('ready');
+
+                        // Enable start button
+                        const startBtn = document.getElementById('startBtn');
+                        startBtn.style.opacity = '1';
+                        startBtn.style.pointerEvents = 'auto';
+                    }
+                } else {
+                    webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 2);
                 }
             }
 
@@ -816,6 +954,36 @@
             requestAnimationFrame(trackMotion);
         }
 
+        // Capture player face from webcam
+        function captureFace() {
+            if (!webcamState.video || !webcamState.canvas) return;
+
+            const video = webcamState.video;
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Capture center portion of video (face area)
+            const faceSize = 80;
+            tempCanvas.width = faceSize;
+            tempCanvas.height = faceSize;
+
+            // Calculate center crop area
+            const cropSize = Math.min(video.videoWidth, video.videoHeight) * 0.5;
+            const cropX = (video.videoWidth - cropSize) / 2;
+            const cropY = video.videoHeight * 0.1; // Slightly above center (face is usually in top half)
+
+            // Draw cropped and mirrored
+            tempCtx.save();
+            tempCtx.translate(faceSize, 0);
+            tempCtx.scale(-1, 1);
+            tempCtx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, faceSize, faceSize);
+            tempCtx.restore();
+
+            // Store as image data URL
+            webcamState.playerFaceImage = tempCanvas.toDataURL('image/png');
+            console.log('Face captured!');
+        }
+
         // Select control mode
         function selectControlMode(mode) {
             controlMode = mode;
@@ -823,6 +991,15 @@
             // Update button states
             document.getElementById('keyboardModeBtn').classList.toggle('selected', mode === 'keyboard');
             document.getElementById('cameraModeBtn').classList.toggle('selected', mode === 'camera');
+
+            // Reset ready state when changing modes
+            webcamState.isReady = false;
+            webcamState.armsUpDetected = false;
+            webcamState.armsUpFrames = 0;
+            webcamState.playerFaceImage = null;
+
+            const armsIndicator = document.getElementById('armsUpIndicator');
+            const startBtn = document.getElementById('startBtn');
 
             // Update instructions
             const instructions = document.getElementById('instructions');
@@ -835,6 +1012,9 @@
                 `;
                 stopWebcam();
                 document.getElementById('cameraStatus').textContent = '';
+                armsIndicator.style.display = 'none';
+                startBtn.style.opacity = '1';
+                startBtn.style.pointerEvents = 'auto';
             } else {
                 instructions.innerHTML = `
                     MOVE: Move your body LEFT/RIGHT in the camera<br>
@@ -843,6 +1023,12 @@
                     STOP ENEMIES: They cost 1 ship if they pass OR hit you!
                 `;
                 initWebcam();
+                armsIndicator.style.display = 'block';
+                armsIndicator.textContent = 'RAISE BOTH ARMS TO START!';
+                armsIndicator.classList.remove('ready');
+                // Dim start button until ready
+                startBtn.style.opacity = '0.5';
+                startBtn.style.pointerEvents = 'none';
             }
         }
 
@@ -885,9 +1071,9 @@
                 // Camera mode: map webcam position to play area
                 const targetX = webcamState.smoothedX * PLAY_AREA.width;
                 const dx = targetX - gameState.player.x;
-                // Smooth camera movement with higher responsiveness
-                if (Math.abs(dx) > 5) {
-                    gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.2, CONFIG.player.speed * 1.5);
+                // Fast and responsive camera movement
+                if (Math.abs(dx) > 3) {
+                    gameState.player.x += Math.sign(dx) * Math.min(Math.abs(dx) * 0.35, CONFIG.player.speed * 2.5);
                 }
             } else {
                 // Keyboard mode: use keyboard and mouse controls
@@ -1001,28 +1187,44 @@
                     CONFIG.player.width, CONFIG.player.height,
                     enemy.width, enemy.height
                 )) {
-                    gameState.crowdSize = Math.max(0, gameState.crowdSize - 1);
+                    // Damage based on enemy points (10 points = 1 ship, 15 = 2, 30 = 3)
+                    const damage = Math.ceil(enemy.points / 10);
+                    gameState.crowdSize = Math.max(0, gameState.crowdSize - damage);
                     updateCrowdDisplay();
                     gameState.enemiesKilled++;
-                    
+
+                    // Trigger hit effect
+                    gameState.hitEffect = 20;
+                    gameState.screenShake = { x: 10, y: 10 };
+
+                    // Red particles for hit
+                    for (let i = 0; i < 15; i++) {
+                        gameState.particles.push(createParticle(gameState.player.x, gameState.player.y, '#ff0000'));
+                    }
+
                     if (gameState.crowdSize <= 0) {
                         gameOver();
                     }
                     return false;
                 }
-                
-                // If enemy passes the bottom line, lose a soldier
+
+                // If enemy passes the bottom line, lose ships based on points
                 if (enemy.y > PLAY_AREA.height + 50) {
-                    gameState.crowdSize = Math.max(0, gameState.crowdSize - 1);
+                    const damage = Math.ceil(enemy.points / 10);
+                    gameState.crowdSize = Math.max(0, gameState.crowdSize - damage);
                     updateCrowdDisplay();
                     gameState.enemiesKilled++;
-                    
+
+                    // Trigger hit effect (less intense for passing)
+                    gameState.hitEffect = 15;
+                    gameState.screenShake = { x: 5, y: 5 };
+
                     if (gameState.crowdSize <= 0) {
                         gameOver();
                     }
                     return false;
                 }
-                
+
                 return enemy.health > 0;
             });
 
@@ -1046,7 +1248,7 @@
 
             // Wave management
             const waveComplete = gameState.enemiesKilled >= gameState.enemiesInWave && gameState.enemies.length === 0;
-            
+
             if (waveComplete) {
                 gameState.waveTimer++;
                 if (gameState.waveTimer >= CONFIG.wave.delay) {
@@ -1056,6 +1258,14 @@
                     spawnWave();
                     updateWave();
                 }
+            }
+
+            // Update hit effect
+            if (gameState.hitEffect > 0) {
+                gameState.hitEffect--;
+                // Decay screen shake
+                gameState.screenShake.x *= 0.9;
+                gameState.screenShake.y *= 0.9;
             }
 
             updateHUD();
@@ -1077,6 +1287,13 @@
             
             ctx.translate(offsetX, offsetY);
             ctx.scale(scale, scale);
+
+            // Apply screen shake if hit effect is active
+            if (gameState.hitEffect > 0) {
+                const shakeX = (Math.random() - 0.5) * gameState.screenShake.x * 2;
+                const shakeY = (Math.random() - 0.5) * gameState.screenShake.y * 2;
+                ctx.translate(shakeX, shakeY);
+            }
 
             // Draw stars
             gameState.stars.forEach(star => {
@@ -1146,6 +1363,37 @@
                     ctx.shadowBlur = 0;
                     ctx.restore();
                 });
+
+                // Draw player face icon in front of fleet (camera mode only)
+                if (controlMode === 'camera' && webcamState.playerFaceImage) {
+                    const faceImg = new Image();
+                    faceImg.src = webcamState.playerFaceImage;
+
+                    ctx.save();
+                    ctx.translate(gameState.player.x, gameState.player.y - 60);
+
+                    // Circular clipping for face
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+                    ctx.clip();
+
+                    // Draw face image
+                    ctx.drawImage(faceImg, -25, -25, 50, 50);
+                    ctx.restore();
+
+                    // Draw border around face
+                    ctx.save();
+                    ctx.translate(gameState.player.x, gameState.player.y - 60);
+                    ctx.strokeStyle = '#00ffff';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#00ffff';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+                }
             }
 
             // Draw bullets
@@ -1390,6 +1638,13 @@
                 
                 ctx.restore();
             });
+
+            // Draw red flash overlay when hit
+            if (gameState.hitEffect > 0) {
+                const alpha = (gameState.hitEffect / 20) * 0.4;
+                ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+                ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
+            }
 
             ctx.restore(); // Restore zoom transformation
         }
