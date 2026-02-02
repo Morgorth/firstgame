@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>WAVE ASSAULT</title>
+    <!-- TensorFlow.js and Pose Detection for MoveNet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.0"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght:700;900&family=Rajdhani:wght:600&display=swap');
@@ -34,8 +37,8 @@
         .control-btn.selected{background:linear-gradient(135deg,#00ffff,#ff00ff);color:#0a0015;border-color:#ffffff;box-shadow:0 0 40px rgba(0,255,255,0.8)}
         .control-icon{font-size:36px}
         #webcamContainer{position:fixed;bottom:20px;right:20px;width:200px;height:150px;border:3px solid #00ffff;border-radius:10px;overflow:hidden;box-shadow:0 0 20px rgba(0,255,255,0.5);z-index:1000;background:#000}
-        #webcamVideo{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-        #webcamCanvas{display:none}
+        #webcamVideo{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:none}
+        #webcamCanvas{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
         #positionIndicator{position:absolute;bottom:0;left:0;right:0;height:8px;background:rgba(0,0,0,0.5)}
         #positionMarker{position:absolute;width:20px;height:8px;background:#ff00ff;box-shadow:0 0 10px #ff00ff;transition:left 0.1s ease-out}
         .webcam-label{position:absolute;top:5px;left:5px;font-family:'Orbitron',monospace;font-size:10px;color:#00ffff;text-shadow:0 0 5px rgba(0,255,255,0.8);z-index:1}
@@ -86,7 +89,7 @@
             <div class="instructions" id="instructions">MOVE: Arrow Keys / A-D / Mouse / Touch<br>AUTO-FIRE: Always Active<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost 1 ship if they pass OR hit you!</div>
         </div>
         <div id="webcamContainer" class="hidden">
-            <div class="webcam-label">CAMERA</div>
+            <div class="webcam-label" id="webcamLabel">AI POSE</div>
             <video id="webcamVideo" autoplay playsinline muted></video>
             <canvas id="webcamCanvas"></canvas>
             <div id="positionIndicator"><div id="positionMarker"></div></div>
@@ -139,7 +142,10 @@ let gameTheme = 'space';
 let webcamState = {
     active: false, stream: null, video: null, canvas: null, ctx: null,
     previousFrame: null, currentLane: 1, targetLane: 1,
-    initialized: false, armsUpFrames: 0, isReady: false, playerFaceImage: null
+    initialized: false, armsUpFrames: 0, isReady: false, playerFaceImage: null,
+    // MoveNet pose detection state
+    poseDetector: null, poseDetectorReady: false, lastPose: null,
+    detectedKeypoints: null, poseConfidence: 0
 };
 
 let gameState = {
@@ -195,16 +201,22 @@ async function initWebcam() {
         webcamState.video = document.getElementById('webcamVideo');
         webcamState.canvas = document.getElementById('webcamCanvas');
         webcamState.ctx = webcamState.canvas.getContext('2d', { willReadFrequently: true });
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' }, audio: false });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false });
         webcamState.stream = stream;
         webcamState.video.srcObject = stream;
         await new Promise(r => { webcamState.video.onloadedmetadata = () => { webcamState.canvas.width = webcamState.video.videoWidth; webcamState.canvas.height = webcamState.video.videoHeight; r(); }; });
         webcamState.initialized = true; webcamState.active = true;
-        statusEl.textContent = 'Camera ready! Stand in LEFT / CENTER / RIGHT zone.'; statusEl.style.color = '#00ff00';
         document.getElementById('webcamContainer').classList.remove('hidden');
-        requestAnimationFrame(trackMotion);
+
+        // Initialize MoveNet pose detector
+        statusEl.textContent = 'Loading AI pose detection...';
+        await initPoseDetector();
+
+        statusEl.textContent = 'AI ready! Move LEFT / CENTER / RIGHT.'; statusEl.style.color = '#00ff00';
+        requestAnimationFrame(trackPoses);
         return true;
     } catch (e) {
+        console.error('Webcam/Pose init error:', e);
         document.getElementById('cameraStatus').textContent = 'Camera access denied.';
         document.getElementById('cameraStatus').style.color = '#ff0000';
         selectControlMode('keyboard');
@@ -212,10 +224,228 @@ async function initWebcam() {
     }
 }
 
+async function initPoseDetector() {
+    try {
+        // Wait for TensorFlow.js to be ready
+        await tf.ready();
+        console.log('TensorFlow.js ready, backend:', tf.getBackend());
+
+        // Create MoveNet Lightning detector (fastest, single-person for now)
+        // Will upgrade to MULTIPOSE_LIGHTNING for 2-player in Phase 2
+        webcamState.poseDetector = await poseDetection.createDetector(
+            poseDetection.SupportedModels.MoveNet,
+            {
+                modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+                enableSmoothing: true,
+                minPoseScore: 0.25
+            }
+        );
+        webcamState.poseDetectorReady = true;
+        console.log('MoveNet pose detector initialized');
+    } catch (e) {
+        console.error('Failed to init pose detector:', e);
+        webcamState.poseDetectorReady = false;
+        // Fall back to edge detection
+        document.getElementById('cameraStatus').textContent = 'AI failed, using basic detection';
+        requestAnimationFrame(trackMotion);
+    }
+}
+
 function stopWebcam() {
     if (webcamState.stream) webcamState.stream.getTracks().forEach(t => t.stop());
     webcamState.stream = null; webcamState.active = false; webcamState.initialized = false; webcamState.previousFrame = null;
+    webcamState.poseDetectorReady = false;
     document.getElementById('webcamContainer').classList.add('hidden');
+}
+
+// New MoveNet-based pose tracking
+async function trackPoses() {
+    if (!webcamState.active || !webcamState.initialized) return;
+
+    const video = webcamState.video;
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        requestAnimationFrame(trackPoses);
+        return;
+    }
+
+    // If pose detector isn't ready, fall back to edge detection
+    if (!webcamState.poseDetectorReady || !webcamState.poseDetector) {
+        trackMotion();
+        return;
+    }
+
+    try {
+        // Run pose detection
+        const poses = await webcamState.poseDetector.estimatePoses(video);
+
+        if (poses && poses.length > 0) {
+            const pose = poses[0];
+            webcamState.lastPose = pose;
+            webcamState.detectedKeypoints = pose.keypoints;
+
+            // Get shoulder positions for horizontal tracking
+            const leftShoulder = pose.keypoints.find(k => k.name === 'left_shoulder');
+            const rightShoulder = pose.keypoints.find(k => k.name === 'right_shoulder');
+            const nose = pose.keypoints.find(k => k.name === 'nose');
+
+            // Calculate center position from shoulders or nose
+            let centerX = null;
+            let confidence = 0;
+
+            if (leftShoulder && rightShoulder && leftShoulder.score > 0.3 && rightShoulder.score > 0.3) {
+                // Use shoulder midpoint (most stable for left/right movement)
+                centerX = (leftShoulder.x + rightShoulder.x) / 2;
+                confidence = (leftShoulder.score + rightShoulder.score) / 2;
+            } else if (nose && nose.score > 0.4) {
+                // Fall back to nose position
+                centerX = nose.x;
+                confidence = nose.score;
+            }
+
+            if (centerX !== null && confidence > 0.3) {
+                webcamState.poseConfidence = confidence;
+
+                // Normalize X position (0-1) - video is mirrored so we invert
+                const normalizedX = 1 - (centerX / video.videoWidth);
+
+                // Map to 3 lanes with some dead zones for stability
+                // Lane 0 (left): 0.00 - 0.35
+                // Lane 1 (center): 0.35 - 0.65
+                // Lane 2 (right): 0.65 - 1.00
+                let newLane;
+                if (normalizedX < 0.35) {
+                    newLane = 0;
+                } else if (normalizedX > 0.65) {
+                    newLane = 2;
+                } else {
+                    newLane = 1;
+                }
+
+                webcamState.targetLane = newLane;
+            }
+
+            // Wave gesture detection for pre-game (check if hand is above head)
+            if (!gameState.running && !webcamState.isReady) {
+                const leftWrist = pose.keypoints.find(k => k.name === 'left_wrist');
+                const rightWrist = pose.keypoints.find(k => k.name === 'right_wrist');
+                const headY = nose ? nose.y : video.videoHeight * 0.3;
+
+                const leftWaving = leftWrist && leftWrist.score > 0.3 && leftWrist.y < headY - 30;
+                const rightWaving = rightWrist && rightWrist.score > 0.3 && rightWrist.y < headY - 30;
+
+                if (leftWaving || rightWaving) {
+                    webcamState.armsUpFrames++;
+                    const indicator = document.getElementById('armsUpIndicator');
+                    indicator.textContent = `WAVING... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 15 * 100))}%`;
+
+                    if (webcamState.armsUpFrames >= 15) {
+                        webcamState.isReady = true;
+                        captureFace();
+                        indicator.textContent = 'READY! CLICK START!';
+                        indicator.classList.add('ready');
+                        document.getElementById('startBtn').style.opacity = '1';
+                        document.getElementById('startBtn').style.pointerEvents = 'auto';
+                    }
+                } else {
+                    webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 1);
+                }
+            }
+        }
+
+        // Update position marker visualization
+        document.getElementById('positionMarker').style.left = (30 + webcamState.targetLane * 60) + 'px';
+
+        // Draw debug visualization on canvas
+        drawPoseDebug();
+
+    } catch (e) {
+        console.error('Pose detection error:', e);
+    }
+
+    // Continue loop
+    requestAnimationFrame(trackPoses);
+}
+
+// Draw pose keypoints on webcam canvas for debugging
+function drawPoseDebug() {
+    if (!webcamState.ctx || !webcamState.detectedKeypoints) return;
+
+    const ctx = webcamState.ctx;
+    const video = webcamState.video;
+    const canvas = webcamState.canvas;
+
+    // Draw video frame
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Draw keypoints
+    const keypoints = webcamState.detectedKeypoints;
+    keypoints.forEach(kp => {
+        if (kp.score > 0.3) {
+            ctx.beginPath();
+            ctx.arc(kp.x, kp.y, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = kp.score > 0.6 ? '#00ff00' : '#ffff00';
+            ctx.fill();
+        }
+    });
+
+    // Draw skeleton connections
+    const connections = [
+        ['left_shoulder', 'right_shoulder'],
+        ['left_shoulder', 'left_elbow'],
+        ['left_elbow', 'left_wrist'],
+        ['right_shoulder', 'right_elbow'],
+        ['right_elbow', 'right_wrist'],
+        ['left_shoulder', 'left_hip'],
+        ['right_shoulder', 'right_hip'],
+        ['left_hip', 'right_hip'],
+        ['nose', 'left_shoulder'],
+        ['nose', 'right_shoulder']
+    ];
+
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 2;
+
+    connections.forEach(([a, b]) => {
+        const kpA = keypoints.find(k => k.name === a);
+        const kpB = keypoints.find(k => k.name === b);
+        if (kpA && kpB && kpA.score > 0.3 && kpB.score > 0.3) {
+            ctx.beginPath();
+            ctx.moveTo(kpA.x, kpA.y);
+            ctx.lineTo(kpB.x, kpB.y);
+            ctx.stroke();
+        }
+    });
+
+    // Draw lane zones (vertical lines at 35% and 65%)
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.strokeStyle = 'rgba(255, 0, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.35, 0);
+    ctx.lineTo(w * 0.35, h);
+    ctx.moveTo(w * 0.65, 0);
+    ctx.lineTo(w * 0.65, h);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw current lane indicator at bottom
+    const laneLabels = ['RIGHT', 'CENTER', 'LEFT']; // Mirrored for selfie cam
+    const laneColors = ['#ff6666', '#66ff66', '#6666ff'];
+    ctx.fillStyle = laneColors[webcamState.targetLane];
+    ctx.font = 'bold 16px Orbitron, monospace';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(laneLabels[webcamState.targetLane], w / 2, h - 15);
+    ctx.fillText(laneLabels[webcamState.targetLane], w / 2, h - 15);
+
+    // Update label with confidence
+    const label = document.getElementById('webcamLabel');
+    const conf = Math.round(webcamState.poseConfidence * 100);
+    label.textContent = `AI ${conf}%`;
+    label.style.color = conf > 60 ? '#00ff00' : conf > 40 ? '#ffff00' : '#ff6666';
 }
 
 function trackMotion() {
