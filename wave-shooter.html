@@ -324,19 +324,33 @@ async function trackPoses() {
                 webcamState.targetLane = newLane;
             }
 
-            // Wave gesture detection for pre-game (check if hand is above head)
+            // Wave gesture detection for pre-game (check if hand is above shoulders)
             if (!gameState.running && !webcamState.isReady) {
                 const leftWrist = pose.keypoints.find(k => k.name === 'left_wrist');
                 const rightWrist = pose.keypoints.find(k => k.name === 'right_wrist');
-                const headY = nose ? nose.y : video.videoHeight * 0.3;
+                const leftElbow = pose.keypoints.find(k => k.name === 'left_elbow');
+                const rightElbow = pose.keypoints.find(k => k.name === 'right_elbow');
 
-                const leftWaving = leftWrist && leftWrist.score > 0.3 && leftWrist.y < headY - 30;
-                const rightWaving = rightWrist && rightWrist.score > 0.3 && rightWrist.y < headY - 30;
+                // Use shoulder Y as threshold (more lenient than nose)
+                const shoulderY = (leftShoulder && rightShoulder)
+                    ? Math.max(leftShoulder.y, rightShoulder.y)
+                    : video.videoHeight * 0.4;
 
-                if (leftWaving || rightWaving) {
+                // Store for debug drawing
+                webcamState.waveThresholdY = shoulderY;
+                webcamState.leftWristPos = leftWrist;
+                webcamState.rightWristPos = rightWrist;
+
+                // Check if wrist OR elbow is above shoulders (very lenient)
+                const leftHandUp = (leftWrist && leftWrist.score > 0.2 && leftWrist.y < shoulderY) ||
+                                   (leftElbow && leftElbow.score > 0.2 && leftElbow.y < shoulderY - 50);
+                const rightHandUp = (rightWrist && rightWrist.score > 0.2 && rightWrist.y < shoulderY) ||
+                                    (rightElbow && rightElbow.score > 0.2 && rightElbow.y < shoulderY - 50);
+
+                if (leftHandUp || rightHandUp) {
                     webcamState.armsUpFrames++;
                     const indicator = document.getElementById('armsUpIndicator');
-                    indicator.textContent = `WAVING... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 15 * 100))}%`;
+                    indicator.textContent = `HAND UP... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 15 * 100))}%`;
 
                     if (webcamState.armsUpFrames >= 15) {
                         webcamState.isReady = true;
@@ -440,6 +454,40 @@ function drawPoseDebug() {
     ctx.lineWidth = 3;
     ctx.strokeText(laneLabels[webcamState.targetLane], w / 2, h - 15);
     ctx.fillText(laneLabels[webcamState.targetLane], w / 2, h - 15);
+
+    // Draw wave threshold line (when not ready)
+    if (!gameState.running && !webcamState.isReady && webcamState.waveThresholdY) {
+        const threshY = webcamState.waveThresholdY;
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 5]);
+        ctx.beginPath();
+        ctx.moveTo(0, threshY);
+        ctx.lineTo(w, threshY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Label the threshold line
+        ctx.fillStyle = '#ffff00';
+        ctx.font = 'bold 12px Orbitron, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('RAISE HAND HERE', 5, threshY - 5);
+
+        // Highlight wrists with larger circles
+        const wrists = [webcamState.leftWristPos, webcamState.rightWristPos];
+        wrists.forEach(wrist => {
+            if (wrist && wrist.score > 0.2) {
+                const isAbove = wrist.y < threshY;
+                ctx.beginPath();
+                ctx.arc(wrist.x, wrist.y, 12, 0, 2 * Math.PI);
+                ctx.strokeStyle = isAbove ? '#00ff00' : '#ff6666';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.fillStyle = isAbove ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)';
+                ctx.fill();
+            }
+        });
+    }
 
     // Update label with confidence
     const label = document.getElementById('webcamLabel');
