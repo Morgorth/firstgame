@@ -143,8 +143,13 @@ let audioState = {
 };
 
 function initAudio() {
-    if (audioCtx) return;
+    if (audioCtx) {
+        // Resume if suspended (browser autoplay policy)
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return;
+    }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx.resume(); // Ensure it's running after user interaction
     audioState.musicGain = audioCtx.createGain();
     audioState.musicGain.gain.value = 0.3;
     audioState.musicGain.connect(audioCtx.destination);
