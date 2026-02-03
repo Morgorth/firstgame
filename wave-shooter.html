@@ -453,14 +453,16 @@ function isHandRaised(pose) {
     const leftElbow = pose.keypoints.find(k => k.name === 'left_elbow');
     const rightElbow = pose.keypoints.find(k => k.name === 'right_elbow');
 
-    const shoulderY = (leftShoulder && rightShoulder && leftShoulder.score > 0.3 && rightShoulder.score > 0.3)
-        ? Math.max(leftShoulder.y, rightShoulder.y)
-        : webcamState.video.videoHeight * 0.4;
+    // Use shoulder position with lower confidence threshold, add buffer for easier detection
+    const shoulderY = (leftShoulder && rightShoulder && leftShoulder.score > 0.15 && rightShoulder.score > 0.15)
+        ? Math.max(leftShoulder.y, rightShoulder.y) + 30  // +30 buffer makes it easier
+        : webcamState.video.videoHeight * 0.45;
 
-    const leftHandUp = (leftWrist && leftWrist.score > 0.2 && leftWrist.y < shoulderY) ||
-                       (leftElbow && leftElbow.score > 0.2 && leftElbow.y < shoulderY - 50);
-    const rightHandUp = (rightWrist && rightWrist.score > 0.2 && rightWrist.y < shoulderY) ||
-                        (rightElbow && rightElbow.score > 0.2 && rightElbow.y < shoulderY - 50);
+    // Check if wrist OR elbow is above threshold (both use same threshold now)
+    const leftHandUp = (leftWrist && leftWrist.score > 0.15 && leftWrist.y < shoulderY) ||
+                       (leftElbow && leftElbow.score > 0.15 && leftElbow.y < shoulderY);
+    const rightHandUp = (rightWrist && rightWrist.score > 0.15 && rightWrist.y < shoulderY) ||
+                        (rightElbow && rightElbow.score > 0.15 && rightElbow.y < shoulderY);
 
     return leftHandUp || rightHandUp;
 }
@@ -698,9 +700,9 @@ function drawRegistrationDebug(sortedPoses) {
         if (targetPose) {
             const leftShoulder = targetPose.keypoints.find(k => k.name === 'left_shoulder');
             const rightShoulder = targetPose.keypoints.find(k => k.name === 'right_shoulder');
-            const shoulderY = (leftShoulder && rightShoulder && leftShoulder.score > 0.3)
-                ? Math.max(leftShoulder.y, rightShoulder.y) * scaleY
-                : canvas.height * 0.4;
+            const shoulderY = (leftShoulder && rightShoulder && leftShoulder.score > 0.15 && rightShoulder.score > 0.15)
+                ? (Math.max(leftShoulder.y, rightShoulder.y) + 30) * scaleY
+                : canvas.height * 0.45;
 
             // Draw threshold line
             ctx.strokeStyle = '#ffff00';
@@ -717,14 +719,15 @@ function drawRegistrationDebug(sortedPoses) {
             ctx.textAlign = 'left';
             ctx.fillText('RAISE HAND HERE', 5, shoulderY - 5);
 
-            // Highlight wrists
-            const wrists = ['left_wrist', 'right_wrist'];
-            wrists.forEach(name => {
-                const wrist = targetPose.keypoints.find(k => k.name === name);
-                if (wrist && wrist.score > 0.2) {
-                    const isAbove = wrist.y * scaleY < shoulderY;
+            // Highlight wrists and elbows
+            const armParts = ['left_wrist', 'right_wrist', 'left_elbow', 'right_elbow'];
+            armParts.forEach(name => {
+                const part = targetPose.keypoints.find(k => k.name === name);
+                if (part && part.score > 0.15) {
+                    const isAbove = part.y * scaleY < shoulderY;
+                    const radius = name.includes('wrist') ? 15 : 10;
                     ctx.beginPath();
-                    ctx.arc(wrist.x * scaleX, wrist.y * scaleY, 15, 0, 2 * Math.PI);
+                    ctx.arc(part.x * scaleX, part.y * scaleY, radius, 0, 2 * Math.PI);
                     ctx.strokeStyle = isAbove ? '#00ff00' : '#ff6666';
                     ctx.lineWidth = 3;
                     ctx.stroke();
