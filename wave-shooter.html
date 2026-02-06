@@ -223,19 +223,22 @@ let gameTheme = 'space';
 let webcamState = {
     active: false, stream: null, video: null, canvas: null, ctx: null,
     previousFrame: null, currentLane: 1, targetLane: 1,
-    initialized: false, armsUpFrames: 0, isReady: false, playerFaceImage: null,
+    initialized: false, waveFrames: 0, isReady: false, playerFaceImage: null,
     // MoveNet pose detection state
     poseDetector: null, poseDetectorReady: false, lastPose: null,
     detectedKeypoints: null, poseConfidence: 0,
     // Multi-player pose tracking
     allPoses: [], // All detected poses from MULTIPOSE
+    // Motion tracking for wave detection
+    wristHistory: [], // Array of {x, y, time} for last N frames
+    motionScore: 0,
     // Player registration state
     playerCount: 1,
     registrationPhase: 'idle', // 'idle', 'registering', 'ready'
     currentRegisteringPlayer: 0, // 0 or 1
     registeredPlayers: [
-        { ready: false, faceImage: null, poseId: null, armsUpFrames: 0 },
-        { ready: false, faceImage: null, poseId: null, armsUpFrames: 0 }
+        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistory: [], motionScore: 0 },
+        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistory: [], motionScore: 0 }
     ]
 };
 
@@ -444,27 +447,75 @@ function getPoseCenterX(pose) {
     return pose.keypoints[0]?.x || 0;
 }
 
-// Helper: Check if hand is raised for a pose
-function isHandRaised(pose) {
-    const leftShoulder = pose.keypoints.find(k => k.name === 'left_shoulder');
-    const rightShoulder = pose.keypoints.find(k => k.name === 'right_shoulder');
+// Helper: Get best wrist position from pose
+function getBestWrist(pose) {
     const leftWrist = pose.keypoints.find(k => k.name === 'left_wrist');
     const rightWrist = pose.keypoints.find(k => k.name === 'right_wrist');
-    const leftElbow = pose.keypoints.find(k => k.name === 'left_elbow');
-    const rightElbow = pose.keypoints.find(k => k.name === 'right_elbow');
 
-    // Use shoulder position with lower confidence threshold, add buffer for easier detection
-    const shoulderY = (leftShoulder && rightShoulder && leftShoulder.score > 0.15 && rightShoulder.score > 0.15)
-        ? Math.max(leftShoulder.y, rightShoulder.y) + 30  // +30 buffer makes it easier
-        : webcamState.video.videoHeight * 0.45;
+    // Return the wrist with higher confidence, or either if both are similar
+    if (leftWrist && rightWrist) {
+        if (leftWrist.score > 0.1 && rightWrist.score > 0.1) {
+            return leftWrist.score > rightWrist.score ? leftWrist : rightWrist;
+        }
+        return leftWrist.score > 0.1 ? leftWrist : (rightWrist.score > 0.1 ? rightWrist : null);
+    }
+    return (leftWrist && leftWrist.score > 0.1) ? leftWrist :
+           (rightWrist && rightWrist.score > 0.1) ? rightWrist : null;
+}
 
-    // Check if wrist OR elbow is above threshold (both use same threshold now)
-    const leftHandUp = (leftWrist && leftWrist.score > 0.15 && leftWrist.y < shoulderY) ||
-                       (leftElbow && leftElbow.score > 0.15 && leftElbow.y < shoulderY);
-    const rightHandUp = (rightWrist && rightWrist.score > 0.15 && rightWrist.y < shoulderY) ||
-                        (rightElbow && rightElbow.score > 0.15 && rightElbow.y < shoulderY);
+// Helper: Detect waving motion from wrist history
+function detectWaveMotion(wristHistory) {
+    if (wristHistory.length < 8) return 0; // Need enough history
 
-    return leftHandUp || rightHandUp;
+    // Calculate motion over recent frames
+    let totalMotion = 0;
+    let directionChanges = 0;
+    let lastDx = 0;
+    let lastDy = 0;
+
+    for (let i = 1; i < wristHistory.length; i++) {
+        const dx = wristHistory[i].x - wristHistory[i-1].x;
+        const dy = wristHistory[i].y - wristHistory[i-1].y;
+        const motion = Math.sqrt(dx*dx + dy*dy);
+        totalMotion += motion;
+
+        // Count direction changes (oscillation = waving)
+        if (i > 1) {
+            if ((dx > 2 && lastDx < -2) || (dx < -2 && lastDx > 2)) directionChanges++;
+            if ((dy > 2 && lastDy < -2) || (dy < -2 && lastDy > 2)) directionChanges++;
+        }
+        lastDx = dx;
+        lastDy = dy;
+    }
+
+    // Waving = significant motion + direction changes (oscillation)
+    // Or just lots of movement (arm swinging)
+    const avgMotion = totalMotion / wristHistory.length;
+
+    // Score based on motion amount and oscillation
+    if (avgMotion > 15 || (avgMotion > 8 && directionChanges >= 2)) {
+        return 1.0; // Strong wave
+    } else if (avgMotion > 10 || (avgMotion > 5 && directionChanges >= 1)) {
+        return 0.7; // Medium wave
+    } else if (avgMotion > 5) {
+        return 0.3; // Slight motion
+    }
+    return 0;
+}
+
+// Helper: Update wrist history and check for wave
+function updateWaveDetection(pose, wristHistory, maxHistory = 15) {
+    const wrist = getBestWrist(pose);
+
+    if (wrist) {
+        wristHistory.push({ x: wrist.x, y: wrist.y, time: Date.now() });
+        // Keep only recent history
+        while (wristHistory.length > maxHistory) {
+            wristHistory.shift();
+        }
+    }
+
+    return detectWaveMotion(wristHistory);
 }
 
 // Handle pose tracking during player registration
@@ -495,21 +546,35 @@ function handleRegistrationPoseTracking(sortedPoses, video) {
 
     if (!targetPose) return;
 
-    // Check if hand is raised
-    if (isHandRaised(targetPose)) {
-        reg.armsUpFrames++;
-        const indicator = document.getElementById('setupWaveIndicator');
-        indicator.textContent = `HAND UP... ${Math.min(100, Math.floor(reg.armsUpFrames / 15 * 100))}%`;
+    // Update motion tracking and check for wave gesture
+    const motionScore = updateWaveDetection(targetPose, reg.wristHistory);
+    reg.motionScore = motionScore;
 
-        if (reg.armsUpFrames >= 15) {
+    const indicator = document.getElementById('setupWaveIndicator');
+
+    if (motionScore >= 0.5) {
+        // Significant motion detected - accumulate wave frames
+        reg.waveFrames++;
+        const progress = Math.min(100, Math.floor(reg.waveFrames / 20 * 100));
+        indicator.textContent = `WAVING... ${progress}%`;
+        indicator.style.color = '#00ff00';
+
+        if (reg.waveFrames >= 20) {
             // Capture face and complete registration
             const faceImage = captureFaceForPlayer(currentPlayer, targetPose);
             if (faceImage) {
                 completePlayerRegistration(currentPlayer, faceImage);
             }
         }
+    } else if (motionScore > 0) {
+        // Some motion but not enough
+        indicator.textContent = 'WAVE YOUR HAND!';
+        indicator.style.color = '#ffff00';
+        reg.waveFrames = Math.max(0, reg.waveFrames - 1);
     } else {
-        reg.armsUpFrames = Math.max(0, reg.armsUpFrames - 1);
+        indicator.textContent = 'WAVE YOUR HAND!';
+        indicator.style.color = '#ffffff';
+        reg.waveFrames = Math.max(0, reg.waveFrames - 2);
     }
 }
 
@@ -610,21 +675,23 @@ function handleLegacyPoseTracking(poses, video) {
         webcamState.targetLane = normalizedX < 0.35 ? 0 : normalizedX > 0.65 ? 2 : 1;
     }
 
-    // Wave detection for legacy single-player
+    // Wave detection for legacy single-player using motion tracking
     if (!gameState.running && !webcamState.isReady) {
-        const shoulderY = (leftShoulder && rightShoulder)
-            ? Math.max(leftShoulder.y, rightShoulder.y)
-            : video.videoHeight * 0.4;
-        webcamState.waveThresholdY = shoulderY;
         webcamState.leftWristPos = pose.keypoints.find(k => k.name === 'left_wrist');
         webcamState.rightWristPos = pose.keypoints.find(k => k.name === 'right_wrist');
 
-        if (isHandRaised(pose)) {
-            webcamState.armsUpFrames++;
-            const indicator = document.getElementById('armsUpIndicator');
-            indicator.textContent = `HAND UP... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 15 * 100))}%`;
+        // Use motion-based wave detection
+        const motionScore = updateWaveDetection(pose, webcamState.wristHistory);
+        webcamState.motionScore = motionScore;
 
-            if (webcamState.armsUpFrames >= 15) {
+        const indicator = document.getElementById('armsUpIndicator');
+
+        if (motionScore >= 0.5) {
+            webcamState.waveFrames++;
+            const progress = Math.min(100, Math.floor(webcamState.waveFrames / 20 * 100));
+            indicator.textContent = `WAVING... ${progress}%`;
+
+            if (webcamState.waveFrames >= 20) {
                 webcamState.isReady = true;
                 captureFace();
                 indicator.textContent = 'READY! CLICK START!';
@@ -633,7 +700,7 @@ function handleLegacyPoseTracking(poses, video) {
                 document.getElementById('startBtn').style.pointerEvents = 'auto';
             }
         } else {
-            webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 1);
+            webcamState.waveFrames = Math.max(0, webcamState.waveFrames - 1);
         }
     }
 }
@@ -698,43 +765,50 @@ function drawRegistrationDebug(sortedPoses) {
         }
 
         if (targetPose) {
-            const leftShoulder = targetPose.keypoints.find(k => k.name === 'left_shoulder');
-            const rightShoulder = targetPose.keypoints.find(k => k.name === 'right_shoulder');
-            const shoulderY = (leftShoulder && rightShoulder && leftShoulder.score > 0.15 && rightShoulder.score > 0.15)
-                ? (Math.max(leftShoulder.y, rightShoulder.y) + 30) * scaleY
-                : canvas.height * 0.45;
+            // Draw wrist tracking trail for motion visualization
+            const wrist = getBestWrist(targetPose);
+            if (wrist) {
+                // Draw current wrist position with motion-based color
+                const motionScore = reg.motionScore || 0;
+                const radius = 15 + motionScore * 10; // Bigger when moving more
 
-            // Draw threshold line
-            ctx.strokeStyle = '#ffff00';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([10, 5]);
-            ctx.beginPath();
-            ctx.moveTo(0, shoulderY);
-            ctx.lineTo(canvas.width, shoulderY);
-            ctx.stroke();
-            ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.arc(wrist.x * scaleX, wrist.y * scaleY, radius, 0, 2 * Math.PI);
 
-            ctx.fillStyle = '#ffff00';
-            ctx.font = 'bold 12px Orbitron, monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText('RAISE HAND HERE', 5, shoulderY - 5);
-
-            // Highlight wrists and elbows
-            const armParts = ['left_wrist', 'right_wrist', 'left_elbow', 'right_elbow'];
-            armParts.forEach(name => {
-                const part = targetPose.keypoints.find(k => k.name === name);
-                if (part && part.score > 0.15) {
-                    const isAbove = part.y * scaleY < shoulderY;
-                    const radius = name.includes('wrist') ? 15 : 10;
-                    ctx.beginPath();
-                    ctx.arc(part.x * scaleX, part.y * scaleY, radius, 0, 2 * Math.PI);
-                    ctx.strokeStyle = isAbove ? '#00ff00' : '#ff6666';
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                    ctx.fillStyle = isAbove ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)';
-                    ctx.fill();
+                if (motionScore >= 0.5) {
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.fillStyle = 'rgba(0,255,0,0.4)';
+                } else if (motionScore > 0) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.fillStyle = 'rgba(255,255,0,0.3)';
+                } else {
+                    ctx.strokeStyle = '#ff6666';
+                    ctx.fillStyle = 'rgba(255,0,0,0.2)';
                 }
-            });
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.fill();
+
+                // Draw motion trail from wrist history
+                if (reg.wristHistory && reg.wristHistory.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(reg.wristHistory[0].x * scaleX, reg.wristHistory[0].y * scaleY);
+                    for (let i = 1; i < reg.wristHistory.length; i++) {
+                        ctx.lineTo(reg.wristHistory[i].x * scaleX, reg.wristHistory[i].y * scaleY);
+                    }
+                    ctx.strokeStyle = motionScore >= 0.5 ? 'rgba(0,255,0,0.6)' : 'rgba(255,255,0,0.4)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+
+            // Draw motion score indicator
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px Orbitron, monospace';
+            ctx.textAlign = 'left';
+            const motionText = reg.motionScore >= 0.5 ? 'MOTION DETECTED!' :
+                               reg.motionScore > 0 ? 'Keep waving...' : 'Wave your hand!';
+            ctx.fillText(motionText, 10, canvas.height - 10);
         }
     }
 }
@@ -958,17 +1032,17 @@ function trackMotion() {
             }
         }
         if (topMotion > 5000) {
-            webcamState.armsUpFrames++;
+            webcamState.waveFrames++;
             const indicator = document.getElementById('armsUpIndicator');
-            indicator.textContent = `WAVING... ${Math.min(100, Math.floor(webcamState.armsUpFrames / 20 * 100))}%`;
-            if (webcamState.armsUpFrames >= 20) {
+            indicator.textContent = `WAVING... ${Math.min(100, Math.floor(webcamState.waveFrames / 20 * 100))}%`;
+            if (webcamState.waveFrames >= 20) {
                 webcamState.isReady = true; captureFace();
                 indicator.textContent = 'READY! CLICK START!'; indicator.classList.add('ready');
                 document.getElementById('startBtn').style.opacity = '1';
                 document.getElementById('startBtn').style.pointerEvents = 'auto';
             }
         } else {
-            webcamState.armsUpFrames = Math.max(0, webcamState.armsUpFrames - 1);
+            webcamState.waveFrames = Math.max(0, webcamState.waveFrames - 1);
         }
     }
     webcamState.previousFrame = frame;
@@ -990,10 +1064,11 @@ function selectControlMode(mode) {
     controlMode = mode;
     document.getElementById('keyboardModeBtn').classList.toggle('selected', mode === 'keyboard');
     document.getElementById('cameraModeBtn').classList.toggle('selected', mode === 'camera');
-    webcamState.isReady = false; webcamState.armsUpFrames = 0; webcamState.playerFaceImage = null;
+    webcamState.isReady = false; webcamState.waveFrames = 0; webcamState.playerFaceImage = null;
+    webcamState.wristHistory = []; webcamState.motionScore = 0;
     // Reset registration state
     webcamState.registrationPhase = 'idle';
-    webcamState.registeredPlayers.forEach(p => { p.ready = false; p.faceImage = null; p.armsUpFrames = 0; });
+    webcamState.registeredPlayers.forEach(p => { p.ready = false; p.faceImage = null; p.waveFrames = 0; p.wristHistory = []; p.motionScore = 0; });
 
     const indicator = document.getElementById('armsUpIndicator'), btn = document.getElementById('startBtn');
     const instr = document.getElementById('instructions');
@@ -1023,7 +1098,7 @@ function selectPlayerCount(count) {
     // Reset registration
     webcamState.registrationPhase = 'idle';
     webcamState.currentRegisteringPlayer = 0;
-    webcamState.registeredPlayers.forEach(p => { p.ready = false; p.faceImage = null; p.armsUpFrames = 0; });
+    webcamState.registeredPlayers.forEach(p => { p.ready = false; p.faceImage = null; p.waveFrames = 0; p.wristHistory = []; p.motionScore = 0; });
 
     // Start registration flow
     startPlayerRegistration();
@@ -1123,7 +1198,9 @@ function completePlayerRegistration(playerIndex, faceImage) {
     setTimeout(() => {
         if (playerIndex < webcamState.playerCount - 1) {
             webcamState.currentRegisteringPlayer = playerIndex + 1;
-            webcamState.registeredPlayers[playerIndex + 1].armsUpFrames = 0;
+            webcamState.registeredPlayers[playerIndex + 1].waveFrames = 0;
+            webcamState.registeredPlayers[playerIndex + 1].wristHistory = [];
+            webcamState.registeredPlayers[playerIndex + 1].motionScore = 0;
         }
         updateRegistrationUI();
     }, 500);
