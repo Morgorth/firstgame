@@ -12,6 +12,11 @@ async function initWebcam() {
         webcamState.canvas = document.getElementById('webcamCanvas');
         webcamState.ctx = webcamState.canvas.getContext('2d', { willReadFrequently: true });
 
+        // Unhide container BEFORE setting srcObject so the video element
+        // is in the layout — some browsers won't decode frames for
+        // display:none videos.
+        document.getElementById('webcamContainer').classList.remove('hidden');
+
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
             audio: false
@@ -27,9 +32,12 @@ async function initWebcam() {
             };
         });
 
+        // Explicit play() — autoplay attribute alone is unreliable in
+        // sandboxed iframes and many mobile browsers.
+        await webcamState.video.play();
+
         webcamState.initialized = true;
         webcamState.active = true;
-        document.getElementById('webcamContainer').classList.remove('hidden');
 
         statusEl.textContent = 'Loading AI pose detection...';
         await initPoseDetector();
@@ -505,13 +513,17 @@ function drawRegistrationDebug(sortedPoses) {
 }
 
 function drawPoseDebug() {
-    if (!webcamState.ctx || !webcamState.detectedKeypoints) return;
+    if (!webcamState.ctx) return;
 
     const cx = webcamState.ctx;
     const video = webcamState.video;
     const cvs = webcamState.canvas;
 
+    // Always draw the video frame so the feed is visible even before
+    // MoveNet detects a pose (prevents permanent black canvas).
     cx.drawImage(video, 0, 0, cvs.width, cvs.height);
+
+    if (!webcamState.detectedKeypoints) return;
 
     // Draw keypoints and skeleton (scale 1:1 on webcam canvas)
     const kps = webcamState.detectedKeypoints;
