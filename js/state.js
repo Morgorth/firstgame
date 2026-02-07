@@ -42,6 +42,8 @@ let webcamState = {
     detectedKeypoints: null,
     poseConfidence: 0,
     allPoses: [],
+    playerTrackingIds: [null, null],   // MoveNet tracking IDs per player
+    playerPoses: [null, null],         // current pose assigned to each player (for debug)
 
     // Wave-gesture motion tracking (both wrists independently)
     wristHistories: { left: [], right: [] },
