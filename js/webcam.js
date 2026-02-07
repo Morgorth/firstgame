@@ -137,6 +137,13 @@ function getKeypoint(pose, name) {
     return pose.keypoints.find(k => k.name === name);
 }
 
+// Remove entries older than cutoff, mutating the array in place.
+function pruneByTime(arr, cutoff) {
+    let i = 0;
+    while (i < arr.length && arr[i].time < cutoff) i++;
+    if (i > 0) arr.splice(0, i);
+}
+
 function getPoseCenterX(pose) {
     const ls = getKeypoint(pose, 'left_shoulder');
     const rs = getKeypoint(pose, 'right_shoulder');
@@ -148,55 +155,85 @@ function getPoseCenterX(pose) {
     return pose.keypoints[0]?.x || 0;
 }
 
-function getBestWrist(pose) {
+// Returns both wrists that meet the confidence threshold, or null for each.
+function getWrists(pose) {
+    const cfg = CONFIG.waveGesture;
     const lw = getKeypoint(pose, 'left_wrist');
     const rw = getKeypoint(pose, 'right_wrist');
-    if (lw && rw) {
-        if (lw.score > 0.1 && rw.score > 0.1) return lw.score > rw.score ? lw : rw;
-        return lw.score > 0.1 ? lw : (rw.score > 0.1 ? rw : null);
-    }
-    if (lw && lw.score > 0.1) return lw;
-    if (rw && rw.score > 0.1) return rw;
-    return null;
+    return {
+        left: (lw && lw.score >= cfg.wristMinConfidence) ? lw : null,
+        right: (rw && rw.score >= cfg.wristMinConfidence) ? rw : null
+    };
+}
+
+// Legacy helper — returns best single wrist (used by debug drawing).
+function getBestWrist(pose) {
+    const { left, right } = getWrists(pose);
+    if (left && right) return left.score > right.score ? left : right;
+    return left || right || null;
 }
 
 // ── Wave-gesture detection ──────────────────────────────────────────
 
-function detectWaveMotion(wristHistory) {
-    if (wristHistory.length < 8) return 0;
+// Score a single wrist's history for wave-like motion.
+// Uses time-based windowing so detection works consistently across framerates.
+function scoreWristHistory(history) {
+    const cfg = CONFIG.waveGesture;
+    const now = Date.now();
+    const cutoff = now - cfg.historyWindowMs;
+
+    // Filter to only samples within the time window
+    const recent = history.filter(h => h.time >= cutoff);
+    if (recent.length < cfg.minSamplesForDetection) return 0;
 
     let totalMotion = 0;
     let directionChanges = 0;
     let lastDx = 0;
     let lastDy = 0;
 
-    for (let i = 1; i < wristHistory.length; i++) {
-        const dx = wristHistory[i].x - wristHistory[i - 1].x;
-        const dy = wristHistory[i].y - wristHistory[i - 1].y;
+    for (let i = 1; i < recent.length; i++) {
+        const dx = recent[i].x - recent[i - 1].x;
+        const dy = recent[i].y - recent[i - 1].y;
         totalMotion += Math.sqrt(dx * dx + dy * dy);
 
         if (i > 1) {
-            if ((dx > 2 && lastDx < -2) || (dx < -2 && lastDx > 2)) directionChanges++;
-            if ((dy > 2 && lastDy < -2) || (dy < -2 && lastDy > 2)) directionChanges++;
+            const thresh = cfg.directionChangePx;
+            if ((dx > thresh && lastDx < -thresh) || (dx < -thresh && lastDx > thresh)) directionChanges++;
+            if ((dy > thresh && lastDy < -thresh) || (dy < -thresh && lastDy > thresh)) directionChanges++;
         }
         lastDx = dx;
         lastDy = dy;
     }
 
-    const avgMotion = totalMotion / wristHistory.length;
-    if (avgMotion > 15 || (avgMotion > 8 && directionChanges >= 2)) return 1.0;
-    if (avgMotion > 10 || (avgMotion > 5 && directionChanges >= 1)) return 0.7;
-    if (avgMotion > 5) return 0.3;
+    const avgMotion = totalMotion / recent.length;
+
+    // Progressive scoring: motion amount + oscillation bonus
+    if (avgMotion > cfg.strongMotion || (avgMotion > cfg.mediumMotion && directionChanges >= 2)) return 1.0;
+    if (avgMotion > cfg.mediumMotion || (avgMotion > cfg.weakMotion && directionChanges >= 1)) return 0.7;
+    if (avgMotion > cfg.weakMotion) return 0.3;
     return 0;
 }
 
-function updateWaveDetection(pose, wristHistory, maxHistory = 15) {
-    const wrist = getBestWrist(pose);
-    if (wrist) {
-        wristHistory.push({ x: wrist.x, y: wrist.y, time: Date.now() });
-        while (wristHistory.length > maxHistory) wristHistory.shift();
-    }
-    return detectWaveMotion(wristHistory);
+// Track both wrists independently, return the best motion score.
+// `wristHistories` is { left: [], right: [] }.
+function updateWaveDetection(pose, wristHistories) {
+    const cfg = CONFIG.waveGesture;
+    const now = Date.now();
+    const cutoff = now - cfg.historyWindowMs;
+    const { left, right } = getWrists(pose);
+
+    // Append new samples
+    if (left)  wristHistories.left.push({ x: left.x, y: left.y, time: now });
+    if (right) wristHistories.right.push({ x: right.x, y: right.y, time: now });
+
+    // Prune old samples by time (mutate in place to keep caller references)
+    pruneByTime(wristHistories.left, cutoff);
+    pruneByTime(wristHistories.right, cutoff);
+
+    // Score each independently, use the better one
+    const leftScore  = scoreWristHistory(wristHistories.left);
+    const rightScore = scoreWristHistory(wristHistories.right);
+    return Math.max(leftScore, rightScore);
 }
 
 // ── Phase handlers ──────────────────────────────────────────────────
@@ -221,18 +258,19 @@ function handleRegistrationPoseTracking(sortedPoses, video) {
     const targetPose = findTargetPose(sortedPoses, idx, video);
     if (!targetPose) return;
 
-    const motionScore = updateWaveDetection(targetPose, reg.wristHistory);
+    const motionScore = updateWaveDetection(targetPose, reg.wristHistories);
     reg.motionScore = motionScore;
 
     const indicator = document.getElementById('setupWaveIndicator');
+    const cfg = CONFIG.waveGesture;
 
     if (motionScore >= 0.5) {
         reg.waveFrames++;
-        const progress = Math.min(100, Math.floor(reg.waveFrames / 20 * 100));
+        const progress = Math.min(100, Math.floor(reg.waveFrames / cfg.framesToConfirm * 100));
         indicator.textContent = `WAVING... ${progress}%`;
         indicator.style.color = '#00ff00';
 
-        if (reg.waveFrames >= 20) {
+        if (reg.waveFrames >= cfg.framesToConfirm) {
             const faceImage = captureFaceForPlayer(idx, targetPose);
             if (faceImage) completePlayerRegistration(idx, faceImage);
         }
@@ -243,7 +281,7 @@ function handleRegistrationPoseTracking(sortedPoses, video) {
     } else {
         indicator.textContent = 'WAVE YOUR HAND!';
         indicator.style.color = '#ffffff';
-        reg.waveFrames = Math.max(0, reg.waveFrames - 2);
+        reg.waveFrames = Math.max(0, reg.waveFrames - cfg.decayRate);
     }
 }
 
@@ -318,17 +356,18 @@ function handleLegacyPoseTracking(poses, video) {
         webcamState.leftWristPos = getKeypoint(pose, 'left_wrist');
         webcamState.rightWristPos = getKeypoint(pose, 'right_wrist');
 
-        const motionScore = updateWaveDetection(pose, webcamState.wristHistory);
+        const motionScore = updateWaveDetection(pose, webcamState.wristHistories);
         webcamState.motionScore = motionScore;
 
         const indicator = document.getElementById('armsUpIndicator');
+        const cfg = CONFIG.waveGesture;
 
         if (motionScore >= 0.5) {
             webcamState.waveFrames++;
-            const progress = Math.min(100, Math.floor(webcamState.waveFrames / 20 * 100));
+            const progress = Math.min(100, Math.floor(webcamState.waveFrames / cfg.framesToConfirm * 100));
             indicator.textContent = `WAVING... ${progress}%`;
 
-            if (webcamState.waveFrames >= 20) {
+            if (webcamState.waveFrames >= cfg.framesToConfirm) {
                 webcamState.isReady = true;
                 captureFace();
                 indicator.textContent = 'READY! CLICK START!';
@@ -337,7 +376,7 @@ function handleLegacyPoseTracking(poses, video) {
                 document.getElementById('startBtn').style.pointerEvents = 'auto';
             }
         } else {
-            webcamState.waveFrames = Math.max(0, webcamState.waveFrames - 1);
+            webcamState.waveFrames = Math.max(0, webcamState.waveFrames - cfg.decayRate);
         }
     }
 }
@@ -412,39 +451,49 @@ function drawRegistrationDebug(sortedPoses) {
     const targetPose = findTargetPose(sortedPoses, currentPlayer, video);
     if (!targetPose) return;
 
-    const wrist = getBestWrist(targetPose);
-    if (!wrist) return;
-
     const motionScore = reg.motionScore || 0;
-    const radius = 15 + motionScore * 10;
+    const motionColor = motionScore >= 0.5 ? ['#00ff00', 'rgba(0,255,0,0.4)', 'rgba(0,255,0,0.6)']
+                       : motionScore > 0   ? ['#ffff00', 'rgba(255,255,0,0.3)', 'rgba(255,255,0,0.4)']
+                       :                     ['#ff6666', 'rgba(255,0,0,0.2)', 'rgba(255,0,0,0.3)'];
 
-    cx.beginPath();
-    cx.arc(wrist.x * scaleX, wrist.y * scaleY, radius, 0, Math.PI * 2);
-    if (motionScore >= 0.5) {
-        cx.strokeStyle = '#00ff00';
-        cx.fillStyle = 'rgba(0,255,0,0.4)';
-    } else if (motionScore > 0) {
-        cx.strokeStyle = '#ffff00';
-        cx.fillStyle = 'rgba(255,255,0,0.3)';
-    } else {
-        cx.strokeStyle = '#ff6666';
-        cx.fillStyle = 'rgba(255,0,0,0.2)';
-    }
-    cx.lineWidth = 3;
-    cx.stroke();
-    cx.fill();
+    // Draw both wrists and their trails
+    const { left: lw, right: rw } = getWrists(targetPose);
+    const wrists = [
+        { kp: lw, history: reg.wristHistories.left,  label: 'L' },
+        { kp: rw, history: reg.wristHistories.right, label: 'R' }
+    ];
 
-    // Motion trail
-    if (reg.wristHistory && reg.wristHistory.length > 1) {
+    wrists.forEach(({ kp, history, label }) => {
+        if (!kp) return;
+        const radius = 12 + motionScore * 8;
+
+        // Wrist circle
         cx.beginPath();
-        cx.moveTo(reg.wristHistory[0].x * scaleX, reg.wristHistory[0].y * scaleY);
-        for (let i = 1; i < reg.wristHistory.length; i++) {
-            cx.lineTo(reg.wristHistory[i].x * scaleX, reg.wristHistory[i].y * scaleY);
-        }
-        cx.strokeStyle = motionScore >= 0.5 ? 'rgba(0,255,0,0.6)' : 'rgba(255,255,0,0.4)';
-        cx.lineWidth = 2;
+        cx.arc(kp.x * scaleX, kp.y * scaleY, radius, 0, Math.PI * 2);
+        cx.strokeStyle = motionColor[0];
+        cx.fillStyle = motionColor[1];
+        cx.lineWidth = 3;
         cx.stroke();
-    }
+        cx.fill();
+
+        // Wrist label
+        cx.fillStyle = '#fff';
+        cx.font = 'bold 10px Orbitron, monospace';
+        cx.textAlign = 'center';
+        cx.fillText(label, kp.x * scaleX, kp.y * scaleY - radius - 4);
+
+        // Motion trail
+        if (history && history.length > 1) {
+            cx.beginPath();
+            cx.moveTo(history[0].x * scaleX, history[0].y * scaleY);
+            for (let i = 1; i < history.length; i++) {
+                cx.lineTo(history[i].x * scaleX, history[i].y * scaleY);
+            }
+            cx.strokeStyle = motionColor[2];
+            cx.lineWidth = 2;
+            cx.stroke();
+        }
+    });
 
     // Motion label
     cx.fillStyle = '#ffffff';

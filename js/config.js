@@ -29,6 +29,17 @@ const CONFIG = {
     },
     wave: {
         delay: 300           // frames to wait between waves
+    },
+    waveGesture: {
+        wristMinConfidence: 0.3,   // ignore wrist keypoints below this
+        historyWindowMs: 1500,     // time window for motion analysis
+        directionChangePx: 8,      // min px delta to count as a direction reversal
+        strongMotion: 12,          // avgMotion above this = strong wave (score 1.0)
+        mediumMotion: 7,           // avgMotion above this = medium wave (score 0.7)
+        weakMotion: 4,             // avgMotion above this = weak wave (score 0.3)
+        minSamplesForDetection: 6, // need at least this many samples in the window
+        framesToConfirm: 20,       // consecutive qualifying frames to complete gesture
+        decayRate: 2               // frames lost per non-qualifying frame
     }
 };
 

@@ -41,12 +41,12 @@ function selectControlMode(mode) {
     webcamState.isReady = false;
     webcamState.waveFrames = 0;
     webcamState.playerFaceImage = null;
-    webcamState.wristHistory = [];
+    webcamState.wristHistories = { left: [], right: [] };
     webcamState.motionScore = 0;
     webcamState.registrationPhase = 'idle';
     webcamState.registeredPlayers.forEach(p => {
         p.ready = false; p.faceImage = null; p.waveFrames = 0;
-        p.wristHistory = []; p.motionScore = 0;
+        p.wristHistories = { left: [], right: [] }; p.motionScore = 0;
     });
 
     const indicator = document.getElementById('armsUpIndicator');
@@ -85,7 +85,7 @@ function selectPlayerCount(count) {
     webcamState.currentRegisteringPlayer = 0;
     webcamState.registeredPlayers.forEach(p => {
         p.ready = false; p.faceImage = null; p.waveFrames = 0;
-        p.wristHistory = []; p.motionScore = 0;
+        p.wristHistories = { left: [], right: [] }; p.motionScore = 0;
     });
 
     startPlayerRegistration();
@@ -182,7 +182,7 @@ function completePlayerRegistration(playerIndex, faceImage) {
             webcamState.currentRegisteringPlayer = playerIndex + 1;
             const next = webcamState.registeredPlayers[playerIndex + 1];
             next.waveFrames = 0;
-            next.wristHistory = [];
+            next.wristHistories = { left: [], right: [] };
             next.motionScore = 0;
         }
         updateRegistrationUI();

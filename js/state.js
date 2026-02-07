@@ -43,8 +43,8 @@ let webcamState = {
     poseConfidence: 0,
     allPoses: [],
 
-    // Wave-gesture motion tracking
-    wristHistory: [],
+    // Wave-gesture motion tracking (both wrists independently)
+    wristHistories: { left: [], right: [] },
     motionScore: 0,
 
     // Player registration
@@ -52,8 +52,8 @@ let webcamState = {
     registrationPhase: 'idle',          // 'idle' | 'registering' | 'ready'
     currentRegisteringPlayer: 0,
     registeredPlayers: [
-        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistory: [], motionScore: 0 },
-        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistory: [], motionScore: 0 }
+        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0 },
+        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0 }
     ]
 };
 
