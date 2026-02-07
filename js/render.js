@@ -1,5 +1,8 @@
 // All canvas rendering: backgrounds, players, enemies, bullets, powerups, effects.
 
+// Cached Image objects for player face icons (camera mode)
+const _faceImageCache = {};
+
 // ── Theme-specific sprite drawing ───────────────────────────────────
 
 function drawUnicorn(x, y, size) {
@@ -8,8 +11,6 @@ function drawUnicorn(x, y, size) {
     ctx.scale(size, size);
 
     ctx.fillStyle = '#FFB6C1';
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = '#FF69B4';
 
     // Head
     ctx.beginPath(); ctx.arc(0, 5, 18, 0, Math.PI * 2); ctx.fill();
@@ -35,7 +36,6 @@ function drawUnicorn(x, y, size) {
     ctx.fillStyle = '#FFE66D'; ctx.beginPath(); ctx.ellipse(-18, 5, 7, 10, 0.2, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#4ECDC4'; ctx.beginPath(); ctx.ellipse(-16, 15, 6, 8, 0.1, 0, Math.PI * 2); ctx.fill();
 
-    ctx.shadowBlur = 0;
     ctx.restore();
 }
 
@@ -45,8 +45,6 @@ function drawWolf(x, y, size, color) {
     ctx.scale(size, size);
 
     ctx.fillStyle = color;
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = color;
 
     // Head
     ctx.beginPath(); ctx.arc(0, 5, 22, 0, Math.PI * 2); ctx.fill();
@@ -75,7 +73,6 @@ function drawWolf(x, y, size, color) {
     ctx.fillStyle = '#333';
     ctx.beginPath(); ctx.arc(0, 15, 4, 0, Math.PI * 2); ctx.fill();
 
-    ctx.shadowBlur = 0;
     ctx.restore();
 }
 
@@ -88,8 +85,6 @@ function drawSpaceShip(pos, playerIndex) {
 
     // Hull
     ctx.fillStyle = colors.primary;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = colors.primary;
     ctx.beginPath();
     ctx.moveTo(0, -20); ctx.lineTo(-12, 8); ctx.lineTo(-8, 12);
     ctx.lineTo(8, 12); ctx.lineTo(12, 8);
@@ -107,12 +102,9 @@ function drawSpaceShip(pos, playerIndex) {
 
     // Engines
     ctx.fillStyle = colors.engine;
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = colors.engine;
     ctx.fillRect(-6, 12, 4, 6);
     ctx.fillRect(2, 12, 4, 6);
 
-    ctx.shadowBlur = 0;
     ctx.restore();
 }
 
@@ -121,8 +113,6 @@ function drawSpaceEnemy(e, sc) {
     ctx.translate(e.x, e.y);
     ctx.scale(sc, sc);
     ctx.fillStyle = e.color;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = e.color;
 
     if (e.type === 'basic') {
         ctx.beginPath();
@@ -162,7 +152,6 @@ function drawSpaceEnemy(e, sc) {
         ctx.beginPath(); ctx.arc(0, 5, 8, 0, Math.PI * 2); ctx.fill();
     }
 
-    ctx.shadowBlur = 0;
     ctx.restore();
 }
 
@@ -230,7 +219,7 @@ function render() {
         gameState.players.forEach((player, playerIndex) => {
             if (!player.active) return;
 
-            getCrowdPositions(playerIndex).forEach(pos => {
+            (gameState._cachedCrowdPositions?.[playerIndex] || getCrowdPositions(playerIndex)).forEach(pos => {
                 if (isUnicorn) {
                     drawUnicorn(pos.x, pos.y, 0.8);
                 } else {
@@ -240,8 +229,11 @@ function render() {
 
             // Face icon above fleet (camera mode)
             if (controlMode === 'camera' && player.faceImage) {
-                const img = new Image();
-                img.src = player.faceImage;
+                if (!_faceImageCache[playerIndex] || _faceImageCache[playerIndex].src !== player.faceImage) {
+                    _faceImageCache[playerIndex] = new Image();
+                    _faceImageCache[playerIndex].src = player.faceImage;
+                }
+                const img = _faceImageCache[playerIndex];
                 const faceY = player.y - 60 - Math.sqrt(player.crowdSize) * 15;
                 const playerColor = player.color || PLAYER_COLORS[playerIndex].primary;
 
@@ -278,22 +270,18 @@ function render() {
         const owner = gameState.players[b.owner || 0];
         if (isUnicorn) {
             ctx.fillStyle = '#FF69B4';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#FF69B4';
             ctx.font = '16px Arial';
             ctx.fillText('\uD83D\uDC96', b.x - 8, b.y + 5);
         } else {
             const bulletColor = owner?.color || '#ff00ff';
             ctx.fillStyle = bulletColor;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = bulletColor;
             ctx.fillRect(b.x - 1.5, b.y, 3, 10);
         }
-        ctx.shadowBlur = 0;
     });
 
     // Enemies
     gameState.enemies.forEach(e => {
+        if (e.y < -100 || e.health <= 0) return; // skip off-screen or dead enemies
         const ships = Math.ceil(e.health / CONFIG.bullet.damage);
         const sc = (e.type === 'tank' ? 1.2 : e.type === 'fast' ? 0.9 : 1) * (1 + ships * 0.08);
 

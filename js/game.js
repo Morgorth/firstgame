@@ -83,11 +83,16 @@ function update() {
         }
     });
 
+    // Cache crowd positions for this frame (used by both update and render)
+    gameState._cachedCrowdPositions = gameState.players.map((p, i) =>
+        p.active ? getCrowdPositions(i) : []
+    );
+
     // Auto-fire for all active players
     if (gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
         gameState.players.forEach((player, idx) => {
             if (!player.active) return;
-            getCrowdPositions(idx).forEach(p => gameState.bullets.push(createBullet(p.x, p.y, idx)));
+            gameState._cachedCrowdPositions[idx].forEach(p => gameState.bullets.push(createBullet(p.x, p.y, idx)));
         });
         gameState.lastShot = gameState.frameCount;
     }
@@ -106,7 +111,7 @@ function update() {
         if (!bullet.active) return;
 
         gameState.enemies.forEach(enemy => {
-            if (!bullet.active) return;
+            if (!bullet.active || enemy.health <= 0) return;
             if (!checkCollision(bullet, enemy, CONFIG.bullet.width, CONFIG.bullet.height, enemy.width, enemy.height)) return;
 
             bullet.active = false;
