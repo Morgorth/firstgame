@@ -1,6 +1,8 @@
 // Game lifecycle: startGame, gameOver, gameLoop, and all UI event bindings.
 
 function startGame() {
+    audioSystem.init();
+    audioSystem.stopMusic();
     const playerCount = controlMode === 'camera' ? webcamState.playerCount : 1;
     const numLanes = playerCount === 2 ? 5 : 3;
 
@@ -90,6 +92,8 @@ function startGame() {
 
 function gameOver() {
     gameState.running = false;
+    audioSystem.stopMusic();
+    audioSystem.playGameOver();
     document.getElementById('finalScore').textContent = gameState.score;
     document.getElementById('finalWave').textContent = gameState.wave;
     document.getElementById('gameOverScreen').classList.remove('hidden');

@@ -27,6 +27,9 @@ function spawnWave() {
         [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
     const numLanes = lanes.length;
 
+    // Start music when wave spawns
+    audioSystem.startMusic();
+
     for (let i = 0; i < count; i++) {
         let type = 'basic';
         if (w >= 8) {
@@ -119,6 +122,7 @@ function update() {
             enemy.lastHitBy = bullet.owner;
 
             if (enemy.health <= 0) {
+                audioSystem.playEnemyKill();
                 gameState.score += enemy.points;
                 gameState.enemiesKilled++;
 
@@ -189,8 +193,9 @@ function update() {
             }
         }
 
-        // Enemy passed the bottom
+        // Enemy passed the bottom — explosion!
         if (e.y > PLAY_AREA.height + 50) {
+            audioSystem.playExplosion();
             const dmg = Math.ceil(e.health / CONFIG.bullet.damage / 2);
             gameState.players.forEach((player, i) => {
                 if (!player.active) return;
@@ -215,6 +220,8 @@ function update() {
 
     // Wave progression
     if (gameState.enemiesKilled >= gameState.enemiesInWave && gameState.enemies.length === 0) {
+        // Stop music as soon as wave is cleared
+        if (audioSystem.isPlaying) audioSystem.stopMusic();
         if (++gameState.waveTimer >= CONFIG.wave.delay) {
             gameState.wave++;
             gameState.waveTimer = 0;
@@ -230,6 +237,9 @@ function update() {
         gameState.screenShake.x *= 0.9;
         gameState.screenShake.y *= 0.9;
     }
+
+    // Update music tempo based on how close enemies are to the deadline
+    audioSystem.updateTempo(gameState.enemies, PLAY_AREA.height);
 
     updateHUD();
 }
