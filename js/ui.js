@@ -44,6 +44,8 @@ function selectControlMode(mode) {
     webcamState.wristHistories = { left: [], right: [] };
     webcamState.motionScore = 0;
     webcamState.registrationPhase = 'idle';
+    webcamState.playerTrackingIds = [null, null];
+    webcamState.playerPoses = [null, null];
     webcamState.registeredPlayers.forEach(p => {
         p.ready = false; p.faceImage = null; p.waveFrames = 0;
         p.wristHistories = { left: [], right: [] }; p.motionScore = 0;

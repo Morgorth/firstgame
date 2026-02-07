@@ -123,8 +123,24 @@ async function trackPoses() {
             handleLegacyPoseTracking(poses, video);
         }
 
-        document.getElementById('positionMarker').style.left =
-            (30 + webcamState.targetLane * 60) + 'px';
+        // Update position indicator markers
+        const marker1 = document.getElementById('positionMarker');
+        const marker2 = document.getElementById('positionMarkerP2');
+        if (gameState.running && gameState.playerCount === 2) {
+            const numLanes = gameState.numLanes || 5;
+            const containerW = 200; // webcam container width
+            const markerW = 20;
+            marker1.style.background = '#00ffff';
+            marker1.style.boxShadow = '0 0 10px #00ffff';
+            marker1.style.left = ((gameState.players[0].targetLane + 0.5) / numLanes * containerW - markerW / 2) + 'px';
+            marker2.style.display = 'block';
+            marker2.style.left = ((gameState.players[1].targetLane + 0.5) / numLanes * containerW - markerW / 2) + 'px';
+        } else {
+            marker1.style.background = '#ff00ff';
+            marker1.style.boxShadow = '0 0 10px #ff00ff';
+            marker1.style.left = (30 + webcamState.targetLane * 60) + 'px';
+            marker2.style.display = 'none';
+        }
 
         if (webcamState.registrationPhase === 'registering' ||
             webcamState.registrationPhase === 'ready') {
@@ -266,6 +282,11 @@ function handleRegistrationPoseTracking(sortedPoses, video) {
     const targetPose = findTargetPose(sortedPoses, idx, video);
     if (!targetPose) return;
 
+    // Store MoveNet tracking ID so gameplay can maintain identity
+    if (targetPose.id !== undefined) {
+        webcamState.playerTrackingIds[idx] = targetPose.id;
+    }
+
     const motionScore = updateWaveDetection(targetPose, reg.wristHistories);
     reg.motionScore = motionScore;
 
@@ -297,19 +318,66 @@ function handleGameplayPoseTracking(sortedPoses, video) {
     const numLanes = gameState.playerCount === 2 ? 5 : 3;
 
     if (gameState.playerCount === 2) {
-        if (sortedPoses.length >= 2) {
-            // Rightmost in camera = P1 (left on mirrored screen)
-            assignPoseToPlayer(0, sortedPoses[sortedPoses.length - 1], video, numLanes);
-            assignPoseToPlayer(1, sortedPoses[0], video, numLanes);
-        } else if (sortedPoses.length === 1) {
-            const normalizedX = 1 - (getPoseCenterX(sortedPoses[0]) / video.videoWidth);
-            assignPoseToPlayer(normalizedX < 0.5 ? 0 : 1, sortedPoses[0], video, numLanes);
-        }
+        assignTwoPlayerPoses(sortedPoses, video, numLanes);
     } else if (sortedPoses.length > 0) {
         assignPoseToPlayer(0, sortedPoses[0], video, numLanes);
+        webcamState.playerPoses = [sortedPoses[0], null];
         const normalizedX = 1 - (getPoseCenterX(sortedPoses[0]) / video.videoWidth);
         webcamState.targetLane = normalizedX < 0.35 ? 0 : normalizedX > 0.65 ? 2 : 1;
     }
+}
+
+// Two-player pose assignment using MoveNet tracking IDs for persistence.
+// Falls back to position-based assignment when IDs don't match.
+function assignTwoPlayerPoses(sortedPoses, video, numLanes) {
+    if (sortedPoses.length === 0) {
+        webcamState.playerPoses = [null, null];
+        return;
+    }
+
+    const ids = webcamState.playerTrackingIds;
+    let p0Pose = null, p1Pose = null;
+
+    // Step 1: match by MoveNet tracking ID (persists across frames)
+    if (ids[0] !== null || ids[1] !== null) {
+        for (const pose of sortedPoses) {
+            if (pose.id !== undefined) {
+                if (pose.id === ids[0]) p0Pose = pose;
+                if (pose.id === ids[1]) p1Pose = pose;
+            }
+        }
+    }
+
+    // Step 2: assign unmatched poses by position
+    const unmatched = sortedPoses.filter(p => p !== p0Pose && p !== p1Pose);
+
+    if (!p0Pose && !p1Pose && unmatched.length >= 2) {
+        // Neither matched — rightmost in camera = P1
+        p0Pose = unmatched[unmatched.length - 1];
+        p1Pose = unmatched[0];
+    } else if (!p0Pose && unmatched.length > 0) {
+        p0Pose = unmatched[unmatched.length - 1];
+    } else if (!p1Pose && unmatched.length > 0) {
+        p1Pose = unmatched[0];
+    }
+
+    // Single-pose fallback: use position to decide which player
+    if (sortedPoses.length === 1 && !p0Pose && !p1Pose) {
+        const pose = sortedPoses[0];
+        const normalizedX = 1 - (getPoseCenterX(pose) / video.videoWidth);
+        if (normalizedX < 0.5) { p0Pose = pose; } else { p1Pose = pose; }
+    }
+
+    // Step 3: update tracking IDs
+    if (p0Pose && p0Pose.id !== undefined) ids[0] = p0Pose.id;
+    if (p1Pose && p1Pose.id !== undefined) ids[1] = p1Pose.id;
+
+    // Step 4: assign to game players
+    if (p0Pose) assignPoseToPlayer(0, p0Pose, video, numLanes);
+    if (p1Pose) assignPoseToPlayer(1, p1Pose, video, numLanes);
+
+    // Step 5: store for debug overlay
+    webcamState.playerPoses = [p0Pose || null, p1Pose || null];
 }
 
 function assignPoseToPlayer(playerIndex, pose, video, numLanes) {
@@ -523,6 +591,12 @@ function drawPoseDebug() {
     // MoveNet detects a pose (prevents permanent black canvas).
     cx.drawImage(video, 0, 0, cvs.width, cvs.height);
 
+    // Two-player gameplay: draw both players with their own colors
+    if (gameState.running && gameState.playerCount === 2) {
+        drawTwoPlayerDebug(cx, cvs);
+        return;
+    }
+
     if (!webcamState.detectedKeypoints) return;
 
     // Draw keypoints and skeleton (scale 1:1 on webcam canvas)
@@ -600,6 +674,98 @@ function drawPoseDebug() {
             }
         });
     }
+
+    // Confidence label
+    const label = document.getElementById('webcamLabel');
+    const conf = Math.round(webcamState.poseConfidence * 100);
+    label.textContent = `AI ${conf}%`;
+    label.style.color = conf > 60 ? '#00ff00' : conf > 40 ? '#ffff00' : '#ff6666';
+}
+
+// Two-player debug overlay: draws both skeletons in player colors (P1=cyan, P2=magenta)
+// with lane dividers and per-player position indicators.
+function drawTwoPlayerDebug(cx, cvs) {
+    const w = cvs.width, h = cvs.height;
+    const playerPoses = webcamState.playerPoses || [null, null];
+    const playerColors = ['#00ffff', '#ff00ff'];
+
+    // Draw each player's skeleton
+    playerPoses.forEach((pose, idx) => {
+        if (!pose) return;
+        const color = playerColors[idx];
+
+        // Keypoints
+        pose.keypoints.forEach(kp => {
+            if (kp.score > 0.3) {
+                cx.beginPath();
+                cx.arc(kp.x, kp.y, 4, 0, Math.PI * 2);
+                cx.fillStyle = kp.score > 0.6 ? color : '#ffff00';
+                cx.fill();
+            }
+        });
+
+        // Skeleton lines
+        cx.strokeStyle = color;
+        cx.lineWidth = 2;
+        SKELETON_CONNECTIONS_FULL.forEach(([a, b]) => {
+            const kpA = getKeypoint(pose, a);
+            const kpB = getKeypoint(pose, b);
+            if (kpA && kpB && kpA.score > 0.3 && kpB.score > 0.3) {
+                cx.beginPath();
+                cx.moveTo(kpA.x, kpA.y);
+                cx.lineTo(kpB.x, kpB.y);
+                cx.stroke();
+            }
+        });
+
+        // Player label above head
+        const nose = getKeypoint(pose, 'nose');
+        if (nose && nose.score > 0.3) {
+            cx.font = 'bold 12px Orbitron, monospace';
+            cx.textAlign = 'center';
+            cx.strokeStyle = '#000';
+            cx.lineWidth = 3;
+            cx.strokeText('P' + (idx + 1), nose.x, nose.y - 20);
+            cx.fillStyle = color;
+            cx.fillText('P' + (idx + 1), nose.x, nose.y - 20);
+        }
+    });
+
+    // Lane dividers (5 lanes)
+    cx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    cx.lineWidth = 1;
+    cx.setLineDash([4, 4]);
+    for (let i = 1; i < 5; i++) {
+        const x = w * (i / 5);
+        cx.beginPath();
+        cx.moveTo(x, 0);
+        cx.lineTo(x, h);
+        cx.stroke();
+    }
+    cx.setLineDash([]);
+
+    // Per-player lane indicators at bottom of canvas
+    gameState.players.forEach((player, idx) => {
+        if (!player.active) return;
+        const color = playerColors[idx];
+        // Map lane position: lane 0 = rightmost in camera (mirrored to left on screen)
+        // Camera X = width * (1 - (lane + 0.5) / numLanes)
+        const numLanes = gameState.numLanes || 5;
+        const laneX = w * (1 - (player.targetLane + 0.5) / numLanes);
+
+        cx.fillStyle = color;
+        cx.beginPath();
+        cx.arc(laneX, h - 8, 5, 0, Math.PI * 2);
+        cx.fill();
+
+        cx.font = 'bold 10px Orbitron, monospace';
+        cx.textAlign = 'center';
+        cx.strokeStyle = '#000';
+        cx.lineWidth = 2;
+        cx.strokeText('P' + (idx + 1), laneX, h - 18);
+        cx.fillStyle = color;
+        cx.fillText('P' + (idx + 1), laneX, h - 18);
+    });
 
     // Confidence label
     const label = document.getElementById('webcamLabel');
