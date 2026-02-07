@@ -1,6 +1,6 @@
 ---
 name: understand-app
-description: Efficiently understand and modify the Wave Assault game codebase. Use when starting work on this project or when you need to orient yourself.
+description: Use at the start of any session or when you need to orient yourself in the Wave Assault codebase. Provides file map, globals reference, and task-to-file routing to minimize token usage.
 allowed-tools: Read, Grep, Glob
 argument-hint: "[area-to-focus: config|state|entities|input|webcam|game|render|ui|main|all]"
 ---

@@ -1,9 +1,8 @@
 ---
 name: modify-game
-description: Make changes to the Wave Assault game. Knows exactly which files to touch for any modification type.
+description: Use when making any code change to the Wave Assault game. Routes you to the exact files needed for any modification type. Use this before editing game code.
 allowed-tools: Read, Edit, Write, Grep, Glob, Bash
 argument-hint: "<what-to-change>"
-disable-model-invocation: true
 ---
 
 # Modify Wave Assault
