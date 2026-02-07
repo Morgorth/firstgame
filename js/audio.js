@@ -1,0 +1,363 @@
+// Audio system: procedural music & SFX via Web Audio API.
+// Music matches the current theme, accelerates as enemies approach the deadline,
+// stops when a wave is cleared, and restarts when the next wave spawns.
+
+const audioSystem = (() => {
+    let ctx = null;          // AudioContext
+    let masterGain = null;
+    let musicGain = null;
+    let sfxGain = null;
+
+    // Music state
+    let musicPlaying = false;
+    let musicTimer = null;
+    let currentStep = 0;
+    let bpm = 120;           // base BPM
+    let targetBpm = 120;
+    let activeSources = [];  // track live oscillators so we can stop them
+
+    // Ensure AudioContext is created on user gesture
+    function ensureContext() {
+        if (ctx) return true;
+        try {
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = ctx.createGain();
+            masterGain.gain.value = 0.35;
+            masterGain.connect(ctx.destination);
+
+            musicGain = ctx.createGain();
+            musicGain.gain.value = 0.5;
+            musicGain.connect(masterGain);
+
+            sfxGain = ctx.createGain();
+            sfxGain.gain.value = 0.7;
+            sfxGain.connect(masterGain);
+
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    // ── Utility ──────────────────────────────────────────────────────
+
+    function noteFreq(note, octave) {
+        const notes = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+        return 440 * Math.pow(2, ((notes[note] || 0) - 9) / 12 + (octave - 4));
+    }
+
+    function playTone(freq, duration, type, gainNode, volume, detune) {
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        if (detune) osc.detune.value = detune;
+        g.gain.setValueAtTime(volume || 0.3, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(g);
+        g.connect(gainNode || musicGain);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+        activeSources.push(osc);
+        osc.onended = () => {
+            activeSources = activeSources.filter(s => s !== osc);
+        };
+    }
+
+    // ── Theme definitions ────────────────────────────────────────────
+
+    // Unicorn theme: whimsical, sparkly, major-key arpeggios in C major / F major
+    const unicornSequence = {
+        // Melody notes (C major pentatonic, octave 5 and 4)
+        melody: [
+            { n: 'C', o: 5 }, { n: 'E', o: 5 }, { n: 'G', o: 5 }, { n: 'A', o: 5 },
+            { n: 'G', o: 5 }, { n: 'E', o: 5 }, { n: 'D', o: 5 }, { n: 'C', o: 5 },
+            { n: 'D', o: 5 }, { n: 'E', o: 5 }, { n: 'G', o: 5 }, { n: 'E', o: 5 },
+            { n: 'A', o: 5 }, { n: 'G', o: 5 }, { n: 'E', o: 5 }, { n: 'D', o: 5 },
+        ],
+        // Bass pattern (root notes)
+        bass: [
+            { n: 'C', o: 3 }, { n: 'C', o: 3 }, { n: 'F', o: 3 }, { n: 'F', o: 3 },
+            { n: 'G', o: 3 }, { n: 'G', o: 3 }, { n: 'C', o: 3 }, { n: 'C', o: 3 },
+            { n: 'A', o: 2 }, { n: 'A', o: 2 }, { n: 'F', o: 3 }, { n: 'F', o: 3 },
+            { n: 'G', o: 3 }, { n: 'G', o: 3 }, { n: 'C', o: 3 }, { n: 'C', o: 3 },
+        ],
+        // Sparkle arpeggios (high register twinkles)
+        sparkle: [
+            { n: 'E', o: 6 }, null, { n: 'G', o: 6 }, null,
+            { n: 'A', o: 6 }, null, { n: 'G', o: 6 }, null,
+            null, { n: 'C', o: 7 }, null, { n: 'B', o: 6 },
+            { n: 'A', o: 6 }, null, { n: 'G', o: 6 }, null,
+        ]
+    };
+
+    // Space theme: darker, minor-key, more driving electronic feel
+    const spaceSequence = {
+        melody: [
+            { n: 'A', o: 4 }, { n: 'C', o: 5 }, { n: 'E', o: 5 }, { n: 'C', o: 5 },
+            { n: 'D', o: 5 }, { n: 'C', o: 5 }, { n: 'A', o: 4 }, { n: 'G#', o: 4 },
+            { n: 'A', o: 4 }, { n: 'E', o: 5 }, { n: 'D', o: 5 }, { n: 'C', o: 5 },
+            { n: 'A', o: 4 }, { n: 'G#', o: 4 }, { n: 'A', o: 4 }, { n: 'C', o: 5 },
+        ],
+        bass: [
+            { n: 'A', o: 2 }, { n: 'A', o: 2 }, { n: 'A', o: 2 }, { n: 'A', o: 2 },
+            { n: 'F', o: 2 }, { n: 'F', o: 2 }, { n: 'G', o: 2 }, { n: 'G', o: 2 },
+            { n: 'A', o: 2 }, { n: 'A', o: 2 }, { n: 'A', o: 2 }, { n: 'A', o: 2 },
+            { n: 'D', o: 2 }, { n: 'D', o: 2 }, { n: 'E', o: 2 }, { n: 'E', o: 2 },
+        ],
+        sparkle: [
+            null, { n: 'E', o: 6 }, null, null,
+            null, { n: 'D', o: 6 }, null, null,
+            null, null, { n: 'E', o: 6 }, null,
+            null, null, null, { n: 'A', o: 5 },
+        ]
+    };
+
+    function getSequence() {
+        return (typeof gameTheme !== 'undefined' && gameTheme === 'unicorn')
+            ? unicornSequence : spaceSequence;
+    }
+
+    // ── Music playback ───────────────────────────────────────────────
+
+    function playStep() {
+        if (!musicPlaying || !ctx) return;
+
+        const seq = getSequence();
+        const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
+        const stepDuration = 60 / bpm;     // seconds per beat
+        const idx = currentStep % seq.melody.length;
+
+        // Melody
+        const mel = seq.melody[idx];
+        if (mel) {
+            const freq = noteFreq(mel.n, mel.o);
+            if (isUnicorn) {
+                // Bright triangle wave + slight detune for shimmer
+                playTone(freq, stepDuration * 0.8, 'triangle', musicGain, 0.22, 5);
+                playTone(freq * 2, stepDuration * 0.4, 'sine', musicGain, 0.07, 0);
+            } else {
+                // Gritty sawtooth for space theme
+                playTone(freq, stepDuration * 0.7, 'sawtooth', musicGain, 0.12, 0);
+                playTone(freq, stepDuration * 0.5, 'square', musicGain, 0.06, 7);
+            }
+        }
+
+        // Bass (every step)
+        const bas = seq.bass[idx];
+        if (bas) {
+            const freq = noteFreq(bas.n, bas.o);
+            if (isUnicorn) {
+                playTone(freq, stepDuration * 0.9, 'sine', musicGain, 0.25, 0);
+            } else {
+                playTone(freq, stepDuration * 0.6, 'square', musicGain, 0.15, 0);
+                playTone(freq, stepDuration * 0.4, 'sawtooth', musicGain, 0.08, 0);
+            }
+        }
+
+        // Sparkle / hi-hat layer
+        const spk = seq.sparkle[idx];
+        if (spk) {
+            const freq = noteFreq(spk.n, spk.o);
+            if (isUnicorn) {
+                playTone(freq, stepDuration * 0.3, 'sine', musicGain, 0.12, 0);
+                // Extra shimmer
+                playTone(freq * 1.5, stepDuration * 0.15, 'sine', musicGain, 0.06, 0);
+            } else {
+                playTone(freq, stepDuration * 0.2, 'square', musicGain, 0.05, 0);
+            }
+        }
+
+        // Percussion: kick on beats 0,4,8,12 and hi-hat on every other step
+        if (idx % 4 === 0) {
+            playKick();
+        }
+        if (idx % 2 === 1) {
+            playHiHat(isUnicorn);
+        }
+
+        currentStep++;
+
+        // Smoothly approach target BPM
+        bpm += (targetBpm - bpm) * 0.15;
+
+        // Schedule next step
+        const nextDelay = (60 / bpm) * 1000;
+        musicTimer = setTimeout(playStep, nextDelay);
+    }
+
+    function playKick() {
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.35, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        osc.connect(g);
+        g.connect(musicGain);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+    }
+
+    function playHiHat(soft) {
+        if (!ctx) return;
+        // Noise-based hi-hat
+        const bufferSize = ctx.sampleRate * 0.05;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+
+        const bandpass = ctx.createBiquadFilter();
+        bandpass.type = 'bandpass';
+        bandpass.frequency.value = soft ? 8000 : 10000;
+        bandpass.Q.value = 1;
+
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(soft ? 0.06 : 0.1, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+
+        src.connect(bandpass);
+        bandpass.connect(g);
+        g.connect(musicGain);
+        src.start(ctx.currentTime);
+    }
+
+    // ── SFX ──────────────────────────────────────────────────────────
+
+    function playExplosion() {
+        if (!ensureContext()) return;
+        const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
+
+        // Low rumble
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(isUnicorn ? 200 : 120, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 0.6);
+        g.gain.setValueAtTime(0.5, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        osc.connect(g);
+        g.connect(sfxGain);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.6);
+
+        // Noise burst
+        const bufLen = ctx.sampleRate * 0.4;
+        const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+        const nSrc = ctx.createBufferSource();
+        nSrc.buffer = buf;
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(0.3, ctx.currentTime);
+        nGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = isUnicorn ? 2000 : 800;
+
+        nSrc.connect(lp);
+        lp.connect(nGain);
+        nGain.connect(sfxGain);
+        nSrc.start(ctx.currentTime);
+
+        if (isUnicorn) {
+            // Sad descending chime
+            playTone(noteFreq('E', 5), 0.3, 'triangle', sfxGain, 0.2, 0);
+            setTimeout(() => playTone(noteFreq('C', 5), 0.3, 'triangle', sfxGain, 0.15, 0), 100);
+            setTimeout(() => playTone(noteFreq('A', 4), 0.5, 'triangle', sfxGain, 0.1, 0), 200);
+        }
+    }
+
+    function playEnemyKill() {
+        if (!ensureContext()) return;
+        const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
+        if (isUnicorn) {
+            playTone(noteFreq('C', 6), 0.1, 'triangle', sfxGain, 0.15, 0);
+            setTimeout(() => playTone(noteFreq('E', 6), 0.1, 'triangle', sfxGain, 0.12, 0), 50);
+        } else {
+            playTone(300, 0.08, 'square', sfxGain, 0.12, 0);
+            playTone(600, 0.06, 'square', sfxGain, 0.08, 0);
+        }
+    }
+
+    function playGameOver() {
+        if (!ensureContext()) return;
+        const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
+        if (isUnicorn) {
+            playTone(noteFreq('E', 5), 0.4, 'triangle', sfxGain, 0.25, 0);
+            setTimeout(() => playTone(noteFreq('C', 5), 0.4, 'triangle', sfxGain, 0.2, 0), 300);
+            setTimeout(() => playTone(noteFreq('A', 4), 0.4, 'triangle', sfxGain, 0.2, 0), 600);
+            setTimeout(() => playTone(noteFreq('F', 4), 0.8, 'triangle', sfxGain, 0.25, 0), 900);
+        } else {
+            playTone(noteFreq('A', 4), 0.3, 'sawtooth', sfxGain, 0.2, 0);
+            setTimeout(() => playTone(noteFreq('F', 4), 0.3, 'sawtooth', sfxGain, 0.2, 0), 250);
+            setTimeout(() => playTone(noteFreq('D', 4), 0.3, 'sawtooth', sfxGain, 0.2, 0), 500);
+            setTimeout(() => playTone(noteFreq('A', 3), 0.8, 'sawtooth', sfxGain, 0.25, 0), 750);
+        }
+    }
+
+    // ── Tempo control ────────────────────────────────────────────────
+
+    // Called every frame from update(). Calculates how close the nearest
+    // enemy is to the bottom of the play area and scales BPM accordingly.
+    function updateTempo(enemies, playAreaHeight) {
+        if (!musicPlaying) return;
+        if (!enemies || enemies.length === 0) return;
+
+        let closestRatio = 0; // 0 = top of screen, 1 = at the deadline
+        for (let i = 0; i < enemies.length; i++) {
+            const e = enemies[i];
+            if (e.health <= 0) continue;
+            const ratio = Math.max(0, e.y) / playAreaHeight;
+            if (ratio > closestRatio) closestRatio = ratio;
+        }
+
+        // Map closestRatio to BPM: 0→120, 1→240
+        const baseBpm = 120;
+        const maxBpm = 240;
+        targetBpm = baseBpm + (maxBpm - baseBpm) * Math.pow(closestRatio, 1.5);
+    }
+
+    // ── Public API ───────────────────────────────────────────────────
+
+    return {
+        // Call once on first user interaction to unlock audio
+        init() {
+            ensureContext();
+            if (ctx && ctx.state === 'suspended') ctx.resume();
+        },
+
+        startMusic() {
+            if (!ensureContext()) return;
+            if (ctx.state === 'suspended') ctx.resume();
+            if (musicPlaying) return;
+            musicPlaying = true;
+            currentStep = 0;
+            bpm = 120;
+            targetBpm = 120;
+            playStep();
+        },
+
+        stopMusic() {
+            musicPlaying = false;
+            if (musicTimer) { clearTimeout(musicTimer); musicTimer = null; }
+            // Fade out any active sources
+            activeSources.forEach(s => { try { s.stop(); } catch (_) {} });
+            activeSources = [];
+        },
+
+        updateTempo,
+        playExplosion,
+        playEnemyKill,
+        playGameOver,
+
+        // Convenience: check if playing
+        get isPlaying() { return musicPlaying; }
+    };
+})();
