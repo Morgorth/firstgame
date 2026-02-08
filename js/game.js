@@ -168,6 +168,9 @@ function update() {
 
     // Enemy vs player collisions & enemies passing screen
     gameState.enemies = gameState.enemies.filter(e => {
+        // Skip enemies already killed by bullets this frame
+        if (e.health <= 0) return false;
+
         // Check collision with each active player
         for (let i = 0; i < gameState.players.length; i++) {
             const player = gameState.players[i];
@@ -226,6 +229,22 @@ function update() {
             gameState.wave++;
             gameState.waveTimer = 0;
             gameState.enemiesKilled = 0;
+
+            // Every 2 waves in 2-player mode: balance fleet sizes
+            if (gameState.playerCount === 2 && gameState.wave % 2 === 0) {
+                const p1 = gameState.players[0];
+                const p2 = gameState.players[1];
+                if (p1.active && p2.active && p1.crowdSize !== p2.crowdSize) {
+                    const total = p1.crowdSize + p2.crowdSize;
+                    const half = Math.floor(total / 2);
+                    // Bigger fleet donates to the smaller one
+                    p1.crowdSize = half;
+                    p2.crowdSize = total - half; // gets the extra 1 if total is odd
+                    gameState.crowdSize = p1.crowdSize;
+                    updateCrowdDisplay();
+                }
+            }
+
             spawnWave();
             updateWave();
         }
