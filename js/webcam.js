@@ -134,6 +134,8 @@ async function trackPoses() {
             marker1.style.boxShadow = '0 0 10px #00ffff';
             marker1.style.left = ((gameState.players[0].targetLane + 0.5) / numLanes * containerW - markerW / 2) + 'px';
             marker2.style.display = 'block';
+            marker2.style.background = '#ff00ff';
+            marker2.style.boxShadow = '0 0 10px #ff00ff';
             marker2.style.left = ((gameState.players[1].targetLane + 0.5) / numLanes * containerW - markerW / 2) + 'px';
         } else {
             marker1.style.background = '#ff00ff';
