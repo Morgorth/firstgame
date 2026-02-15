@@ -55,7 +55,11 @@ function startGame() {
         hitEffect: 0,
         screenShake: { x: 0, y: 0 },
         lanePositions,
-        numLanes
+        numLanes,
+        totalKills: 0,
+        superWeaponCharges: [0, 0],
+        superWeaponNextThreshold: CONFIG.superWeapon.killsPerCharge,
+        superWeaponFlashEffect: 0
     };
 
     if (controlMode === 'camera') {

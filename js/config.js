@@ -41,6 +41,14 @@ const CONFIG = {
         minSamplesForDetection: 6, // need at least this many samples in the window
         framesToConfirm: 20,       // consecutive qualifying frames to complete gesture
         decayRate: 2               // frames lost per non-qualifying frame
+    },
+    superWeapon: {
+        killsPerCharge: 25,        // cumulative kills between each charge earned
+        activationKey: ' ',        // Space bar for keyboard mode
+        handsUpHoldFrames: 12,     // ~200ms hold to prevent accidental activation
+        flashDuration: 20,         // screen flash frames
+        particlesPerEnemy: 15,     // explosion particles per destroyed enemy
+        shakeIntensity: 15         // screen shake magnitude
     }
 };
 

@@ -470,5 +470,48 @@ function render() {
         ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
     }
 
+    // Super weapon flash overlay
+    if (gameState.superWeaponFlashEffect > 0) {
+        const flashColor = isUnicorn ? '255,215,0' : '0,255,255';
+        const alpha = gameState.superWeaponFlashEffect / CONFIG.superWeapon.flashDuration * 0.6;
+        ctx.fillStyle = `rgba(${flashColor},${alpha})`;
+        ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
+    }
+
+    // Charge-ready indicator above player fleet
+    if (gameState.running) {
+        gameState.players.forEach((player, idx) => {
+            if (!player.active || gameState.superWeaponCharges[idx] <= 0) return;
+            const pulse = Math.sin(gameState.frameCount * 0.1) * 0.3 + 0.7;
+            ctx.globalAlpha = pulse;
+            ctx.font = 'bold 28px Orbitron, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            const numRows = Math.ceil(player.crowdSize / Math.ceil(Math.sqrt(player.crowdSize * 2)));
+            const iconY = player.y - numRows * 28 - 70;
+
+            if (isUnicorn) {
+                ctx.fillStyle = '#FFD700';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 3;
+                ctx.strokeText('\u2B50', player.x, iconY);
+                ctx.fillText('\u2B50', player.x, iconY);
+            } else {
+                ctx.fillStyle = '#00ffff';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 3;
+                // Triangle/nuke symbol
+                ctx.beginPath();
+                ctx.moveTo(player.x, iconY - 20);
+                ctx.lineTo(player.x - 12, iconY);
+                ctx.lineTo(player.x + 12, iconY);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        });
+    }
+
     ctx.restore();
 }

@@ -4,6 +4,21 @@
 
 function updateHUD() {
     document.getElementById('score').textContent = gameState.score;
+
+    // Update nuke progress
+    const nukeEl = document.getElementById('nukeProgress');
+    if (nukeEl) {
+        const hasCharge = gameState.superWeaponCharges && gameState.superWeaponCharges.some((c, i) => c > 0 && gameState.players[i]?.active);
+        if (hasCharge) {
+            nukeEl.textContent = 'READY!';
+            nukeEl.classList.add('nuke-ready');
+        } else {
+            const killsPerCharge = CONFIG.superWeapon.killsPerCharge;
+            const progress = (gameState.totalKills || 0) % killsPerCharge;
+            nukeEl.textContent = progress + '/' + killsPerCharge;
+            nukeEl.classList.remove('nuke-ready');
+        }
+    }
 }
 
 function updateWave() {
@@ -69,7 +84,7 @@ function selectControlMode(mode) {
     const playerCountContainer = document.getElementById('playerCountContainer');
 
     if (mode === 'keyboard') {
-        instr.innerHTML = 'MOVE: Arrow Keys / A-D / Mouse / Touch<br>AUTO-FIRE: Always Active<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
+        instr.innerHTML = 'MOVE: Arrow Keys / A-D / Mouse / Touch<br>AUTO-FIRE: Always Active<br>SUPER WEAPON: Space Bar (earn every 25 kills)<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
         stopWebcam();
         document.getElementById('cameraStatus').textContent = '';
         indicator.style.display = 'none';
@@ -78,7 +93,7 @@ function selectControlMode(mode) {
         playerCountContainer.classList.add('hidden');
         gameState.playerCount = 1;
     } else {
-        instr.innerHTML = 'MOVE: Move LEFT / RIGHT to control your ship<br>AUTO-FIRE: Always Active<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
+        instr.innerHTML = 'MOVE: Move LEFT / RIGHT to control your ship<br>AUTO-FIRE: Always Active<br>SUPER WEAPON: Raise both hands above head (earn every 25 kills)<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
         initWebcam();
         indicator.style.display = 'none';
         btn.style.opacity = '0.5';

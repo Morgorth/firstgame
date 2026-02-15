@@ -218,6 +218,19 @@ body { background: #0a0015; font-family: 'Rajdhani', sans-serif; overflow: hidde
 .player-hud.p1 .player-fleet { color: #00ffff; }
 .player-hud.p2 .player-fleet { color: #ff00ff; }
 
+/* === Nuke-ready pulse === */
+.nuke-ready {
+    animation: nukePulse 0.8s ease-in-out infinite;
+    color: #00ffff !important;
+}
+.unicorn-theme .nuke-ready {
+    color: #FFD700 !important;
+}
+@keyframes nukePulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.15); }
+}
+
 /* === Responsive === */
 @media (max-width: 768px) {
     .game-title { font-size: 48px; }

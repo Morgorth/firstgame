@@ -366,6 +366,59 @@ const audioSystem = (() => {
         },
 
         updateTempo,
+        playSuperWeapon() {
+            if (!ensureContext()) return;
+            const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
+
+            if (isUnicorn) {
+                // Ascending triangle arpeggio (C-E-G-C-E) + sparkle burst
+                const notes = [
+                    { n: 'C', o: 5, t: 0 },
+                    { n: 'E', o: 5, t: 0.08 },
+                    { n: 'G', o: 5, t: 0.16 },
+                    { n: 'C', o: 6, t: 0.24 },
+                    { n: 'E', o: 6, t: 0.32 }
+                ];
+                notes.forEach(({ n, o, t }) => {
+                    setTimeout(() => playTone(noteFreq(n, o), 0.3, 'triangle', sfxGain, 0.25, 0), t * 1000);
+                });
+                // Sparkle burst
+                setTimeout(() => {
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => playTone(2000 + Math.random() * 2000, 0.05, 'sine', sfxGain, 0.1, 0), i * 30);
+                    }
+                }, 400);
+            } else {
+                // Ascending sawtooth sweep (100Hz→2kHz) + bass drop
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.4);
+                g.gain.setValueAtTime(0.3, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+                osc.connect(g);
+                g.connect(sfxGain);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.5);
+                osc.onended = () => { osc.disconnect(); g.disconnect(); };
+
+                // Bass drop
+                const bass = ctx.createOscillator();
+                const bg = ctx.createGain();
+                bass.type = 'sine';
+                bass.frequency.setValueAtTime(80, ctx.currentTime + 0.1);
+                bass.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 0.6);
+                bg.gain.setValueAtTime(0.4, ctx.currentTime + 0.1);
+                bg.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+                bass.connect(bg);
+                bg.connect(sfxGain);
+                bass.start(ctx.currentTime + 0.1);
+                bass.stop(ctx.currentTime + 0.6);
+                bass.onended = () => { bass.disconnect(); bg.disconnect(); };
+            }
+        },
+
         playExplosion,
         playEnemyKill,
         playGameOver,

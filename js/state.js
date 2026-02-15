@@ -34,6 +34,7 @@ let webcamState = {
     waveFrames: 0,
     isReady: false,
     playerFaceImage: null,
+    handsUpFrames: 0,
 
     // MoveNet
     poseDetector: null,
@@ -54,8 +55,8 @@ let webcamState = {
     registrationPhase: 'idle',          // 'idle' | 'registering' | 'ready'
     currentRegisteringPlayer: 0,
     registeredPlayers: [
-        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0 },
-        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0 }
+        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0 },
+        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0 }
     ]
 };
 
@@ -77,6 +78,10 @@ let gameState = {
     hitEffect: 0,
     screenShake: { x: 0, y: 0 },
     countdownActive: false,
+    totalKills: 0,
+    superWeaponCharges: [0, 0],
+    superWeaponNextThreshold: 25,
+    superWeaponFlashEffect: 0,
 
     // Multi-player
     playerCount: 1,

@@ -213,6 +213,35 @@ function getBestWrist(pose) {
     return left || right || null;
 }
 
+// ── Super weapon gesture detection ───────────────────────────────────
+
+function checkHandsAboveHead(pose) {
+    const nose = getKeypoint(pose, 'nose');
+    const lw = getKeypoint(pose, 'left_wrist');
+    const rw = getKeypoint(pose, 'right_wrist');
+    if (!nose || nose.score < 0.3) return false;
+    if (!lw || lw.score < 0.3 || !rw || rw.score < 0.3) return false;
+    return lw.y < nose.y && rw.y < nose.y;
+}
+
+function checkSuperWeaponGesture(pose, playerIndex) {
+    if (!gameState.running || gameState.countdownActive) return;
+    if (gameState.superWeaponCharges[playerIndex] <= 0) return;
+
+    const reg = webcamState.registeredPlayers[playerIndex];
+    const cfg = CONFIG.superWeapon;
+
+    if (checkHandsAboveHead(pose)) {
+        reg.handsUpFrames++;
+        if (reg.handsUpFrames >= cfg.handsUpHoldFrames) {
+            activateSuperWeapon(playerIndex);
+            reg.handsUpFrames = 0;
+        }
+    } else {
+        reg.handsUpFrames = Math.max(0, reg.handsUpFrames - 3);
+    }
+}
+
 // ── Wave-gesture detection ──────────────────────────────────────────
 
 // Score a single wrist's history for wave-like motion.
@@ -335,11 +364,17 @@ function handleGameplayPoseTracking(sortedPoses, video) {
 
     if (gameState.playerCount === 2) {
         assignTwoPlayerPoses(sortedPoses, video, numLanes);
+        // Check super weapon gesture for each player
+        const playerPoses = webcamState.playerPoses || [null, null];
+        if (playerPoses[0]) checkSuperWeaponGesture(playerPoses[0], 0);
+        if (playerPoses[1]) checkSuperWeaponGesture(playerPoses[1], 1);
     } else if (sortedPoses.length > 0) {
         assignPoseToPlayer(0, sortedPoses[0], video, numLanes);
         webcamState.playerPoses = [sortedPoses[0], null];
         const normalizedX = 1 - (getPoseCenterX(sortedPoses[0]) / video.videoWidth);
         webcamState.targetLane = normalizedX < 0.35 ? 0 : normalizedX > 0.65 ? 2 : 1;
+        // Check super weapon gesture for player 0
+        checkSuperWeaponGesture(sortedPoses[0], 0);
     }
 }
 

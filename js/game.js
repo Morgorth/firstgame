@@ -4,6 +4,47 @@ function checkCollision(a, b, aw, ah, bw, bh) {
     return a.x < b.x + bw && a.x + aw > b.x && a.y < b.y + bh && a.y + ah > b.y;
 }
 
+function activateSuperWeapon(playerIndex) {
+    if (gameState.superWeaponCharges[playerIndex] <= 0) return false;
+    if (gameState.countdownActive) return false;
+    if (gameState.enemies.length === 0) return false;
+
+    gameState.superWeaponCharges[playerIndex]--;
+
+    const cfg = CONFIG.superWeapon;
+    const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
+    const particleColor = isUnicorn ? '#FFD700' : '#00ffff';
+
+    for (let i = 0; i < gameState.enemies.length; i++) {
+        const e = gameState.enemies[i];
+        if (e.health <= 0) continue;
+        gameState.score += e.points;
+        gameState.enemiesKilled++;
+        gameState.totalKills++;
+        checkSuperWeaponThreshold();
+        for (let j = 0; j < cfg.particlesPerEnemy; j++) {
+            gameState.particles.push(createParticle(e.x, e.y, particleColor));
+        }
+    }
+    gameState.enemies = [];
+
+    gameState.superWeaponFlashEffect = cfg.flashDuration;
+    gameState.screenShake = { x: cfg.shakeIntensity, y: cfg.shakeIntensity };
+    audioSystem.playSuperWeapon();
+
+    return true;
+}
+
+function checkSuperWeaponThreshold() {
+    if (gameState.totalKills >= gameState.superWeaponNextThreshold) {
+        // Award charge to all active players
+        gameState.players.forEach((p, i) => {
+            if (p.active) gameState.superWeaponCharges[i]++;
+        });
+        gameState.superWeaponNextThreshold += CONFIG.superWeapon.killsPerCharge;
+    }
+}
+
 // ── Wave spawning ───────────────────────────────────────────────────
 
 function spawnWave() {
@@ -98,6 +139,12 @@ function update() {
         if (idx === 0) {
             gameState.player.x = player.x;
             gameState.player.y = player.y;
+        }
+
+        // Super weapon activation (keyboard mode: Space for player 0)
+        if (controlMode === 'keyboard' && idx === 0 && keys[CONFIG.superWeapon.activationKey] && gameState.superWeaponCharges[0] > 0) {
+            activateSuperWeapon(0);
+            keys[CONFIG.superWeapon.activationKey] = false;
         }
     });
 
@@ -219,6 +266,8 @@ function update() {
                     audioSystem.playEnemyKill();
                     gameState.score += enemy.points;
                     gameState.enemiesKilled++;
+                    gameState.totalKills++;
+                    checkSuperWeaponThreshold();
 
                     const chance = gameState.wave <= 3 ? 0.25 : gameState.wave <= 5 ? 0.18 : CONFIG.powerup.spawnChance;
                     if (Math.random() < chance) {
@@ -282,6 +331,8 @@ function update() {
                 player.crowdSize = Math.max(0, player.crowdSize - dmg);
                 if (i === 0) gameState.crowdSize = player.crowdSize;
                 gameState.enemiesKilled++;
+                gameState.totalKills++;
+                checkSuperWeaponThreshold();
                 gameState.hitEffect = 20;
                 gameState.screenShake = { x: 10, y: 10 };
                 for (let j = 0; j < 15; j++) {
@@ -304,6 +355,8 @@ function update() {
                 if (player.crowdSize <= 0) player.active = false;
             });
             gameState.enemiesKilled++;
+            gameState.totalKills++;
+            checkSuperWeaponThreshold();
             gameState.hitEffect = 15;
             gameState.screenShake = { x: 5, y: 5 };
             checkGameOver();
@@ -359,6 +412,11 @@ function update() {
         gameState.hitEffect--;
         gameState.screenShake.x *= 0.9;
         gameState.screenShake.y *= 0.9;
+    }
+
+    // Decay super weapon flash effect
+    if (gameState.superWeaponFlashEffect > 0) {
+        gameState.superWeaponFlashEffect--;
     }
 
     // Update music tempo based on how close enemies are to the deadline

@@ -54,6 +54,9 @@ function createElement(tag) {
                 createLinearGradient() {
                     return { addColorStop() {} };
                 },
+                createRadialGradient() {
+                    return { addColorStop() {} };
+                },
                 set fillStyle(v) {},
                 get fillStyle() { return '#000'; },
                 set strokeStyle(v) {},
@@ -91,7 +94,10 @@ const knownIds = [
     'p1FacePreview', 'p2FacePreview',
     'p1FacePlaceholder', 'p2FacePlaceholder',
     'p1ReadyStatus', 'p2ReadyStatus',
-    'finalScore', 'finalWave'
+    'finalScore', 'finalWave',
+    'nukeProgress',
+    'countdownOverlay', 'countdownText',
+    'positionMarkerP2'
 ];
 
 for (const id of knownIds) {
