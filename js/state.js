@@ -79,8 +79,9 @@ let gameState = {
     screenShake: { x: 0, y: 0 },
     countdownActive: false,
     totalKills: 0,
+    playerKills: [0, 0],
     superWeaponCharges: [0, 0],
-    superWeaponNextThreshold: 25,
+    superWeaponNextThreshold: [50, 50],
     superWeaponFlashEffect: 0,
 
     // Multi-player

@@ -21,7 +21,6 @@
                 <div class="hud-left">
                     <div><div class="stat-label">SCORE</div><div class="stat" id="score">0</div></div>
                     <div><div class="stat-label">WAVE</div><div class="stat" id="wave">1</div></div>
-                    <div><div class="stat-label">NUKE</div><div class="stat" id="nukeProgress">0/25</div></div>
                     <div id="activeEffects"></div>
                 </div>
                 <div class="hud-right">
@@ -30,16 +29,20 @@
                         <div class="stat-label">FLEET SIZE</div>
                         <div class="stat" id="crowdSize">1</div>
                         <div class="crowd-indicator" id="crowdIndicator"></div>
+                        <div class="stat-label">NUKE</div>
+                        <div class="stat" id="nukeProgress">0/50</div>
                     </div>
                     <!-- Multi-player HUD -->
                     <div id="multiPlayerHud" class="hidden hud-players">
                         <div class="player-hud p1" id="p1Hud">
                             <img class="player-face" id="p1HudFace" src="" alt="P1">
                             <div class="player-fleet" id="p1Fleet">3</div>
+                            <div class="player-nuke" id="p1Nuke">0/50</div>
                         </div>
                         <div class="player-hud p2" id="p2Hud">
                             <img class="player-face" id="p2HudFace" src="" alt="P2">
                             <div class="player-fleet" id="p2Fleet">3</div>
+                            <div class="player-nuke" id="p2Nuke">0/50</div>
                         </div>
                     </div>
                 </div>

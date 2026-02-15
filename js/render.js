@@ -554,10 +554,41 @@ function render() {
 
     // Super weapon flash overlay
     if (gameState.superWeaponFlashEffect > 0) {
-        const flashColor = isUnicorn ? '255,215,0' : '0,255,255';
-        const alpha = gameState.superWeaponFlashEffect / CONFIG.superWeapon.flashDuration * 0.6;
-        ctx.fillStyle = `rgba(${flashColor},${alpha})`;
-        ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
+        const flashDuration = CONFIG.superWeapon.flashDuration;
+        const effect = gameState.superWeaponFlashEffect;
+
+        if (isUnicorn) {
+            // Rainbow wave sweeping bottom-to-top
+            const progress = 1 - (effect / flashDuration);
+            const waveFrontY = PLAY_AREA.height * (1 - progress);
+            const bandHeight = 100;
+
+            // Rainbow gradient band
+            const rainbowGrad = ctx.createLinearGradient(0, 0, PLAY_AREA.width, 0);
+            rainbowGrad.addColorStop(0, '#FF0000');
+            rainbowGrad.addColorStop(0.16, '#FF8800');
+            rainbowGrad.addColorStop(0.33, '#FFFF00');
+            rainbowGrad.addColorStop(0.5, '#00FF00');
+            rainbowGrad.addColorStop(0.66, '#0088FF');
+            rainbowGrad.addColorStop(0.83, '#8800FF');
+            rainbowGrad.addColorStop(1, '#FF00FF');
+
+            ctx.save();
+            ctx.globalAlpha = 0.45;
+            ctx.fillStyle = rainbowGrad;
+            ctx.fillRect(0, waveFrontY - bandHeight / 2, PLAY_AREA.width, bandHeight);
+
+            // White sparkle leading edge
+            ctx.globalAlpha = 0.7;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, waveFrontY - 3, PLAY_AREA.width, 6);
+            ctx.restore();
+        } else {
+            // Space theme: cyan flash (unchanged)
+            const alpha = effect / flashDuration * 0.6;
+            ctx.fillStyle = `rgba(0,255,255,${alpha})`;
+            ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
+        }
     }
 
     // Charge-ready indicator above player fleet

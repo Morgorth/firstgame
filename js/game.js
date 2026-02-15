@@ -21,7 +21,7 @@ function activateSuperWeapon(playerIndex) {
         gameState.score += e.points;
         gameState.enemiesKilled++;
         gameState.totalKills++;
-        checkSuperWeaponThreshold();
+        checkSuperWeaponThreshold(playerIndex);
         for (let j = 0; j < cfg.particlesPerEnemy; j++) {
             gameState.particles.push(createParticle(e.x, e.y, particleColor));
         }
@@ -35,13 +35,12 @@ function activateSuperWeapon(playerIndex) {
     return true;
 }
 
-function checkSuperWeaponThreshold() {
-    if (gameState.totalKills >= gameState.superWeaponNextThreshold) {
-        // Award charge to all active players
-        gameState.players.forEach((p, i) => {
-            if (p.active) gameState.superWeaponCharges[i]++;
-        });
-        gameState.superWeaponNextThreshold += CONFIG.superWeapon.killsPerCharge;
+function checkSuperWeaponThreshold(playerIndex) {
+    if (playerIndex === undefined) return; // no player attribution, skip
+    gameState.playerKills[playerIndex]++;
+    if (gameState.playerKills[playerIndex] >= gameState.superWeaponNextThreshold[playerIndex]) {
+        gameState.superWeaponCharges[playerIndex]++;
+        gameState.superWeaponNextThreshold[playerIndex] += CONFIG.superWeapon.killsPerCharge;
     }
 }
 
@@ -304,7 +303,7 @@ function update() {
                     gameState.score += enemy.points;
                     gameState.enemiesKilled++;
                     gameState.totalKills++;
-                    checkSuperWeaponThreshold();
+                    checkSuperWeaponThreshold(bullet.owner);
 
                     const chance = gameState.wave <= 3 ? 0.25 : gameState.wave <= 5 ? 0.18 : CONFIG.powerup.spawnChance;
                     if (Math.random() < chance) {
@@ -381,7 +380,7 @@ function update() {
                     gameState.activeEffects.shield[i] = 0;
                     gameState.enemiesKilled++;
                     gameState.totalKills++;
-                    checkSuperWeaponThreshold();
+                    checkSuperWeaponThreshold(i);
                     for (let j = 0; j < 15; j++) {
                         gameState.particles.push(createParticle(e.x, e.y, '#00aaff'));
                     }
@@ -393,7 +392,7 @@ function update() {
                 if (i === 0) gameState.crowdSize = player.crowdSize;
                 gameState.enemiesKilled++;
                 gameState.totalKills++;
-                checkSuperWeaponThreshold();
+                checkSuperWeaponThreshold(i);
                 gameState.hitEffect = 20;
                 gameState.screenShake = { x: 10, y: 10 };
                 for (let j = 0; j < 15; j++) {
@@ -426,7 +425,7 @@ function update() {
             });
             gameState.enemiesKilled++;
             gameState.totalKills++;
-            checkSuperWeaponThreshold();
+            // No specific player attribution for enemies passing the bottom
             gameState.hitEffect = 15;
             gameState.screenShake = { x: 5, y: 5 };
             checkGameOver();

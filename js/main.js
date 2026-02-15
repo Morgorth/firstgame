@@ -57,8 +57,9 @@ function startGame() {
         lanePositions,
         numLanes,
         totalKills: 0,
+        playerKills: [0, 0],
         superWeaponCharges: [0, 0],
-        superWeaponNextThreshold: CONFIG.superWeapon.killsPerCharge,
+        superWeaponNextThreshold: [CONFIG.superWeapon.killsPerCharge, CONFIG.superWeapon.killsPerCharge],
         superWeaponFlashEffect: 0,
         activeEffects: { shield: [0, 0], spread: [0, 0] }
     };

@@ -49,10 +49,10 @@ const CONFIG = {
         decayRate: 2               // frames lost per non-qualifying frame
     },
     superWeapon: {
-        killsPerCharge: 1000,        // cumulative kills between each charge earned
+        killsPerCharge: 50,          // cumulative kills between each charge earned
         activationKey: ' ',        // Space bar for keyboard mode
         handsUpHoldFrames: 12,     // ~200ms hold to prevent accidental activation
-        flashDuration: 20,         // screen flash frames
+        flashDuration: 40,         // screen flash frames (longer for rainbow sweep)
         particlesPerEnemy: 15,     // explosion particles per destroyed enemy
         shakeIntensity: 15         // screen shake magnitude
     }

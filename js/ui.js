@@ -5,18 +5,36 @@
 function updateHUD() {
     document.getElementById('score').textContent = gameState.score;
 
-    // Update nuke progress
-    const nukeEl = document.getElementById('nukeProgress');
-    if (nukeEl) {
-        const hasCharge = gameState.superWeaponCharges && gameState.superWeaponCharges.some((c, i) => c > 0 && gameState.players[i]?.active);
-        if (hasCharge) {
-            nukeEl.textContent = 'READY!';
-            nukeEl.classList.add('nuke-ready');
-        } else {
-            const killsPerCharge = CONFIG.superWeapon.killsPerCharge;
-            const progress = (gameState.totalKills || 0) % killsPerCharge;
-            nukeEl.textContent = progress + '/' + killsPerCharge;
-            nukeEl.classList.remove('nuke-ready');
+    // Update nuke progress (per-player)
+    const killsPerCharge = CONFIG.superWeapon.killsPerCharge;
+    if (gameState.playerCount === 2) {
+        // Multi-player: update each player's nuke element
+        for (let i = 0; i < 2; i++) {
+            const el = document.getElementById(`p${i + 1}Nuke`);
+            if (!el) continue;
+            const charges = gameState.superWeaponCharges[i];
+            if (charges > 0) {
+                el.textContent = `READY! (x${charges})`;
+                el.classList.add('nuke-ready');
+            } else {
+                const progress = gameState.playerKills[i] % killsPerCharge;
+                el.textContent = progress + '/' + killsPerCharge;
+                el.classList.remove('nuke-ready');
+            }
+        }
+    } else {
+        // Single player: update the single nuke element
+        const nukeEl = document.getElementById('nukeProgress');
+        if (nukeEl) {
+            const charges = gameState.superWeaponCharges[0];
+            if (charges > 0) {
+                nukeEl.textContent = `READY! (x${charges})`;
+                nukeEl.classList.add('nuke-ready');
+            } else {
+                const progress = gameState.playerKills[0] % killsPerCharge;
+                nukeEl.textContent = progress + '/' + killsPerCharge;
+                nukeEl.classList.remove('nuke-ready');
+            }
         }
     }
 
@@ -154,7 +172,7 @@ function selectControlMode(mode) {
     const playerCountContainer = document.getElementById('playerCountContainer');
 
     if (mode === 'keyboard') {
-        instr.innerHTML = 'MOVE: Arrow Keys / A-D / Mouse / Touch<br>AUTO-FIRE: Always Active<br>SUPER WEAPON: Space Bar (earn every 25 kills)<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
+        instr.innerHTML = 'MOVE: Arrow Keys / A-D / Mouse / Touch<br>AUTO-FIRE: Always Active<br>SUPER WEAPON: Space Bar (earn every 50 kills)<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
         stopWebcam();
         document.getElementById('cameraStatus').textContent = '';
         indicator.style.display = 'none';
@@ -163,7 +181,7 @@ function selectControlMode(mode) {
         playerCountContainer.classList.add('hidden');
         gameState.playerCount = 1;
     } else {
-        instr.innerHTML = 'MOVE: Move LEFT / RIGHT to control your ship<br>AUTO-FIRE: Always Active<br>SUPER WEAPON: Raise both hands above head (earn every 25 kills)<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
+        instr.innerHTML = 'MOVE: Move LEFT / RIGHT to control your ship<br>AUTO-FIRE: Always Active<br>SUPER WEAPON: Raise both hands above head (earn every 50 kills)<br>SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>STOP ENEMIES: They cost ships if they pass OR hit you!';
         initWebcam();
         indicator.style.display = 'none';
         btn.style.opacity = '0.5';
