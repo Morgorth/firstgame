@@ -90,10 +90,33 @@ let gameState = {
         { active: true, x: 0, y: 0, crowdSize: 3, faceImage: null, color: '#ff00ff', targetLane: 3 }
     ],
 
+    // Active power-up effects (remaining frames per player)
+    activeEffects: { shield: [0, 0], spread: [0, 0] },
+
     // Legacy single-player compat (player 0 mirror).
     player: null,
     crowdSize: 1
 };
+
+// ── High Scores ─────────────────────────────────────────────────────
+let highScores = [];
+
+function loadHighScores() {
+    try {
+        const raw = localStorage.getItem('waveAssaultHighScores');
+        if (raw) highScores = JSON.parse(raw);
+    } catch (e) {
+        highScores = [];
+    }
+}
+
+function saveHighScores() {
+    try {
+        localStorage.setItem('waveAssaultHighScores', JSON.stringify(highScores));
+    } catch (e) { /* storage full or unavailable */ }
+}
+
+loadHighScores();
 
 // Keyboard state map (updated by input.js).
 const keys = {};

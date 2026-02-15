@@ -22,6 +22,7 @@
                     <div><div class="stat-label">SCORE</div><div class="stat" id="score">0</div></div>
                     <div><div class="stat-label">WAVE</div><div class="stat" id="wave">1</div></div>
                     <div><div class="stat-label">NUKE</div><div class="stat" id="nukeProgress">0/25</div></div>
+                    <div id="activeEffects"></div>
                 </div>
                 <div class="hud-right">
                     <!-- Single-player HUD -->
@@ -71,6 +72,9 @@
                     <button class="player-count-btn" id="twoPlayerBtn"><span class="player-count-icon">👥</span><span>2 PLAYERS</span></button>
                 </div>
             </div>
+
+            <div class="section-label">HIGH SCORES</div>
+            <div class="high-scores-container" id="startHighScores"></div>
 
             <div class="ready-indicator" id="armsUpIndicator">WAVE YOUR HAND ABOVE YOUR HEAD!</div>
             <button class="btn" id="startBtn">START GAME</button>
@@ -125,6 +129,8 @@
             <h1 class="game-title">GAME OVER</h1>
             <div class="final-score">SCORE: <span id="finalScore">0</span></div>
             <div class="stat" style="margin-bottom:30px">WAVE REACHED: <span id="finalWave">1</span></div>
+            <div class="section-label">HIGH SCORES</div>
+            <div class="high-scores-container" id="gameOverHighScores"></div>
             <button class="btn" id="restartBtn">PLAY AGAIN</button>
         </div>
     </div>

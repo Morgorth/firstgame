@@ -20,13 +20,19 @@ const CONFIG = {
         basic: { width: 60, height: 60, speed: 2.5, health: 25, points: 10, color: '#ff0080' },
         fast:  { width: 50, height: 50, speed: 5,   health: 15, points: 15, color: '#00ff00' },
         tank:  { width: 90, height: 90, speed: 1.5, health: 60, points: 30, color: '#ff8800' },
-        shifter: { width: 35, height: 35, speed: 3.5, health: 10, points: 20, color: '#aa00ff', dodgeCooldown: 30, dodgeRange: 200 }
+        shifter: { width: 35, height: 35, speed: 3.5, health: 10, points: 20, color: '#aa00ff', dodgeCooldown: 30, dodgeRange: 200 },
+        boss: { width: 150, height: 150, speed: 1.0, health: 200, points: 200, color: '#ff0000', horizontalSpeed: 1.5 }
     },
     powerup: {
         width: 30,
         height: 30,
         speed: 3,
-        spawnChance: 0.12
+        spawnChance: 0.12,
+        types: {
+            fleet:  { color: '#ffff00', unicornColor: '#FFD700', duration: 0 },
+            shield: { color: '#00aaff', unicornColor: '#FFB6C1', duration: 600 },
+            spread: { color: '#ff8800', unicornColor: '#FF69B4', duration: 480 }
+        }
     },
     wave: {
         delay: 300           // frames to wait between waves

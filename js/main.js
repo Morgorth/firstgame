@@ -59,7 +59,8 @@ function startGame() {
         totalKills: 0,
         superWeaponCharges: [0, 0],
         superWeaponNextThreshold: CONFIG.superWeapon.killsPerCharge,
-        superWeaponFlashEffect: 0
+        superWeaponFlashEffect: 0,
+        activeEffects: { shield: [0, 0], spread: [0, 0] }
     };
 
     if (controlMode === 'camera') {
@@ -112,6 +113,25 @@ function gameOver() {
     document.getElementById('finalScore').textContent = gameState.score;
     document.getElementById('finalWave').textContent = gameState.wave;
     document.getElementById('gameOverScreen').classList.remove('hidden');
+
+    // Save high score
+    const playerFaces = gameState.players.map(p => p.faceImage || null);
+    const entry = {
+        score: gameState.score,
+        wave: gameState.wave,
+        date: new Date().toISOString(),
+        playerFaces,
+        theme: gameTheme,
+        controlMode
+    };
+    const dominated = highScores.length < 10 || highScores.some(h => entry.score > h.score);
+    if (dominated && entry.score > 0) {
+        highScores.push(entry);
+        highScores.sort((a, b) => b.score - a.score);
+        highScores = highScores.slice(0, 10);
+        saveHighScores();
+    }
+    renderHighScores('gameOverHighScores');
 }
 
 function gameLoop() {
@@ -136,4 +156,5 @@ document.getElementById('restartBtn').addEventListener('click', startGame);
 // ── Boot ────────────────────────────────────────────────────────────
 
 gameState.stars = createStars();
+renderHighScores('startHighScores');
 gameLoop();

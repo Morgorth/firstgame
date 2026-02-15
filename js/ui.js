@@ -19,6 +19,8 @@ function updateHUD() {
             nukeEl.classList.remove('nuke-ready');
         }
     }
+
+    updateActiveEffectsHUD();
 }
 
 function updateWave() {
@@ -55,6 +57,74 @@ function updateCrowdDisplay() {
             _lastCrowdSize = size;
         }
     }
+}
+
+// ── High Scores ─────────────────────────────────────────────────────
+
+function renderHighScores(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (highScores.length === 0) {
+        container.innerHTML = '<div style="color:#888;font-family:Rajdhani,sans-serif;font-size:14px;padding:10px;">No scores yet — play a game!</div>';
+        return;
+    }
+
+    container.innerHTML = highScores.map((entry, i) => {
+        const rank = i + 1;
+        const firstClass = rank === 1 ? ' first-place' : '';
+
+        // Face thumbnails
+        let facesHtml = '';
+        if (entry.playerFaces) {
+            entry.playerFaces.forEach(face => {
+                if (face) {
+                    facesHtml += `<img class="high-score-face" src="${face}" alt="">`;
+                } else {
+                    facesHtml += `<div class="high-score-face high-score-face-placeholder">\uD83D\uDC64</div>`;
+                }
+            });
+        }
+
+        const d = new Date(entry.date);
+        const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+        const themeIcon = entry.theme === 'unicorn' ? '\uD83E\uDD84' : '\uD83D\uDE80';
+        const ctrlIcon = entry.controlMode === 'camera' ? '\uD83D\uDCF7' : '\u2328\uFE0F';
+
+        return `<div class="high-score-entry${firstClass}">
+            <div class="high-score-rank">#${rank}</div>
+            <div class="high-score-faces">${facesHtml}</div>
+            <div class="high-score-info">
+                <div class="high-score-score">${entry.score.toLocaleString()}</div>
+                <div class="high-score-meta">Wave ${entry.wave} &middot; ${dateStr} &middot; ${themeIcon} ${ctrlIcon}</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Active Effects HUD ──────────────────────────────────────────────
+
+function updateActiveEffectsHUD() {
+    const el = document.getElementById('activeEffects');
+    if (!el) return;
+
+    let html = '';
+    // Show effects for player 0 (or all active players)
+    for (let i = 0; i < gameState.players.length; i++) {
+        if (!gameState.players[i].active) continue;
+        const shield = gameState.activeEffects.shield[i];
+        const spread = gameState.activeEffects.spread[i];
+        if (shield > 0) {
+            const secs = Math.ceil(shield / 60);
+            html += `<div class="active-effect shield-effect">\uD83D\uDEE1\uFE0F ${secs}s</div>`;
+        }
+        if (spread > 0) {
+            const secs = Math.ceil(spread / 60);
+            html += `<div class="active-effect spread-effect">\u2728 ${secs}s</div>`;
+        }
+    }
+    el.innerHTML = html;
 }
 
 // ── Control mode ────────────────────────────────────────────────────

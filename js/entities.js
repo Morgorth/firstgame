@@ -10,11 +10,15 @@ function createBullet(x, y, owner = 0) {
 
 function createEnemy(type, x, y) {
     const cfg = CONFIG.enemy[type];
-    return { type, x, y, health: cfg.health, maxHealth: cfg.health, ...cfg, lastDodgeFrame: 0 };
+    return { type, x, y, health: cfg.health, maxHealth: cfg.health, ...cfg, lastDodgeFrame: 0, bossDirection: type === 'boss' ? 1 : 0 };
 }
 
-function createPowerup(x, y) {
-    return { x, y, active: true, health: 20, maxHealth: 20 };
+function createPowerup(x, y, type) {
+    if (!type) {
+        const r = Math.random();
+        type = r < 0.4 ? 'fleet' : r < 0.7 ? 'shield' : 'spread';
+    }
+    return { x, y, active: true, health: 20, maxHealth: 20, type };
 }
 
 function createParticle(x, y, color) {

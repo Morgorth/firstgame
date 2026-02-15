@@ -49,6 +49,32 @@ function checkSuperWeaponThreshold() {
 
 function spawnWave() {
     const w = gameState.wave;
+
+    const lanes = gameState.lanePositions ||
+        [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
+    const numLanes = lanes.length;
+
+    // Boss wave every 10 waves
+    if (w % 10 === 0) {
+        const bossHpScale = 1 + Math.floor(w / 10) * 0.3;
+        const boss = createEnemy('boss', lanes[Math.floor(numLanes / 2)], -100);
+        boss.health = Math.ceil(CONFIG.enemy.boss.health * bossHpScale);
+        boss.maxHealth = boss.health;
+        gameState.enemies.push(boss);
+
+        // Add 2-3 basic minions
+        const minionCount = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < minionCount; i++) {
+            const m = createEnemy('basic', lanes[i % numLanes], -80 - (i + 1) * 90);
+            gameState.enemies.push(m);
+        }
+
+        gameState.enemiesInWave = 1 + minionCount;
+        gameState.enemiesKilled = 0;
+        audioSystem.startMusic();
+        return;
+    }
+
     let count, hp, spd;
 
     if (w === 1)      { count = 3;                  hp = 0.5; spd = 0.7;  }
@@ -63,10 +89,6 @@ function spawnWave() {
 
     gameState.enemiesInWave = count;
     gameState.enemiesKilled = 0;
-
-    const lanes = gameState.lanePositions ||
-        [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
-    const numLanes = lanes.length;
 
     // Start music when wave spawns
     audioSystem.startMusic();
@@ -157,7 +179,14 @@ function update() {
     if (!gameState.countdownActive && gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
         gameState.players.forEach((player, idx) => {
             if (!player.active) return;
-            gameState._cachedCrowdPositions[idx].forEach(p => gameState.bullets.push(createBullet(p.x, p.y, idx)));
+            gameState._cachedCrowdPositions[idx].forEach(p => {
+                gameState.bullets.push(createBullet(p.x, p.y, idx));
+                // Spread shot: extra bullets at ±15px offset
+                if (gameState.activeEffects.spread[idx] > 0) {
+                    gameState.bullets.push(createBullet(p.x - 15, p.y, idx));
+                    gameState.bullets.push(createBullet(p.x + 15, p.y, idx));
+                }
+            });
         });
         gameState.lastShot = gameState.frameCount;
     }
@@ -177,7 +206,15 @@ function update() {
     }
 
     // Move enemies
-    gameState.enemies.forEach(e => e.y += e.speed);
+    gameState.enemies.forEach(e => {
+        e.y += e.speed;
+        // Boss horizontal movement
+        if (e.type === 'boss') {
+            e.x += (e.horizontalSpeed || CONFIG.enemy.boss.horizontalSpeed) * e.bossDirection;
+            if (e.x <= e.width / 2 + 20) { e.bossDirection = 1; }
+            else if (e.x >= PLAY_AREA.width - e.width / 2 - 20) { e.bossDirection = -1; }
+        }
+    });
 
     // Shifter dodge logic
     const dodgeLanes = gameState.lanePositions ||
@@ -298,13 +335,25 @@ function update() {
             if (pu.health <= 0) {
                 const ownerIdx = bullet.owner || 0;
                 const owner = gameState.players[ownerIdx];
-                if (owner && owner.active && owner.crowdSize < CONFIG.player.maxCrowd) {
-                    owner.crowdSize++;
-                    if (ownerIdx === 0) gameState.crowdSize = owner.crowdSize;
-                    updateCrowdDisplay();
+                const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
+                const puType = pu.type || 'fleet';
+                const typeCfg = CONFIG.powerup.types[puType];
+                const particleColor = isUnicorn ? (typeCfg?.unicornColor || '#FFD700') : (typeCfg?.color || '#ffff00');
+
+                if (puType === 'fleet') {
+                    if (owner && owner.active && owner.crowdSize < CONFIG.player.maxCrowd) {
+                        owner.crowdSize++;
+                        if (ownerIdx === 0) gameState.crowdSize = owner.crowdSize;
+                        updateCrowdDisplay();
+                    }
+                } else if (puType === 'shield') {
+                    gameState.activeEffects.shield[ownerIdx] = CONFIG.powerup.types.shield.duration;
+                } else if (puType === 'spread') {
+                    gameState.activeEffects.spread[ownerIdx] = CONFIG.powerup.types.spread.duration;
                 }
+
                 for (let i = 0; i < 8; i++) {
-                    gameState.particles.push(createParticle(pu.x, pu.y, owner?.color || '#ffff00'));
+                    gameState.particles.push(createParticle(pu.x, pu.y, particleColor));
                 }
                 pu.active = false;
             }
@@ -327,6 +376,18 @@ function update() {
                 { x: player.x - crowdRadius / 2, y: player.y - crowdRadius / 2 },
                 e, crowdRadius, crowdRadius, e.width, e.height
             )) {
+                // Shield absorbs the hit
+                if (gameState.activeEffects.shield[i] > 0) {
+                    gameState.activeEffects.shield[i] = 0;
+                    gameState.enemiesKilled++;
+                    gameState.totalKills++;
+                    checkSuperWeaponThreshold();
+                    for (let j = 0; j < 15; j++) {
+                        gameState.particles.push(createParticle(e.x, e.y, '#00aaff'));
+                    }
+                    return false;
+                }
+
                 const dmg = Math.ceil(e.health / CONFIG.bullet.damage);
                 player.crowdSize = Math.max(0, player.crowdSize - dmg);
                 if (i === 0) gameState.crowdSize = player.crowdSize;
@@ -348,8 +409,17 @@ function update() {
         if (e.y > PLAY_AREA.height + 50) {
             audioSystem.playExplosion();
             const dmg = Math.ceil(e.health / CONFIG.bullet.damage / 2);
+            let shieldAbsorbed = false;
             gameState.players.forEach((player, i) => {
                 if (!player.active) return;
+                if (gameState.activeEffects.shield[i] > 0) {
+                    gameState.activeEffects.shield[i] = 0;
+                    for (let j = 0; j < 10; j++) {
+                        gameState.particles.push(createParticle(player.x, player.y, '#00aaff'));
+                    }
+                    shieldAbsorbed = true;
+                    return;
+                }
                 player.crowdSize = Math.max(0, player.crowdSize - dmg);
                 if (i === 0) gameState.crowdSize = player.crowdSize;
                 if (player.crowdSize <= 0) player.active = false;
@@ -412,6 +482,12 @@ function update() {
         gameState.hitEffect--;
         gameState.screenShake.x *= 0.9;
         gameState.screenShake.y *= 0.9;
+    }
+
+    // Tick down active effects
+    for (let i = 0; i < gameState.players.length; i++) {
+        if (gameState.activeEffects.shield[i] > 0) gameState.activeEffects.shield[i]--;
+        if (gameState.activeEffects.spread[i] > 0) gameState.activeEffects.spread[i]--;
     }
 
     // Decay super weapon flash effect

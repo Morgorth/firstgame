@@ -204,6 +204,33 @@ function drawSpaceEnemy(e, sc) {
         ctx.fillStyle = e.color;
         ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-20, -5); ctx.lineTo(-14, -8); ctx.fill();
         ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(20, -5); ctx.lineTo(14, -8); ctx.fill();
+    } else if (e.type === 'boss') {
+        // Boss — large hull with red eye sockets and pulsing core
+        // Main hull
+        ctx.beginPath();
+        ctx.moveTo(0, -50); ctx.lineTo(-50, -25); ctx.lineTo(-60, 30);
+        ctx.lineTo(-40, 45); ctx.lineTo(40, 45); ctx.lineTo(60, 30); ctx.lineTo(50, -25);
+        ctx.closePath(); ctx.fill();
+        // Side cannons
+        ctx.fillStyle = '#cc0000';
+        ctx.fillRect(-70, -10, 15, 40);
+        ctx.fillRect(55, -10, 15, 40);
+        // Eye sockets
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(-20, -5, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(20, -5, 12, 0, Math.PI * 2); ctx.fill();
+        // Red eyes
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath(); ctx.arc(-20, -5, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(20, -5, 7, 0, Math.PI * 2); ctx.fill();
+        // Pulsing core
+        const bossPulse = Math.sin(gameState.frameCount * 0.1) * 0.4 + 0.6;
+        ctx.fillStyle = `rgba(255,0,0,${bossPulse})`;
+        ctx.beginPath(); ctx.arc(0, 20, 14, 0, Math.PI * 2); ctx.fill();
+        // Engines
+        ctx.fillStyle = '#ff4400';
+        ctx.fillRect(-20, 45, 8, 12);
+        ctx.fillRect(12, 45, 8, 12);
     } else {
         // Tank
         ctx.beginPath();
@@ -354,6 +381,23 @@ function render() {
                 ctx.textAlign = 'center';
                 ctx.fillText(`P${playerIndex + 1}`, player.x, faceY - 35);
             }
+
+            // Shield overlay: pulsing circle around fleet when active
+            if (gameState.activeEffects.shield[playerIndex] > 0) {
+                const shieldPulse = Math.sin(gameState.frameCount * 0.12) * 0.15 + 0.85;
+                const shieldRadius = Math.sqrt(player.crowdSize) * 28 + 20;
+                const shieldColor = isUnicorn ? 'rgba(255,182,193,' : 'rgba(0,170,255,';
+                ctx.strokeStyle = shieldColor + (0.6 * shieldPulse) + ')';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y - shieldRadius / 3, shieldRadius * shieldPulse, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.strokeStyle = shieldColor + (0.2 * shieldPulse) + ')';
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y - shieldRadius / 3, shieldRadius * shieldPulse, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         });
     }
 
@@ -381,9 +425,9 @@ function render() {
         const e = gameState.enemies[i];
         if (e.y < -100 || e.health <= 0) continue;
         const ships = Math.ceil(e.health / CONFIG.bullet.damage);
-        const sc = (e.type === 'tank' ? 1.2 : e.type === 'fast' ? 0.9 : e.type === 'shifter' ? 0.7 : 1) * (1 + ships * 0.08);
+        const sc = (e.type === 'boss' ? 1.8 : e.type === 'tank' ? 1.2 : e.type === 'fast' ? 0.9 : e.type === 'shifter' ? 0.7 : 1) * (1 + ships * 0.08);
         if (isUnicorn) {
-            const wolfColor = e.type === 'tank' ? '#8B4513' : e.type === 'fast' ? '#A0A0A0' : e.type === 'shifter' ? '#9B30FF' : '#696969';
+            const wolfColor = e.type === 'boss' ? '#8B0000' : e.type === 'tank' ? '#8B4513' : e.type === 'fast' ? '#A0A0A0' : e.type === 'shifter' ? '#9B30FF' : '#696969';
             drawWolf(e.x, e.y, sc * 0.9, wolfColor);
         } else {
             drawSpaceEnemy(e, sc);
@@ -414,45 +458,83 @@ function render() {
         ctx.save();
         ctx.translate(p.x, p.y);
         const pulse = Math.sin(gameState.frameCount * 0.15) * 0.5 + 1;
+        const puType = p.type || 'fleet';
+        const typeCfg = CONFIG.powerup.types[puType];
+        const puColor = isUnicorn ? typeCfg.unicornColor : typeCfg.color;
 
         if (isUnicorn) {
-            // Glow via radial gradient instead of shadowBlur
             const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, 45 * pulse);
-            grd.addColorStop(0, 'rgba(255,215,0,0.5)');
-            grd.addColorStop(1, 'rgba(255,215,0,0)');
+            grd.addColorStop(0, puColor + '80');
+            grd.addColorStop(1, puColor + '00');
             ctx.fillStyle = grd;
             ctx.fillRect(-50, -50, 100, 100);
-            // Star emoji sprite
-            const starSprite = _getStarEmojiSprite();
-            const sz = 44 * pulse;
-            ctx.drawImage(starSprite, -sz / 2, -sz / 2, sz, sz);
+            if (puType === 'fleet') {
+                const starSprite = _getStarEmojiSprite();
+                const sz = 44 * pulse;
+                ctx.drawImage(starSprite, -sz / 2, -sz / 2, sz, sz);
+            } else if (puType === 'shield') {
+                ctx.font = `${Math.round(36 * pulse)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = puColor;
+                ctx.fillText('\uD83D\uDEE1\uFE0F', 0, 0);
+            } else {
+                ctx.font = `${Math.round(36 * pulse)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = puColor;
+                ctx.fillText('\u2728', 0, 0);
+            }
         } else {
-            // Glow via radial gradient instead of shadowBlur
             const grd = ctx.createRadialGradient(0, 0, 10, 0, 0, 50 * pulse);
-            grd.addColorStop(0, 'rgba(255,255,0,0.4)');
-            grd.addColorStop(1, 'rgba(255,255,0,0)');
+            grd.addColorStop(0, puColor + '66');
+            grd.addColorStop(1, puColor + '00');
             ctx.fillStyle = grd;
             ctx.fillRect(-55, -55, 110, 110);
 
-            ctx.strokeStyle = 'rgba(255,255,0,0.6)';
+            ctx.strokeStyle = puColor + '99';
             ctx.lineWidth = 8;
             ctx.beginPath(); ctx.arc(0, 0, 35 * pulse, 0, Math.PI * 2); ctx.stroke();
 
-            ctx.fillStyle = '#ffff00';
             ctx.scale(1.3, 1.3);
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(0, -15); ctx.lineTo(-10, 6); ctx.lineTo(-6, 10);
-            ctx.lineTo(6, 10); ctx.lineTo(10, 6);
-            ctx.closePath();
-            ctx.stroke(); ctx.fill();
 
-            ctx.fillStyle = '#ffaa00';
-            ctx.beginPath(); ctx.arc(0, -3, 4, 0, Math.PI * 2); ctx.fill();
+            if (puType === 'fleet') {
+                ctx.fillStyle = puColor;
+                ctx.beginPath();
+                ctx.moveTo(0, -15); ctx.lineTo(-10, 6); ctx.lineTo(-6, 10);
+                ctx.lineTo(6, 10); ctx.lineTo(10, 6);
+                ctx.closePath();
+                ctx.stroke(); ctx.fill();
+                ctx.fillStyle = '#ffaa00';
+                ctx.beginPath(); ctx.arc(0, -3, 4, 0, Math.PI * 2); ctx.fill();
+            } else if (puType === 'shield') {
+                // Shield shape
+                ctx.fillStyle = puColor;
+                ctx.beginPath();
+                ctx.moveTo(0, -15); ctx.lineTo(-12, -5); ctx.lineTo(-10, 10);
+                ctx.lineTo(0, 15); ctx.lineTo(10, 10); ctx.lineTo(12, -5);
+                ctx.closePath();
+                ctx.stroke(); ctx.fill();
+            } else {
+                // Spread: triple bars
+                ctx.fillStyle = puColor;
+                ctx.fillRect(-8, -10, 16, 4);
+                ctx.fillRect(-12, -2, 24, 4);
+                ctx.fillRect(-8, 6, 16, 4);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-8, -10, 16, 4);
+                ctx.strokeRect(-12, -2, 24, 4);
+                ctx.strokeRect(-8, 6, 16, 4);
+            }
         }
 
-        // Ships-to-destroy count (no shadowBlur)
+        // Ships-to-destroy count
+        ctx.font = 'bold 22px Orbitron,monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         const ships = Math.ceil(p.health / CONFIG.bullet.damage);
         ctx.fillStyle = '#fff';
         ctx.strokeStyle = '#000';
