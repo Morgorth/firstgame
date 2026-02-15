@@ -6,7 +6,7 @@ const CONFIG = {
         width: 30,
         height: 30,
         speed: 15,
-        maxCrowd: 50,
+        maxCrowd: 100,
         startCrowd: 3,
         fireRate: 10        // frames between auto-shots
     },
@@ -43,7 +43,7 @@ const CONFIG = {
         decayRate: 2               // frames lost per non-qualifying frame
     },
     superWeapon: {
-        killsPerCharge: 25,        // cumulative kills between each charge earned
+        killsPerCharge: 1000,        // cumulative kills between each charge earned
         activationKey: ' ',        // Space bar for keyboard mode
         handsUpHoldFrames: 12,     // ~200ms hold to prevent accidental activation
         flashDuration: 20,         // screen flash frames
