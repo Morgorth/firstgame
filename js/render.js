@@ -312,7 +312,8 @@ function render() {
                     _faceImageCache[playerIndex].src = player.faceImage;
                 }
                 const img = _faceImageCache[playerIndex];
-                const faceY = player.y - 50 - Math.sqrt(player.crowdSize) * 10;
+                const numRows = Math.ceil(player.crowdSize / Math.ceil(Math.sqrt(player.crowdSize * 2)));
+                const faceY = player.y - numRows * 28 - 40;
                 const playerColor = player.color || PLAYER_COLORS[playerIndex].primary;
 
                 // Clipped face circle

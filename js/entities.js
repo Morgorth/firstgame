@@ -1,7 +1,7 @@
 // Factory functions for creating game entities.
 
 function createPlayer() {
-    return { x: PLAY_AREA.width / 2, y: PLAY_AREA.height - 80 };
+    return { x: PLAY_AREA.width / 2, y: PLAY_AREA.height - 60 };
 }
 
 function createBullet(x, y, owner = 0) {
@@ -67,12 +67,13 @@ function getCrowdPositions(playerIndex = 0) {
     const rows = Math.ceil(size / cols);
     let idx = 0;
 
+    // Grid grows upward from player position (row 0 = bottom, at playerY)
     for (let r = 0; r < rows && idx < size; r++) {
         const inRow = Math.min(cols, size - idx);
         for (let c = 0; c < inRow; c++) {
             positions.push({
                 x: playerX + (c - (inRow - 1) / 2) * spacing,
-                y: playerY + (r - (rows - 1) / 2) * spacing
+                y: playerY - r * spacing
             });
             idx++;
         }

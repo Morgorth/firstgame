@@ -16,7 +16,7 @@ function startGame() {
         {
             active: true,
             x: lanePositions[1],
-            y: PLAY_AREA.height - 150,
+            y: PLAY_AREA.height - 60,
             crowdSize: CONFIG.player.startCrowd,
             faceImage: webcamState.registeredPlayers[0]?.faceImage || null,
             color: '#00ffff',
@@ -25,7 +25,7 @@ function startGame() {
         {
             active: playerCount === 2,
             x: lanePositions[playerCount === 2 ? 3 : 1],
-            y: PLAY_AREA.height - 150,
+            y: PLAY_AREA.height - 60,
             crowdSize: CONFIG.player.startCrowd,
             faceImage: webcamState.registeredPlayers[1]?.faceImage || null,
             color: '#ff00ff',
