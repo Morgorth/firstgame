@@ -65,6 +65,7 @@ function startGame() {
     }
 
     // Hide all overlay screens
+    cancelCountdown();
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('playerSetupScreen').classList.add('hidden');
     document.getElementById('gameOverScreen').classList.add('hidden');
@@ -87,11 +88,20 @@ function startGame() {
     updateHUD();
     updateWave();
     updateCrowdDisplay();
-    spawnWave();
+
+    // Countdown before first wave
+    gameState.countdownActive = true;
+    startWaveCountdown(() => {
+        if (!gameState.running) return;
+        gameState.countdownActive = false;
+        spawnWave();
+    });
 }
 
 function gameOver() {
     gameState.running = false;
+    gameState.countdownActive = false;
+    cancelCountdown();
     audioSystem.stopMusic();
     audioSystem.playGameOver();
     document.getElementById('finalScore').textContent = gameState.score;

@@ -222,10 +222,10 @@ function update() {
     gameState.particles = gameState.particles.filter(p => { p.x += p.vx; p.y += p.vy; return --p.life > 0; });
 
     // Wave progression
-    if (gameState.enemiesKilled >= gameState.enemiesInWave && gameState.enemies.length === 0) {
+    if (gameState.enemiesKilled >= gameState.enemiesInWave && gameState.enemies.length === 0 && !gameState.countdownActive) {
         // Stop music as soon as wave is cleared
         if (audioSystem.isPlaying) audioSystem.stopMusic();
-        if (++gameState.waveTimer >= CONFIG.wave.delay) {
+        if (++gameState.waveTimer >= 60) {
             gameState.wave++;
             gameState.waveTimer = 0;
             gameState.enemiesKilled = 0;
@@ -245,8 +245,15 @@ function update() {
                 }
             }
 
-            spawnWave();
             updateWave();
+
+            // Countdown before next wave
+            gameState.countdownActive = true;
+            startWaveCountdown(() => {
+                if (!gameState.running) return;
+                gameState.countdownActive = false;
+                spawnWave();
+            });
         }
     }
 

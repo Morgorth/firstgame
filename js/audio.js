@@ -357,6 +357,33 @@ const audioSystem = (() => {
         playEnemyKill,
         playGameOver,
 
+        // Voice synthesis for countdown
+        speakText(text) {
+            if (!('speechSynthesis' in window)) return;
+            speechSynthesis.cancel();
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.rate = 1.15;
+            utt.pitch = 1.1;
+            utt.volume = 0.9;
+            speechSynthesis.speak(utt);
+        },
+
+        // Countdown tick (for 3, 2, 1)
+        playCountdownTick() {
+            if (!ensureContext()) return;
+            playTone(880, 0.12, 'sine', sfxGain, 0.35, 0);
+            playTone(880, 0.12, 'triangle', sfxGain, 0.15, 0);
+        },
+
+        // Countdown GO sound (ascending fanfare)
+        playCountdownGo() {
+            if (!ensureContext()) return;
+            playTone(523.25, 0.08, 'sine', sfxGain, 0.3, 0);
+            setTimeout(() => playTone(659.25, 0.08, 'sine', sfxGain, 0.3, 0), 60);
+            setTimeout(() => playTone(783.99, 0.1, 'sine', sfxGain, 0.35, 0), 120);
+            setTimeout(() => playTone(1046.5, 0.25, 'triangle', sfxGain, 0.4, 0), 200);
+        },
+
         // Convenience: check if playing
         get isPlaying() { return musicPlaying; }
     };
