@@ -10,7 +10,7 @@ function createBullet(x, y, owner = 0) {
 
 function createEnemy(type, x, y) {
     const cfg = CONFIG.enemy[type];
-    return { type, x, y, health: cfg.health, maxHealth: cfg.health, ...cfg };
+    return { type, x, y, health: cfg.health, maxHealth: cfg.health, ...cfg, lastDodgeFrame: 0 };
 }
 
 function createPowerup(x, y) {

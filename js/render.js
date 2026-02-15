@@ -192,6 +192,18 @@ function drawSpaceEnemy(e, sc) {
         ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(25, -5); ctx.lineTo(20, 5); ctx.fill();
         ctx.fillStyle = '#00ff00';
         ctx.beginPath(); ctx.arc(0, -5, 5, 0, Math.PI * 2); ctx.fill();
+    } else if (e.type === 'shifter') {
+        // Shifter — sleek diamond/dart shape
+        ctx.beginPath();
+        ctx.moveTo(0, -20); ctx.lineTo(-14, 0); ctx.lineTo(0, 20); ctx.lineTo(14, 0);
+        ctx.closePath(); ctx.fill();
+        // Flickering core
+        ctx.fillStyle = gameState.frameCount % 6 < 3 ? '#dd66ff' : '#ffffff';
+        ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+        // Side fins
+        ctx.fillStyle = e.color;
+        ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-20, -5); ctx.lineTo(-14, -8); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(20, -5); ctx.lineTo(14, -8); ctx.fill();
     } else {
         // Tank
         ctx.beginPath();
@@ -369,9 +381,9 @@ function render() {
         const e = gameState.enemies[i];
         if (e.y < -100 || e.health <= 0) continue;
         const ships = Math.ceil(e.health / CONFIG.bullet.damage);
-        const sc = (e.type === 'tank' ? 1.2 : e.type === 'fast' ? 0.9 : 1) * (1 + ships * 0.08);
+        const sc = (e.type === 'tank' ? 1.2 : e.type === 'fast' ? 0.9 : e.type === 'shifter' ? 0.7 : 1) * (1 + ships * 0.08);
         if (isUnicorn) {
-            const wolfColor = e.type === 'tank' ? '#8B4513' : e.type === 'fast' ? '#A0A0A0' : '#696969';
+            const wolfColor = e.type === 'tank' ? '#8B4513' : e.type === 'fast' ? '#A0A0A0' : e.type === 'shifter' ? '#9B30FF' : '#696969';
             drawWolf(e.x, e.y, sc * 0.9, wolfColor);
         } else {
             drawSpaceEnemy(e, sc);

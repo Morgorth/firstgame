@@ -34,14 +34,29 @@ function spawnWave() {
         let type = 'basic';
         if (w >= 8) {
             const r = Math.random();
-            type = r < 0.15 ? 'tank' : r < 0.4 ? 'fast' : 'basic';
+            type = r < 0.12 ? 'shifter' : r < 0.27 ? 'tank' : r < 0.52 ? 'fast' : 'basic';
         } else if (w >= 5) {
-            type = Math.random() < 0.25 ? 'fast' : 'basic';
+            const r = Math.random();
+            type = r < 0.10 ? 'shifter' : r < 0.35 ? 'fast' : 'basic';
         } else if (w >= 3) {
             type = Math.random() < 0.15 ? 'fast' : 'basic';
         }
 
-        const enemy = createEnemy(type, lanes[i % numLanes], -80 - Math.floor(i / numLanes) * 90);
+        // Shifters must spawn in a lane that already has another enemy
+        let laneIdx = i % numLanes;
+        if (type === 'shifter') {
+            const occupiedLanes = [];
+            for (let li = 0; li < numLanes; li++) {
+                if (gameState.enemies.some(ex => ex.health > 0 && Math.abs(ex.x - lanes[li]) < 40)) {
+                    occupiedLanes.push(li);
+                }
+            }
+            if (occupiedLanes.length > 0) {
+                laneIdx = occupiedLanes[Math.floor(Math.random() * occupiedLanes.length)];
+            }
+        }
+
+        const enemy = createEnemy(type, lanes[laneIdx], -80 - Math.floor(i / numLanes) * 90);
         enemy.health = Math.ceil(enemy.maxHealth * hp);
         enemy.maxHealth = enemy.health;
         enemy.speed *= spd;
@@ -116,6 +131,55 @@ function update() {
 
     // Move enemies
     gameState.enemies.forEach(e => e.y += e.speed);
+
+    // Shifter dodge logic
+    const dodgeLanes = gameState.lanePositions ||
+        [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
+    for (let i = 0; i < gameState.enemies.length; i++) {
+        const e = gameState.enemies[i];
+        if (e.type !== 'shifter' || e.health <= 0 || e.y <= 0) continue;
+        if (gameState.frameCount - e.lastDodgeFrame < e.dodgeCooldown) continue;
+
+        // Check if any bullet is heading toward this shifter
+        let threatened = false;
+        for (let bi = 0; bi < gameState.bullets.length; bi++) {
+            const b = gameState.bullets[bi];
+            if (!b.active) continue;
+            if (b.y < e.y && b.y > e.y - e.dodgeRange && Math.abs(b.x - e.x) < 40) {
+                threatened = true;
+                break;
+            }
+        }
+        if (!threatened) continue;
+
+        // Find current lane index
+        let curLane = 0;
+        let minDist = Infinity;
+        for (let li = 0; li < dodgeLanes.length; li++) {
+            const d = Math.abs(e.x - dodgeLanes[li]);
+            if (d < minDist) { minDist = d; curLane = li; }
+        }
+
+        // Find adjacent lanes with alive enemies
+        const candidates = [];
+        for (const adj of [curLane - 1, curLane + 1]) {
+            if (adj < 0 || adj >= dodgeLanes.length) continue;
+            const count = gameState.enemies.filter(
+                other => other !== e && other.health > 0 && Math.abs(other.x - dodgeLanes[adj]) < 40
+            ).length;
+            if (count > 0) candidates.push({ lane: adj, count });
+        }
+        if (candidates.length === 0) continue;
+
+        // Prefer the lane with more cover
+        candidates.sort((a, b) => b.count - a.count);
+        const pick = (candidates.length > 1 && candidates[0].count === candidates[1].count)
+            ? candidates[Math.floor(Math.random() * 2)]
+            : candidates[0];
+
+        e.x = dodgeLanes[pick.lane];
+        e.lastDodgeFrame = gameState.frameCount;
+    }
 
     // Bullet vs enemy collisions (lane-bucketed for performance)
     // Bucket enemies by horizontal lane for O(bullets * enemies_in_lane) instead of O(bullets * enemies)

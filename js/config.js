@@ -19,7 +19,8 @@ const CONFIG = {
     enemy: {
         basic: { width: 60, height: 60, speed: 2.5, health: 25, points: 10, color: '#ff0080' },
         fast:  { width: 50, height: 50, speed: 5,   health: 15, points: 15, color: '#00ff00' },
-        tank:  { width: 90, height: 90, speed: 1.5, health: 60, points: 30, color: '#ff8800' }
+        tank:  { width: 90, height: 90, speed: 1.5, health: 60, points: 30, color: '#ff8800' },
+        shifter: { width: 35, height: 35, speed: 3.5, health: 10, points: 20, color: '#aa00ff', dodgeCooldown: 30, dodgeRange: 200 }
     },
     powerup: {
         width: 30,
