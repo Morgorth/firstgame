@@ -16,7 +16,7 @@ function createEnemy(type, x, y) {
 function createPowerup(x, y, type) {
     if (!type) {
         const r = Math.random();
-        type = r < 0.4 ? 'fleet' : r < 0.7 ? 'shield' : 'spread';
+        type = r < 0.75 ? 'fleet' : r < 0.90 ? 'shield' : 'spread';
     }
     return { x, y, active: true, health: 20, maxHealth: 20, type };
 }
