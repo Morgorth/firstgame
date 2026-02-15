@@ -359,13 +359,15 @@ const audioSystem = (() => {
 
         // Voice synthesis for countdown
         speakText(text) {
-            if (!('speechSynthesis' in window)) return;
-            speechSynthesis.cancel();
-            const utt = new SpeechSynthesisUtterance(text);
-            utt.rate = 1.15;
-            utt.pitch = 1.1;
-            utt.volume = 0.9;
-            speechSynthesis.speak(utt);
+            try {
+                if (!('speechSynthesis' in window)) return;
+                if (speechSynthesis.speaking) speechSynthesis.cancel();
+                const utt = new SpeechSynthesisUtterance(text);
+                utt.rate = 1.15;
+                utt.pitch = 1.1;
+                utt.volume = 0.9;
+                speechSynthesis.speak(utt);
+            } catch (_) { /* TTS unavailable */ }
         },
 
         // Countdown tick (for 3, 2, 1)
