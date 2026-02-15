@@ -205,15 +205,15 @@ function startWaveCountdown(onComplete) {
 
     const steps = [];
     if (isFirstWave) {
-        steps.push({ text: 'READY?', voice: 'Are you ready?', delay: 1500 });
+        steps.push({ text: 'READY?', voice: 'Are you ready?', delay: 1200 });
     } else {
-        steps.push({ text: 'WAVE ' + gameState.wave, voice: 'Wave ' + gameState.wave, delay: 1200 });
+        steps.push({ text: 'WAVE ' + gameState.wave, voice: 'Wave ' + gameState.wave, delay: 900 });
     }
     steps.push(
-        { text: '3', voice: '3', delay: 850, beep: true },
-        { text: '2', voice: '2', delay: 850, beep: true },
-        { text: '1', voice: '1', delay: 850, beep: true },
-        { text: 'GO!', voice: 'Go!', delay: 500, go: true }
+        { text: '3', voice: '3', delay: 650, beep: true },
+        { text: '2', voice: '2', delay: 650, beep: true },
+        { text: '1', voice: '1', delay: 650, beep: true },
+        { text: 'GO!', voice: 'Go!', delay: 400, go: true }
     );
 
     let i = 0;

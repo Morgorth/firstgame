@@ -91,8 +91,8 @@ function update() {
         p.active ? getCrowdPositions(i) : []
     );
 
-    // Auto-fire for all active players
-    if (gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
+    // Auto-fire for all active players (paused during countdown)
+    if (!gameState.countdownActive && gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
         gameState.players.forEach((player, idx) => {
             if (!player.active) return;
             gameState._cachedCrowdPositions[idx].forEach(p => gameState.bullets.push(createBullet(p.x, p.y, idx)));
@@ -105,6 +105,14 @@ function update() {
         b.y -= CONFIG.bullet.speed;
         return b.y > -20 && b.active;
     });
+
+    // Skip combat logic during countdown (no enemies to process)
+    if (gameState.countdownActive) {
+        gameState.particles = gameState.particles.filter(p => { p.x += p.vx; p.y += p.vy; return --p.life > 0; });
+        if (gameState.hitEffect > 0) { gameState.hitEffect--; gameState.screenShake.x *= 0.9; gameState.screenShake.y *= 0.9; }
+        updateHUD();
+        return;
+    }
 
     // Move enemies
     gameState.enemies.forEach(e => e.y += e.speed);
