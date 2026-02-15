@@ -16,6 +16,11 @@ const audioSystem = (() => {
     let targetBpm = 120;
     let activeSources = [];  // track live oscillators so we can stop them
 
+    // SFX throttle: limit enemy-kill sounds per frame
+    let _lastKillFrame = 0;
+    let _killsThisFrame = 0;
+    const MAX_KILLS_PER_FRAME = 3;
+
     // Ensure AudioContext is created on user gesture
     function ensureContext() {
         if (ctx) return true;
@@ -46,6 +51,7 @@ const audioSystem = (() => {
         return 440 * Math.pow(2, ((notes[note] || 0) - 9) / 12 + (octave - 4));
     }
 
+    // Create a tone and DISCONNECT all nodes when done to prevent audio graph bloat
     function playTone(freq, duration, type, gainNode, volume, detune) {
         if (!ctx) return;
         const osc = ctx.createOscillator();
@@ -61,6 +67,8 @@ const audioSystem = (() => {
         osc.stop(ctx.currentTime + duration);
         activeSources.push(osc);
         osc.onended = () => {
+            osc.disconnect();
+            g.disconnect();
             const idx = activeSources.indexOf(osc);
             if (idx !== -1) activeSources.splice(idx, 1);
         };
@@ -130,44 +138,29 @@ const audioSystem = (() => {
         const stepDuration = 60 / bpm;     // seconds per beat
         const idx = currentStep % seq.melody.length;
 
-        // Melody
+        // Melody — single oscillator per step (was 2, halved for performance)
         const mel = seq.melody[idx];
         if (mel) {
             const freq = noteFreq(mel.n, mel.o);
             if (isUnicorn) {
-                // Bright triangle wave + slight detune for shimmer
-                playTone(freq, stepDuration * 0.8, 'triangle', musicGain, 0.22, 5);
-                playTone(freq * 2, stepDuration * 0.4, 'sine', musicGain, 0.07, 0);
+                playTone(freq, stepDuration * 0.8, 'triangle', musicGain, 0.25, 0);
             } else {
-                // Gritty sawtooth for space theme
-                playTone(freq, stepDuration * 0.7, 'sawtooth', musicGain, 0.12, 0);
-                playTone(freq, stepDuration * 0.5, 'square', musicGain, 0.06, 7);
+                playTone(freq, stepDuration * 0.7, 'sawtooth', musicGain, 0.15, 0);
             }
         }
 
-        // Bass (every step)
+        // Bass — single oscillator (was 1-2)
         const bas = seq.bass[idx];
         if (bas) {
             const freq = noteFreq(bas.n, bas.o);
-            if (isUnicorn) {
-                playTone(freq, stepDuration * 0.9, 'sine', musicGain, 0.25, 0);
-            } else {
-                playTone(freq, stepDuration * 0.6, 'square', musicGain, 0.15, 0);
-                playTone(freq, stepDuration * 0.4, 'sawtooth', musicGain, 0.08, 0);
-            }
+            playTone(freq, stepDuration * 0.7, isUnicorn ? 'sine' : 'square', musicGain, 0.2, 0);
         }
 
-        // Sparkle / hi-hat layer
+        // Sparkle — single oscillator, only when present
         const spk = seq.sparkle[idx];
         if (spk) {
             const freq = noteFreq(spk.n, spk.o);
-            if (isUnicorn) {
-                playTone(freq, stepDuration * 0.3, 'sine', musicGain, 0.12, 0);
-                // Extra shimmer
-                playTone(freq * 1.5, stepDuration * 0.15, 'sine', musicGain, 0.06, 0);
-            } else {
-                playTone(freq, stepDuration * 0.2, 'square', musicGain, 0.05, 0);
-            }
+            playTone(freq, stepDuration * 0.25, 'sine', musicGain, 0.1, 0);
         }
 
         // Percussion: kick on beats 0,4,8,12 and hi-hat on every other step
@@ -201,6 +194,8 @@ const audioSystem = (() => {
         g.connect(musicGain);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.2);
+        // Disconnect when done
+        osc.onended = () => { osc.disconnect(); g.disconnect(); };
     }
 
     let _hiHatBuffer = null;
@@ -230,6 +225,8 @@ const audioSystem = (() => {
         bandpass.connect(g);
         g.connect(musicGain);
         src.start(ctx.currentTime);
+        // Disconnect all 3 nodes when done
+        src.onended = () => { src.disconnect(); bandpass.disconnect(); g.disconnect(); };
     }
 
     // ── SFX ──────────────────────────────────────────────────────────
@@ -250,9 +247,10 @@ const audioSystem = (() => {
         g.connect(sfxGain);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.6);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); };
 
         // Noise burst
-        const bufLen = ctx.sampleRate * 0.4;
+        const bufLen = Math.floor(ctx.sampleRate * 0.4);
         const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
         const d = buf.getChannelData(0);
         for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
@@ -270,6 +268,7 @@ const audioSystem = (() => {
         lp.connect(nGain);
         nGain.connect(sfxGain);
         nSrc.start(ctx.currentTime);
+        nSrc.onended = () => { nSrc.disconnect(); lp.disconnect(); nGain.disconnect(); };
 
         if (isUnicorn) {
             // Sad descending chime
@@ -281,13 +280,19 @@ const audioSystem = (() => {
 
     function playEnemyKill() {
         if (!ensureContext()) return;
+        // Throttle: max 3 kill sounds per game frame to prevent audio flood
+        const frame = typeof gameState !== 'undefined' ? gameState.frameCount : 0;
+        if (frame === _lastKillFrame) {
+            if (++_killsThisFrame > MAX_KILLS_PER_FRAME) return;
+        } else {
+            _lastKillFrame = frame;
+            _killsThisFrame = 1;
+        }
         const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
         if (isUnicorn) {
             playTone(noteFreq('C', 6), 0.1, 'triangle', sfxGain, 0.15, 0);
-            setTimeout(() => playTone(noteFreq('E', 6), 0.1, 'triangle', sfxGain, 0.12, 0), 50);
         } else {
             playTone(300, 0.08, 'square', sfxGain, 0.12, 0);
-            playTone(600, 0.06, 'square', sfxGain, 0.08, 0);
         }
     }
 
@@ -352,8 +357,11 @@ const audioSystem = (() => {
         stopMusic() {
             musicPlaying = false;
             if (musicTimer) { clearTimeout(musicTimer); musicTimer = null; }
-            // Fade out any active sources
-            activeSources.forEach(s => { try { s.stop(); } catch (_) {} });
+            // Stop and disconnect any active sources
+            activeSources.forEach(s => {
+                try { s.stop(); } catch (_) {}
+                try { s.disconnect(); } catch (_) {}
+            });
             activeSources = [];
         },
 
@@ -379,7 +387,6 @@ const audioSystem = (() => {
         playCountdownTick() {
             if (!ensureContext()) return;
             playTone(880, 0.12, 'sine', sfxGain, 0.35, 0);
-            playTone(880, 0.12, 'triangle', sfxGain, 0.15, 0);
         },
 
         // Countdown GO sound (ascending fanfare)
