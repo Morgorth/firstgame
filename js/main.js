@@ -87,6 +87,7 @@ function startGame() {
 
     updateHUD();
     updateWave();
+    _lastCrowdSize = -1; // force pip rebuild on game start
     updateCrowdDisplay();
 
     // Countdown before first wave
@@ -111,7 +112,8 @@ function gameOver() {
 
 function gameLoop() {
     update();
-    render();
+    // Only render if the game is running (start/game-over screens cover the canvas)
+    if (gameState.running) render();
     requestAnimationFrame(gameLoop);
 }
 

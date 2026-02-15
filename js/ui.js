@@ -10,6 +10,7 @@ function updateWave() {
     document.getElementById('wave').textContent = gameState.wave;
 }
 
+let _lastCrowdSize = -1;
 function updateCrowdDisplay() {
     if (gameState.playerCount === 2) {
         gameState.players.forEach((player, i) => {
@@ -19,13 +20,24 @@ function updateCrowdDisplay() {
             if (hudEl) hudEl.classList.toggle('eliminated', !player.active);
         });
     } else {
+        const size = Math.min(gameState.crowdSize, 50);
         document.getElementById('crowdSize').textContent = gameState.crowdSize;
-        const ind = document.getElementById('crowdIndicator');
-        ind.innerHTML = '';
-        for (let i = 0; i < Math.min(gameState.crowdSize, 50); i++) {
-            const pip = document.createElement('div');
-            pip.className = 'crowd-pip';
-            ind.appendChild(pip);
+        // Only rebuild pips if count actually changed
+        if (size !== _lastCrowdSize) {
+            const ind = document.getElementById('crowdIndicator');
+            const current = ind.children.length;
+            if (size > current) {
+                for (let i = current; i < size; i++) {
+                    const pip = document.createElement('div');
+                    pip.className = 'crowd-pip';
+                    ind.appendChild(pip);
+                }
+            } else if (size < current) {
+                for (let i = current - 1; i >= size; i--) {
+                    ind.removeChild(ind.children[i]);
+                }
+            }
+            _lastCrowdSize = size;
         }
     }
 }

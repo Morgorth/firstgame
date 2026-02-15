@@ -53,7 +53,7 @@ function spawnWave() {
 
 function update() {
     if (!gameState.running) return;
-    if (gameState.players.filter(p => p.active).length === 0) return;
+    if (!gameState.players.some(p => p.active)) return;
 
     gameState.frameCount++;
 
@@ -117,43 +117,67 @@ function update() {
     // Move enemies
     gameState.enemies.forEach(e => e.y += e.speed);
 
-    // Bullet vs enemy collisions
-    gameState.bullets.forEach(bullet => {
-        if (!bullet.active) return;
+    // Bullet vs enemy collisions (lane-bucketed for performance)
+    // Bucket enemies by horizontal lane for O(bullets * enemies_in_lane) instead of O(bullets * enemies)
+    const laneW = 120; // bucket width in game units
+    const enemyBuckets = {};
+    for (let i = 0; i < gameState.enemies.length; i++) {
+        const e = gameState.enemies[i];
+        if (e.health <= 0) continue;
+        const bucket = Math.floor(e.x / laneW);
+        // Place enemy in its bucket and adjacent ones (for overlap)
+        for (let b = bucket - 1; b <= bucket + 1; b++) {
+            if (!enemyBuckets[b]) enemyBuckets[b] = [];
+            enemyBuckets[b].push(e);
+        }
+    }
 
-        gameState.enemies.forEach(enemy => {
-            if (!bullet.active || enemy.health <= 0) return;
-            if (!checkCollision(bullet, enemy, CONFIG.bullet.width, CONFIG.bullet.height, enemy.width, enemy.height)) return;
+    const bw = CONFIG.bullet.width, bh = CONFIG.bullet.height;
+    const pw = CONFIG.powerup.width, ph = CONFIG.powerup.height;
 
-            bullet.active = false;
-            enemy.health -= CONFIG.bullet.damage;
-            enemy.lastHitBy = bullet.owner;
+    for (let bi = 0; bi < gameState.bullets.length; bi++) {
+        const bullet = gameState.bullets[bi];
+        if (!bullet.active) continue;
 
-            if (enemy.health <= 0) {
-                audioSystem.playEnemyKill();
-                gameState.score += enemy.points;
-                gameState.enemiesKilled++;
+        const bulletBucket = Math.floor(bullet.x / laneW);
+        const nearby = enemyBuckets[bulletBucket];
+        if (nearby) {
+            for (let ei = 0; ei < nearby.length; ei++) {
+                const enemy = nearby[ei];
+                if (!bullet.active || enemy.health <= 0) continue;
+                if (!checkCollision(bullet, enemy, bw, bh, enemy.width, enemy.height)) continue;
 
-                // Powerup drop chance (higher in early waves)
-                const chance = gameState.wave <= 3 ? 0.25 : gameState.wave <= 5 ? 0.18 : CONFIG.powerup.spawnChance;
-                if (Math.random() < chance) {
-                    const pu = createPowerup(enemy.x, enemy.y);
-                    pu.owner = bullet.owner;
-                    gameState.powerups.push(pu);
+                bullet.active = false;
+                enemy.health -= CONFIG.bullet.damage;
+                enemy.lastHitBy = bullet.owner;
+
+                if (enemy.health <= 0) {
+                    audioSystem.playEnemyKill();
+                    gameState.score += enemy.points;
+                    gameState.enemiesKilled++;
+
+                    const chance = gameState.wave <= 3 ? 0.25 : gameState.wave <= 5 ? 0.18 : CONFIG.powerup.spawnChance;
+                    if (Math.random() < chance) {
+                        const pu = createPowerup(enemy.x, enemy.y);
+                        pu.owner = bullet.owner;
+                        gameState.powerups.push(pu);
+                    }
+
+                    for (let i = 0; i < 10; i++) {
+                        gameState.particles.push(createParticle(enemy.x, enemy.y, enemy.color));
+                    }
+                    enemy.health = -999;
                 }
-
-                for (let i = 0; i < 10; i++) {
-                    gameState.particles.push(createParticle(enemy.x, enemy.y, enemy.color));
-                }
-                enemy.health = -999;
             }
-        });
+        }
 
-        // Bullet vs powerup collisions
-        gameState.powerups.forEach(pu => {
-            if (!bullet.active || !pu.active) return;
-            if (!checkCollision(bullet, pu, CONFIG.bullet.width, CONFIG.bullet.height, CONFIG.powerup.width, CONFIG.powerup.height)) return;
-            if (pu.owner !== undefined && pu.owner !== bullet.owner) return;
+        // Bullet vs powerup collisions (few powerups, no bucketing needed)
+        if (!bullet.active) continue;
+        for (let pi = 0; pi < gameState.powerups.length; pi++) {
+            const pu = gameState.powerups[pi];
+            if (!pu.active) continue;
+            if (!checkCollision(bullet, pu, bw, bh, pw, ph)) continue;
+            if (pu.owner !== undefined && pu.owner !== bullet.owner) continue;
 
             bullet.active = false;
             pu.health -= CONFIG.bullet.damage;
@@ -171,8 +195,9 @@ function update() {
                 }
                 pu.active = false;
             }
-        });
-    });
+            break;
+        }
+    }
 
     // Enemy vs player collisions & enemies passing screen
     gameState.enemies = gameState.enemies.filter(e => {

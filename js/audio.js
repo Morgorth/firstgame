@@ -61,7 +61,8 @@ const audioSystem = (() => {
         osc.stop(ctx.currentTime + duration);
         activeSources.push(osc);
         osc.onended = () => {
-            activeSources = activeSources.filter(s => s !== osc);
+            const idx = activeSources.indexOf(osc);
+            if (idx !== -1) activeSources.splice(idx, 1);
         };
     }
 
@@ -202,15 +203,19 @@ const audioSystem = (() => {
         osc.stop(ctx.currentTime + 0.2);
     }
 
+    let _hiHatBuffer = null;
+
     function playHiHat(soft) {
         if (!ctx) return;
-        // Noise-based hi-hat
-        const bufferSize = ctx.sampleRate * 0.05;
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        // Reuse pre-generated noise buffer
+        if (!_hiHatBuffer || _hiHatBuffer.sampleRate !== ctx.sampleRate) {
+            const bufferSize = Math.floor(ctx.sampleRate * 0.05);
+            _hiHatBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = _hiHatBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        }
         const src = ctx.createBufferSource();
-        src.buffer = buffer;
+        src.buffer = _hiHatBuffer;
 
         const bandpass = ctx.createBiquadFilter();
         bandpass.type = 'bandpass';
