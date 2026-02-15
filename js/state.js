@@ -76,6 +76,7 @@ let gameState = {
     stars: [],
     hitEffect: 0,
     screenShake: { x: 0, y: 0 },
+    countdownActive: false,
 
     // Multi-player
     playerCount: 1,

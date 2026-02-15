@@ -32,6 +32,57 @@ body { background: #0a0015; font-family: 'Rajdhani', sans-serif; overflow: hidde
 .crowd-indicator { display: flex; gap: 3px; flex-wrap: wrap; max-width: 200px; }
 .crowd-pip { width: 8px; height: 8px; background: #00ffff; border-radius: 50%; box-shadow: 0 0 5px rgba(0,255,255,0.8); }
 
+/* === Unicorn theme HUD overrides === */
+.unicorn-theme .hud {
+    color: #6B006B;
+    text-shadow: 0 0 6px rgba(255,255,255,0.95), 0 0 12px rgba(255,255,255,0.6), 0 0 20px rgba(139,0,139,0.4);
+}
+.unicorn-theme .stat-label {
+    color: #8B008B;
+    opacity: 0.9;
+}
+.unicorn-theme .crowd-pip {
+    background: #FF69B4;
+    box-shadow: 0 0 5px rgba(255,105,180,0.8);
+}
+.unicorn-theme .player-hud.p1 { border-color: #FF69B4; }
+.unicorn-theme .player-hud.p2 { border-color: #9B30FF; }
+.unicorn-theme .player-hud.p1 .player-fleet { color: #C71585; }
+.unicorn-theme .player-hud.p2 .player-fleet { color: #7B2FBE; }
+
+/* === Countdown overlay === */
+#countdownOverlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; justify-content: center; align-items: center;
+    z-index: 50; pointer-events: none;
+}
+#countdownText {
+    font-family: 'Orbitron', monospace; font-size: 140px; font-weight: 900;
+    color: #fff;
+    text-shadow:
+        0 0 30px rgba(255,0,255,0.9),
+        0 0 60px rgba(0,255,255,0.6),
+        0 0 100px rgba(255,0,255,0.4);
+}
+.unicorn-theme #countdownText {
+    text-shadow:
+        0 0 30px rgba(255,105,180,0.9),
+        0 0 60px rgba(255,215,0,0.6),
+        0 0 100px rgba(148,0,211,0.4);
+}
+@keyframes countdownPop {
+    0% { transform: scale(2.5); opacity: 0; }
+    40% { transform: scale(0.95); opacity: 1; }
+    60% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+@keyframes countdownGo {
+    0% { transform: scale(3); opacity: 0; }
+    30% { transform: scale(1); opacity: 1; }
+    70% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
 /* === Screens (Start / Game Over) === */
 #startScreen, #gameOverScreen {
     position: absolute; top: 0; left: 0; right: 0; bottom: 0;

@@ -191,6 +191,72 @@ function completePlayerRegistration(playerIndex, faceImage) {
     }, 500);
 }
 
+// ── Wave countdown ─────────────────────────────────────────────────
+
+let _countdownId = 0;
+
+function startWaveCountdown(onComplete) {
+    const myId = ++_countdownId;
+    const overlay = document.getElementById('countdownOverlay');
+    const text = document.getElementById('countdownText');
+    overlay.classList.remove('hidden');
+
+    const isFirstWave = gameState.wave === 1;
+
+    const steps = [];
+    if (isFirstWave) {
+        steps.push({ text: 'READY?', voice: 'Are you ready?', delay: 1500 });
+    } else {
+        steps.push({ text: 'WAVE ' + gameState.wave, voice: 'Wave ' + gameState.wave, delay: 1200 });
+    }
+    steps.push(
+        { text: '3', voice: '3', delay: 850, beep: true },
+        { text: '2', voice: '2', delay: 850, beep: true },
+        { text: '1', voice: '1', delay: 850, beep: true },
+        { text: 'GO!', voice: 'Go!', delay: 500, go: true }
+    );
+
+    let i = 0;
+    function showStep() {
+        if (myId !== _countdownId || !gameState.running) {
+            overlay.classList.add('hidden');
+            return;
+        }
+        if (i >= steps.length) {
+            overlay.classList.add('hidden');
+            onComplete();
+            return;
+        }
+
+        const step = steps[i];
+        text.textContent = step.text;
+
+        // Re-trigger CSS animation
+        text.style.animation = 'none';
+        text.offsetWidth;
+        text.style.animation = step.go
+            ? 'countdownGo 0.5s ease-out forwards'
+            : 'countdownPop 0.5s ease-out forwards';
+
+        // Voice
+        audioSystem.speakText(step.voice);
+
+        // Sound effects
+        if (step.beep) audioSystem.playCountdownTick();
+        if (step.go) audioSystem.playCountdownGo();
+
+        i++;
+        setTimeout(showStep, step.delay);
+    }
+
+    showStep();
+}
+
+function cancelCountdown() {
+    _countdownId++;
+    document.getElementById('countdownOverlay').classList.add('hidden');
+}
+
 // ── Theme selection ─────────────────────────────────────────────────
 
 function selectTheme(theme) {
@@ -201,6 +267,8 @@ function selectTheme(theme) {
     const title = document.getElementById('gameTitle');
     const subtitle = document.getElementById('gameSubtitle');
     const container = document.getElementById('gameContainer');
+
+    container.classList.toggle('unicorn-theme', theme === 'unicorn');
 
     if (theme === 'unicorn') {
         title.textContent = 'UNICORN MAGIC';
