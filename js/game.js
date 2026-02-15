@@ -184,7 +184,7 @@ function update() {
             const player = gameState.players[i];
             if (!player.active) continue;
 
-            const crowdRadius = Math.sqrt(player.crowdSize) * 35;
+            const crowdRadius = Math.sqrt(player.crowdSize) * 28;
             if (checkCollision(
                 { x: player.x - crowdRadius / 2, y: player.y - crowdRadius / 2 },
                 e, crowdRadius, crowdRadius, e.width, e.height
