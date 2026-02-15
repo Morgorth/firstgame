@@ -3,40 +3,98 @@
 // Cached Image objects for player face icons (camera mode)
 const _faceImageCache = {};
 
+// ── Pre-rendered sprite cache (avoids per-frame emoji text / gradient work) ──
+
+const _spriteCache = {};
+
+function _ensureSprite(key, width, height, drawFn) {
+    if (_spriteCache[key]) return _spriteCache[key];
+    const c = document.createElement('canvas');
+    c.width = width;
+    c.height = height;
+    const cx = c.getContext('2d');
+    drawFn(cx, width, height);
+    _spriteCache[key] = c;
+    return c;
+}
+
+function _getSparkleSprite(size) {
+    const key = 'sparkle_' + size;
+    return _ensureSprite(key, size + 4, size + 4, (cx, w, h) => {
+        cx.font = `${size}px Arial`;
+        cx.textBaseline = 'top';
+        cx.fillText('\u2728', 0, 0);
+    });
+}
+
+function _getHeartSprite() {
+    return _ensureSprite('heart16', 20, 20, (cx) => {
+        cx.font = '16px Arial';
+        cx.textBaseline = 'top';
+        cx.fillText('\uD83D\uDC96', 0, 0);
+    });
+}
+
+function _getStarEmojiSprite() {
+    return _ensureSprite('star40', 44, 44, (cx) => {
+        cx.font = '40px Arial';
+        cx.textBaseline = 'top';
+        cx.textAlign = 'center';
+        cx.fillText('\uD83C\uDF1F', 22, 0);
+    });
+}
+
+// Cached background gradient (invalidated on resize)
+let _bgGradientCache = null;
+let _bgGradientH = 0;
+
 // ── Theme-specific sprite drawing ───────────────────────────────────
 
-function drawUnicorn(x, y, size) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(size, size);
+// Pre-rendered unicorn sprite (drawn once, stamped via drawImage)
+let _unicornSpriteCanvas = null;
+let _unicornSpriteSize = 0;
 
-    ctx.fillStyle = '#FFB6C1';
+function _getUnicornSprite() {
+    if (_unicornSpriteCanvas) return _unicornSpriteCanvas;
+    const c = document.createElement('canvas');
+    // Draw at size 1.0 with padding; the sprite covers -20..20 x and -35..25 y
+    const pad = 4;
+    const w = 44 + pad * 2, h = 64 + pad * 2;
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    cx.translate(22 + pad, 37 + pad); // center origin
 
+    cx.fillStyle = '#FFB6C1';
     // Head
-    ctx.beginPath(); ctx.arc(0, 5, 18, 0, Math.PI * 2); ctx.fill();
+    cx.beginPath(); cx.arc(0, 5, 18, 0, Math.PI * 2); cx.fill();
     // Ear
-    ctx.beginPath(); ctx.moveTo(-12, -8); ctx.lineTo(-8, -20); ctx.lineTo(-4, -8); ctx.closePath(); ctx.fill();
-
-    // Horn (rainbow gradient)
-    const hornGrad = ctx.createLinearGradient(-2, -15, 2, -35);
+    cx.beginPath(); cx.moveTo(-12, -8); cx.lineTo(-8, -20); cx.lineTo(-4, -8); cx.closePath(); cx.fill();
+    // Horn
+    const hornGrad = cx.createLinearGradient(-2, -15, 2, -35);
     hornGrad.addColorStop(0, '#FFD700');
     hornGrad.addColorStop(0.5, '#FF69B4');
     hornGrad.addColorStop(1, '#87CEEB');
-    ctx.fillStyle = hornGrad;
-    ctx.beginPath(); ctx.moveTo(-4, -15); ctx.lineTo(0, -35); ctx.lineTo(4, -15); ctx.closePath(); ctx.fill();
-
+    cx.fillStyle = hornGrad;
+    cx.beginPath(); cx.moveTo(-4, -15); cx.lineTo(0, -35); cx.lineTo(4, -15); cx.closePath(); cx.fill();
     // Eye
-    ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.arc(6, 2, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(7, 1, 1.5, 0, Math.PI * 2); ctx.fill();
+    cx.fillStyle = '#000';
+    cx.beginPath(); cx.arc(6, 2, 4, 0, Math.PI * 2); cx.fill();
+    cx.fillStyle = '#fff';
+    cx.beginPath(); cx.arc(7, 1, 1.5, 0, Math.PI * 2); cx.fill();
+    // Mane
+    cx.fillStyle = '#FF6B6B'; cx.beginPath(); cx.ellipse(-15, -5, 8, 12, 0.3, 0, Math.PI * 2); cx.fill();
+    cx.fillStyle = '#FFE66D'; cx.beginPath(); cx.ellipse(-18, 5, 7, 10, 0.2, 0, Math.PI * 2); cx.fill();
+    cx.fillStyle = '#4ECDC4'; cx.beginPath(); cx.ellipse(-16, 15, 6, 8, 0.1, 0, Math.PI * 2); cx.fill();
 
-    // Mane (rainbow)
-    ctx.fillStyle = '#FF6B6B'; ctx.beginPath(); ctx.ellipse(-15, -5, 8, 12, 0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFE66D'; ctx.beginPath(); ctx.ellipse(-18, 5, 7, 10, 0.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#4ECDC4'; ctx.beginPath(); ctx.ellipse(-16, 15, 6, 8, 0.1, 0, Math.PI * 2); ctx.fill();
+    _unicornSpriteCanvas = c;
+    return c;
+}
 
-    ctx.restore();
+function drawUnicorn(x, y, size) {
+    const sprite = _getUnicornSprite();
+    const pad = 4;
+    const w = sprite.width, h = sprite.height;
+    ctx.drawImage(sprite, x - (22 + pad) * size, y - (37 + pad) * size, w * size, h * size);
 }
 
 function drawWolf(x, y, size, color) {
@@ -162,12 +220,15 @@ function render() {
 
     // Background
     if (isUnicorn) {
-        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        grad.addColorStop(0, '#87CEEB');
-        grad.addColorStop(0.3, '#FFB6C1');
-        grad.addColorStop(0.6, '#DDA0DD');
-        grad.addColorStop(1, '#98FB98');
-        ctx.fillStyle = grad;
+        if (!_bgGradientCache || _bgGradientH !== canvas.height) {
+            _bgGradientCache = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            _bgGradientCache.addColorStop(0, '#87CEEB');
+            _bgGradientCache.addColorStop(0.3, '#FFB6C1');
+            _bgGradientCache.addColorStop(0.6, '#DDA0DD');
+            _bgGradientCache.addColorStop(1, '#98FB98');
+            _bgGradientH = canvas.height;
+        }
+        ctx.fillStyle = _bgGradientCache;
     } else {
         ctx.fillStyle = '#0a0015';
     }
@@ -191,28 +252,45 @@ function render() {
     }
 
     // Stars / sparkles
-    gameState.stars.forEach(s => {
-        if (isUnicorn) {
-            ctx.fillStyle = `rgba(255,255,255,${s.size / 2 + 0.3})`;
-            ctx.font = `${s.size * 8}px Arial`;
-            ctx.fillText('\u2728', s.x, s.y);
-        } else {
-            ctx.fillStyle = `rgba(255,255,255,${s.size / 2})`;
+    if (isUnicorn) {
+        for (let i = 0; i < gameState.stars.length; i++) {
+            const s = gameState.stars[i];
+            const spriteSize = Math.round(s.size * 8);
+            if (spriteSize < 1) continue;
+            const sprite = _getSparkleSprite(spriteSize);
+            ctx.globalAlpha = s.size / 2 + 0.3;
+            ctx.drawImage(sprite, s.x, s.y);
+        }
+        ctx.globalAlpha = 1;
+    } else {
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < gameState.stars.length; i++) {
+            const s = gameState.stars[i];
+            ctx.globalAlpha = s.size / 2;
             ctx.fillRect(s.x, s.y, s.size, s.size);
         }
-    });
+        ctx.globalAlpha = 1;
+    }
 
     // Particles
-    gameState.particles.forEach(p => {
-        if (isUnicorn) {
-            ctx.fillStyle = ['#FF6B6B', '#FFE66D', '#4ECDC4', '#FF69B4'][Math.floor(p.life) % 4];
-            ctx.font = '12px Arial';
-            ctx.fillText('\u2728', p.x, p.y);
-        } else {
-            ctx.fillStyle = p.color.replace(')', `,${p.life / p.maxLife})`).replace('rgb', 'rgba');
+    if (isUnicorn) {
+        const sparkle12 = _getSparkleSprite(12);
+        const pColors = ['#FF6B6B', '#FFE66D', '#4ECDC4', '#FF69B4'];
+        for (let i = 0; i < gameState.particles.length; i++) {
+            const p = gameState.particles[i];
+            ctx.globalAlpha = p.life / p.maxLife;
+            ctx.drawImage(sparkle12, p.x, p.y);
+        }
+        ctx.globalAlpha = 1;
+    } else {
+        for (let i = 0; i < gameState.particles.length; i++) {
+            const p = gameState.particles[i];
+            ctx.globalAlpha = p.life / p.maxLife;
+            ctx.fillStyle = p.color;
             ctx.fillRect(p.x, p.y, 3, 3);
         }
-    });
+        ctx.globalAlpha = 1;
+    }
 
     // Player fleets
     if (gameState.running) {
@@ -244,15 +322,17 @@ function render() {
                 ctx.drawImage(img, -25, -25, 50, 50);
                 ctx.restore();
 
-                // Border ring
+                // Border ring (no shadowBlur — use double stroke for glow effect)
                 ctx.save();
                 ctx.translate(player.x, faceY);
-                ctx.strokeStyle = isUnicorn ? '#FF69B4' : playerColor;
-                ctx.lineWidth = 3;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = ctx.strokeStyle;
+                const ringColor = isUnicorn ? '#FF69B4' : playerColor;
+                ctx.strokeStyle = ringColor;
+                ctx.globalAlpha = 0.3;
+                ctx.lineWidth = 8;
                 ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.stroke();
-                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.stroke();
                 ctx.restore();
 
                 // Label
@@ -265,70 +345,87 @@ function render() {
     }
 
     // Bullets
-    gameState.bullets.forEach(b => {
-        if (!b.active) return;
-        const owner = gameState.players[b.owner || 0];
-        if (isUnicorn) {
-            ctx.fillStyle = '#FF69B4';
-            ctx.font = '16px Arial';
-            ctx.fillText('\uD83D\uDC96', b.x - 8, b.y + 5);
-        } else {
-            const bulletColor = owner?.color || '#ff00ff';
-            ctx.fillStyle = bulletColor;
+    if (isUnicorn) {
+        const heartSprite = _getHeartSprite();
+        for (let i = 0; i < gameState.bullets.length; i++) {
+            const b = gameState.bullets[i];
+            if (!b.active) continue;
+            ctx.drawImage(heartSprite, b.x - 8, b.y - 3);
+        }
+    } else {
+        for (let i = 0; i < gameState.bullets.length; i++) {
+            const b = gameState.bullets[i];
+            if (!b.active) continue;
+            const owner = gameState.players[b.owner || 0];
+            ctx.fillStyle = owner?.color || '#ff00ff';
             ctx.fillRect(b.x - 1.5, b.y, 3, 10);
         }
-    });
+    }
 
     // Enemies
-    gameState.enemies.forEach(e => {
-        if (e.y < -100 || e.health <= 0) return; // skip off-screen or dead enemies
+    // Draw all enemy sprites first
+    for (let i = 0; i < gameState.enemies.length; i++) {
+        const e = gameState.enemies[i];
+        if (e.y < -100 || e.health <= 0) continue;
         const ships = Math.ceil(e.health / CONFIG.bullet.damage);
         const sc = (e.type === 'tank' ? 1.2 : e.type === 'fast' ? 0.9 : 1) * (1 + ships * 0.08);
-
         if (isUnicorn) {
             const wolfColor = e.type === 'tank' ? '#8B4513' : e.type === 'fast' ? '#A0A0A0' : '#696969';
             drawWolf(e.x, e.y, sc * 0.9, wolfColor);
         } else {
             drawSpaceEnemy(e, sc);
         }
-
-        // Health number overlay
-        ctx.save();
-        ctx.translate(e.x, e.y);
-        ctx.fillStyle = '#fff';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 3;
-        ctx.font = 'bold 18px Orbitron,monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.strokeText(ships, 0, 0);
-        ctx.fillText(ships, 0, 0);
-        ctx.restore();
-    });
+    }
+    // Batch health overlays — set font once
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.font = 'bold 18px Orbitron,monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < gameState.enemies.length; i++) {
+        const e = gameState.enemies[i];
+        if (e.y < -100 || e.health <= 0) continue;
+        const ships = Math.ceil(e.health / CONFIG.bullet.damage);
+        ctx.strokeText(ships, e.x, e.y);
+        ctx.fillText(ships, e.x, e.y);
+    }
 
     // Powerups
-    gameState.powerups.forEach(p => {
-        if (!p.active) return;
+    ctx.font = 'bold 22px Orbitron,monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < gameState.powerups.length; i++) {
+        const p = gameState.powerups[i];
+        if (!p.active) continue;
         ctx.save();
         ctx.translate(p.x, p.y);
         const pulse = Math.sin(gameState.frameCount * 0.15) * 0.5 + 1;
 
         if (isUnicorn) {
-            ctx.shadowBlur = 50;
-            ctx.shadowColor = '#FFD700';
-            ctx.font = `${40 * pulse}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('\uD83C\uDF1F', 0, 0);
+            // Glow via radial gradient instead of shadowBlur
+            const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, 45 * pulse);
+            grd.addColorStop(0, 'rgba(255,215,0,0.5)');
+            grd.addColorStop(1, 'rgba(255,215,0,0)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(-50, -50, 100, 100);
+            // Star emoji sprite
+            const starSprite = _getStarEmojiSprite();
+            const sz = 44 * pulse;
+            ctx.drawImage(starSprite, -sz / 2, -sz / 2, sz, sz);
         } else {
-            ctx.shadowBlur = 50;
-            ctx.shadowColor = '#ffff00';
+            // Glow via radial gradient instead of shadowBlur
+            const grd = ctx.createRadialGradient(0, 0, 10, 0, 0, 50 * pulse);
+            grd.addColorStop(0, 'rgba(255,255,0,0.4)');
+            grd.addColorStop(1, 'rgba(255,255,0,0)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(-55, -55, 110, 110);
+
             ctx.strokeStyle = 'rgba(255,255,0,0.6)';
             ctx.lineWidth = 8;
             ctx.beginPath(); ctx.arc(0, 0, 35 * pulse, 0, Math.PI * 2); ctx.stroke();
 
             ctx.fillStyle = '#ffff00';
-            ctx.shadowBlur = 40 * pulse;
             ctx.scale(1.3, 1.3);
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 4;
@@ -342,21 +439,16 @@ function render() {
             ctx.beginPath(); ctx.arc(0, -3, 4, 0, Math.PI * 2); ctx.fill();
         }
 
-        // Ships-to-destroy count
+        // Ships-to-destroy count (no shadowBlur)
         const ships = Math.ceil(p.health / CONFIG.bullet.damage);
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#000';
         ctx.fillStyle = '#fff';
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 4;
-        ctx.font = 'bold 22px Orbitron,monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
         const labelY = isUnicorn ? 35 : 18;
         ctx.strokeText(ships, 0, labelY);
         ctx.fillText(ships, 0, labelY);
         ctx.restore();
-    });
+    }
 
     // Hit flash overlay
     if (gameState.hitEffect > 0) {

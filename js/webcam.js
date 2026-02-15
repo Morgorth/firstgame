@@ -159,8 +159,22 @@ async function trackPoses() {
 
 // ── Pose helpers ────────────────────────────────────────────────────
 
+// Cache keypoints as Map for O(1) lookup instead of Array.find O(n)
+const _keypointMapCache = new WeakMap();
+
+function _getKeypointMap(pose) {
+    let map = _keypointMapCache.get(pose.keypoints);
+    if (map) return map;
+    map = new Map();
+    for (let i = 0; i < pose.keypoints.length; i++) {
+        map.set(pose.keypoints[i].name, pose.keypoints[i]);
+    }
+    _keypointMapCache.set(pose.keypoints, map);
+    return map;
+}
+
 function getKeypoint(pose, name) {
-    return pose.keypoints.find(k => k.name === name);
+    return _getKeypointMap(pose).get(name) || null;
 }
 
 // Remove entries older than cutoff, mutating the array in place.
