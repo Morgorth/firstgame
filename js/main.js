@@ -61,13 +61,16 @@ function startGame() {
         superWeaponCharges: [0, 0],
         superWeaponNextThreshold: [CONFIG.superWeapon.killsPerCharge, CONFIG.superWeapon.killsPerCharge],
         superWeaponFlashEffect: 0,
-        activeEffects: { shield: [0, 0], spread: [0, 0] }
+        activeEffects: { shield: [0, 0], spread: [0, 0] },
+        fleetDonateState: { holdFrames: 0, cooldown: 0 }
     };
 
     if (controlMode === 'camera') {
         webcamState.currentLane = 1;
         webcamState.targetLane = 1;
         webcamState.registrationPhase = 'idle';
+        webcamState.registeredPlayers[0].reachingOut = false;
+        webcamState.registeredPlayers[1].reachingOut = false;
     }
 
     // Hide all overlay screens

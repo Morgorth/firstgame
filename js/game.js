@@ -44,6 +44,80 @@ function checkSuperWeaponThreshold(playerIndex) {
     }
 }
 
+// ── Fleet donation ──────────────────────────────────────────────────
+
+function performFleetDonation() {
+    const p0 = gameState.players[0];
+    const p1 = gameState.players[1];
+    const cfg = CONFIG.fleetDonate;
+    const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
+
+    // Determine donor and receiver
+    let donor, receiver, donorIdx, receiverIdx;
+
+    if (!p0.active && p1.active) {
+        donor = p1; receiver = p0; donorIdx = 1; receiverIdx = 0;
+    } else if (!p1.active && p0.active) {
+        donor = p0; receiver = p1; donorIdx = 0; receiverIdx = 1;
+    } else if (p0.active && p1.active) {
+        // Both alive: donor is player with more ships (or P1 if equal)
+        if (p0.crowdSize >= p1.crowdSize) {
+            donor = p0; receiver = p1; donorIdx = 0; receiverIdx = 1;
+        } else {
+            donor = p1; receiver = p0; donorIdx = 1; receiverIdx = 0;
+        }
+    } else {
+        return; // Both eliminated, nothing to do
+    }
+
+    if (receiver.active) {
+        // Normal transfer: 1 ship
+        if (donor.crowdSize <= cfg.normalShips) return; // Can't self-eliminate
+        donor.crowdSize -= cfg.normalShips;
+        receiver.crowdSize += cfg.normalShips;
+    } else {
+        // Revive: costs reviveShips from donor
+        if (donor.crowdSize <= cfg.reviveShips) return; // Can't self-eliminate
+        donor.crowdSize -= cfg.reviveShips;
+        receiver.crowdSize = cfg.reviveShips;
+        receiver.active = true;
+
+        // Position revived player at a sensible lane
+        const lanePositions = gameState.lanePositions;
+        if (lanePositions) {
+            const targetLane = receiverIdx === 0 ? 1 : 3;
+            receiver.x = lanePositions[Math.min(targetLane, lanePositions.length - 1)];
+            receiver.targetLane = targetLane;
+        }
+        receiver.y = PLAY_AREA.height - 60;
+
+        // Trigger revive flash on HUD
+        showReviveFlash(receiverIdx);
+    }
+
+    // Update legacy compat
+    if (donorIdx === 0) gameState.crowdSize = donor.crowdSize;
+    if (receiverIdx === 0) gameState.crowdSize = receiver.crowdSize;
+    updateCrowdDisplay();
+
+    // Spawn particles along the connection line between players
+    const particleColor = isUnicorn ? '#FF69B4' : '#00ffff';
+    const midX = (donor.x + receiver.x) / 2;
+    const midY = (donor.y + receiver.y) / 2;
+    for (let i = 0; i < 20; i++) {
+        const t = i / 20;
+        const px = donor.x + (receiver.x - donor.x) * t;
+        const py = donor.y + (receiver.y - donor.y) * t + (Math.random() - 0.5) * 40;
+        gameState.particles.push(createParticle(px, py, particleColor));
+    }
+
+    // Burst at both players
+    for (let i = 0; i < 8; i++) {
+        gameState.particles.push(createParticle(donor.x, donor.y, particleColor));
+        gameState.particles.push(createParticle(receiver.x, receiver.y, particleColor));
+    }
+}
+
 // ── Wave spawning ───────────────────────────────────────────────────
 
 function spawnWave() {

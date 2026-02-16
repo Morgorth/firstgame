@@ -55,6 +55,13 @@ const CONFIG = {
         flashDuration: 40,         // screen flash frames (longer for rainbow sweep)
         particlesPerEnemy: 15,     // explosion particles per destroyed enemy
         shakeIntensity: 15         // screen shake magnitude
+    },
+    fleetDonate: {
+        holdFrames: 15,        // frames both must reach before transfer
+        cooldownFrames: 60,    // frames after transfer before next allowed
+        reviveShips: 2,        // ships given on revive
+        normalShips: 1,        // ships transferred when both alive
+        reachThreshold: 40     // pixels wrist must extend past shoulder
     }
 };
 

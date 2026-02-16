@@ -77,6 +77,20 @@ function updateCrowdDisplay() {
     }
 }
 
+// ── Revive Flash ────────────────────────────────────────────────────
+
+function showReviveFlash(playerIndex) {
+    const hudEl = document.getElementById(`p${playerIndex + 1}Hud`);
+    if (!hudEl) return;
+
+    // Remove eliminated styling immediately
+    hudEl.classList.remove('eliminated');
+
+    // Add flash animation
+    hudEl.classList.add('revive-flash');
+    setTimeout(() => hudEl.classList.remove('revive-flash'), 1200);
+}
+
 // ── High Scores ─────────────────────────────────────────────────────
 
 function renderHighScores(containerId) {

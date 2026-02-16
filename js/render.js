@@ -591,6 +591,88 @@ function render() {
         }
     }
 
+    // Fleet donation reach beams (2P only)
+    if (gameState.running && gameState.playerCount === 2) {
+        const r0 = webcamState.registeredPlayers[0].reachingOut;
+        const r1 = webcamState.registeredPlayers[1].reachingOut;
+        const p0 = gameState.players[0];
+        const p1 = gameState.players[1];
+        const ds = gameState.fleetDonateState;
+        const donateColor = isUnicorn ? '#FF69B4' : '#00ffff';
+
+        if (r0 || r1) {
+            const midX = (p0.x + p1.x) / 2;
+            const midY = (p0.y + p1.y) / 2;
+
+            // Individual reach beams
+            if (r0 && (p0.active || !p0.active)) {
+                const endX = r1 ? midX : p0.x + (p1.x - p0.x) * 0.3;
+                ctx.save();
+                ctx.globalAlpha = 0.4 + Math.sin(gameState.frameCount * 0.15) * 0.15;
+                ctx.strokeStyle = donateColor;
+                ctx.lineWidth = 4;
+                ctx.setLineDash([8, 8]);
+                ctx.beginPath();
+                ctx.moveTo(p0.x, p0.y);
+                ctx.lineTo(endX, midY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+            if (r1 && (p1.active || !p1.active)) {
+                const endX = r0 ? midX : p1.x + (p0.x - p1.x) * 0.3;
+                ctx.save();
+                ctx.globalAlpha = 0.4 + Math.sin(gameState.frameCount * 0.15) * 0.15;
+                ctx.strokeStyle = donateColor;
+                ctx.lineWidth = 4;
+                ctx.setLineDash([8, 8]);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(endX, midY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+
+            // Connected beam with particles when both reaching
+            if (r0 && r1 && ds.cooldown === 0) {
+                const progress = Math.min(ds.holdFrames / CONFIG.fleetDonate.holdFrames, 1);
+                ctx.save();
+                ctx.globalAlpha = 0.3 + progress * 0.5;
+                ctx.strokeStyle = donateColor;
+                ctx.lineWidth = 3 + progress * 6;
+                ctx.beginPath();
+                ctx.moveTo(p0.x, p0.y);
+                ctx.lineTo(p1.x, p1.y);
+                ctx.stroke();
+
+                // Glow
+                ctx.globalAlpha = 0.15 + progress * 0.2;
+                ctx.lineWidth = 12 + progress * 12;
+                ctx.beginPath();
+                ctx.moveTo(p0.x, p0.y);
+                ctx.lineTo(p1.x, p1.y);
+                ctx.stroke();
+                ctx.restore();
+
+                // Heart / energy particles along the beam
+                if (isUnicorn && progress > 0.3) {
+                    const heartSprite = _getHeartSprite();
+                    const numHearts = Math.floor(progress * 5) + 1;
+                    for (let i = 0; i < numHearts; i++) {
+                        const t = (i + 1) / (numHearts + 1);
+                        const offset = Math.sin(gameState.frameCount * 0.1 + i * 2) * 15;
+                        const hx = p0.x + (p1.x - p0.x) * t;
+                        const hy = p0.y + (p1.y - p0.y) * t + offset;
+                        ctx.globalAlpha = 0.6 + progress * 0.4;
+                        ctx.drawImage(heartSprite, hx - 8, hy - 8);
+                    }
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+    }
+
     // Charge-ready indicator above player fleet
     if (gameState.running) {
         gameState.players.forEach((player, idx) => {

@@ -242,6 +242,61 @@ function checkSuperWeaponGesture(pose, playerIndex) {
     }
 }
 
+// ── Fleet donation reach detection ──────────────────────────────────
+
+function checkReachingOut(pose, playerIndex) {
+    const cfg = CONFIG.fleetDonate;
+    const reg = webcamState.registeredPlayers[playerIndex];
+
+    if (playerIndex === 0) {
+        // P1: right wrist past right shoulder (toward P2 in camera-mirrored view)
+        const rw = getKeypoint(pose, 'right_wrist');
+        const rs = getKeypoint(pose, 'right_shoulder');
+        if (rw && rs && rw.score > 0.3 && rs.score > 0.3) {
+            reg.reachingOut = rw.x > rs.x + cfg.reachThreshold;
+        } else {
+            reg.reachingOut = false;
+        }
+    } else {
+        // P2: left wrist past left shoulder (toward P1 in camera-mirrored view)
+        const lw = getKeypoint(pose, 'left_wrist');
+        const ls = getKeypoint(pose, 'left_shoulder');
+        if (lw && ls && lw.score > 0.3 && ls.score > 0.3) {
+            reg.reachingOut = lw.x < ls.x - cfg.reachThreshold;
+        } else {
+            reg.reachingOut = false;
+        }
+    }
+}
+
+function checkFleetDonation() {
+    if (!gameState.running || gameState.countdownActive) return;
+    if (gameState.playerCount < 2) return;
+
+    const ds = gameState.fleetDonateState;
+    const cfg = CONFIG.fleetDonate;
+    const r0 = webcamState.registeredPlayers[0].reachingOut;
+    const r1 = webcamState.registeredPlayers[1].reachingOut;
+
+    // Tick down cooldown
+    if (ds.cooldown > 0) {
+        ds.cooldown--;
+        return;
+    }
+
+    if (r0 && r1) {
+        ds.holdFrames++;
+        if (ds.holdFrames >= cfg.holdFrames) {
+            performFleetDonation();
+            ds.holdFrames = 0;
+            ds.cooldown = cfg.cooldownFrames;
+        }
+    } else {
+        // Decay hold frames when not both reaching
+        ds.holdFrames = Math.max(0, ds.holdFrames - 2);
+    }
+}
+
 // ── Wave-gesture detection ──────────────────────────────────────────
 
 // Score a single wrist's history for wave-like motion.
@@ -368,6 +423,12 @@ function handleGameplayPoseTracking(sortedPoses, video) {
         const playerPoses = webcamState.playerPoses || [null, null];
         if (playerPoses[0]) checkSuperWeaponGesture(playerPoses[0], 0);
         if (playerPoses[1]) checkSuperWeaponGesture(playerPoses[1], 1);
+        // Check reaching-out gesture for fleet donation
+        if (playerPoses[0]) checkReachingOut(playerPoses[0], 0);
+        else webcamState.registeredPlayers[0].reachingOut = false;
+        if (playerPoses[1]) checkReachingOut(playerPoses[1], 1);
+        else webcamState.registeredPlayers[1].reachingOut = false;
+        checkFleetDonation();
     } else if (sortedPoses.length > 0) {
         assignPoseToPlayer(0, sortedPoses[0], video, numLanes);
         webcamState.playerPoses = [sortedPoses[0], null];

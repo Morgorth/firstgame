@@ -218,6 +218,16 @@ body { background: #0a0015; font-family: 'Rajdhani', sans-serif; overflow: hidde
 .player-hud.p1 .player-fleet { color: #00ffff; }
 .player-hud.p2 .player-fleet { color: #ff00ff; }
 
+/* === Revive flash === */
+.revive-flash {
+    animation: reviveFlashAnim 1.2s ease-out;
+}
+@keyframes reviveFlashAnim {
+    0% { box-shadow: 0 0 30px #FFD700, inset 0 0 20px rgba(255,215,0,0.5); border-color: #FFD700; }
+    30% { box-shadow: 0 0 50px #FFD700, inset 0 0 30px rgba(255,215,0,0.3); border-color: #FFD700; }
+    100% { box-shadow: none; }
+}
+
 /* === Nuke-ready pulse === */
 .nuke-ready {
     animation: nukePulse 0.8s ease-in-out infinite;

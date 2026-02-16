@@ -55,8 +55,8 @@ let webcamState = {
     registrationPhase: 'idle',          // 'idle' | 'registering' | 'ready'
     currentRegisteringPlayer: 0,
     registeredPlayers: [
-        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0 },
-        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0 }
+        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0, reachingOut: false },
+        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0, reachingOut: false }
     ]
 };
 
@@ -93,6 +93,9 @@ let gameState = {
 
     // Active power-up effects (remaining frames per player)
     activeEffects: { shield: [0, 0], spread: [0, 0] },
+
+    // Fleet donation (hold-hands gesture)
+    fleetDonateState: { holdFrames: 0, cooldown: 0 },
 
     // Legacy single-player compat (player 0 mirror).
     player: null,
