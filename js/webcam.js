@@ -213,6 +213,116 @@ function getBestWrist(pose) {
     return left || right || null;
 }
 
+// ── Color tracking helpers ───────────────────────────────────────────
+
+// Extract an 8-bin HSV hue histogram from the upper-torso region of a pose.
+// Returns Float32Array(8) normalized to sum=1, or null if insufficient data.
+function sampleTorsoColor(pose, video, cx, canvas) {
+    const cfg = CONFIG.colorTracking;
+    const ls = getKeypoint(pose, 'left_shoulder');
+    const rs = getKeypoint(pose, 'right_shoulder');
+    const lh = getKeypoint(pose, 'left_hip');
+    const rh = getKeypoint(pose, 'right_hip');
+    if (!ls || !rs || ls.score < 0.3 || rs.score < 0.3) return null;
+
+    // Shoulder midpoint and hip midpoint (fall back to estimated hips)
+    const sx = (ls.x + rs.x) / 2;
+    const sy = (ls.y + rs.y) / 2;
+    let hx, hy;
+    if (lh && rh && lh.score > 0.2 && rh.score > 0.2) {
+        hx = (lh.x + rh.x) / 2;
+        hy = (lh.y + rh.y) / 2;
+    } else {
+        // Estimate hips as shoulder-width below shoulders
+        hx = sx;
+        hy = sy + Math.abs(rs.x - ls.x) * 1.2;
+    }
+
+    // Sample region: offset 40% from shoulders toward hips, inset 10% from edges
+    const centerX = sx + (hx - sx) * 0.4;
+    const centerY = sy + (hy - sy) * 0.4;
+    const halfW = Math.abs(rs.x - ls.x) * 0.4; // 80% of shoulder width / 2, then inset 10%
+    const halfH = Math.abs(hy - sy) * 0.25;
+
+    const x0 = Math.max(0, Math.round(centerX - halfW));
+    const y0 = Math.max(0, Math.round(centerY - halfH));
+    const x1 = Math.min(video.videoWidth, Math.round(centerX + halfW));
+    const y1 = Math.min(video.videoHeight, Math.round(centerY + halfH));
+
+    if (x1 - x0 < 4 || y1 - y0 < 4) return null;
+
+    // Draw video frame and read pixels
+    cx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const scaleX = canvas.width / video.videoWidth;
+    const scaleY = canvas.height / video.videoHeight;
+    const px0 = Math.round(x0 * scaleX);
+    const py0 = Math.round(y0 * scaleY);
+    const pw = Math.round((x1 - x0) * scaleX);
+    const ph = Math.round((y1 - y0) * scaleY);
+    if (pw < 2 || ph < 2) return null;
+
+    const imageData = cx.getImageData(px0, py0, pw, ph);
+    const data = imageData.data;
+    const step = cfg.pixelStep;
+    const bins = new Float32Array(cfg.hueBins);
+    let count = 0;
+
+    for (let py = 0; py < ph; py += step) {
+        for (let px = 0; px < pw; px += step) {
+            const i = (py * pw + px) * 4;
+            const r = data[i] / 255;
+            const g = data[i + 1] / 255;
+            const b = data[i + 2] / 255;
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            const delta = max - min;
+
+            // Skip achromatic pixels
+            const sat = max > 0 ? delta / max : 0;
+            if (sat < cfg.minSaturation || max < cfg.minValue || max > cfg.maxValue) continue;
+
+            // Compute hue in [0, 360)
+            let hue;
+            if (delta === 0) { hue = 0; }
+            else if (max === r) { hue = 60 * (((g - b) / delta) % 6); }
+            else if (max === g) { hue = 60 * (((b - r) / delta) + 2); }
+            else { hue = 60 * (((r - g) / delta) + 4); }
+            if (hue < 0) hue += 360;
+
+            const bin = Math.min(cfg.hueBins - 1, Math.floor(hue / (360 / cfg.hueBins)));
+            bins[bin]++;
+            count++;
+        }
+    }
+
+    if (count < cfg.minPixels) return null;
+
+    // Normalize to sum = 1
+    for (let i = 0; i < bins.length; i++) bins[i] /= count;
+    return bins;
+}
+
+// Histogram intersection: sum(min(a[i], b[i])). Returns 0.0 (different) to 1.0 (identical).
+function compareColorSignatures(a, b) {
+    if (!a || !b || a.length !== b.length) return 0;
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) sum += Math.min(a[i], b[i]);
+    return sum;
+}
+
+// EMA blend of stored signature with a new observation, then re-normalize.
+function updateColorSignature(stored, current, alpha) {
+    if (!stored || !current || stored.length !== current.length) return current;
+    const result = new Float32Array(stored.length);
+    let sum = 0;
+    for (let i = 0; i < stored.length; i++) {
+        result[i] = stored[i] * (1 - alpha) + current[i] * alpha;
+        sum += result[i];
+    }
+    if (sum > 0) { for (let i = 0; i < result.length; i++) result[i] /= sum; }
+    return result;
+}
+
 // ── Super weapon gesture detection ───────────────────────────────────
 
 function checkHandsAboveHead(pose) {
@@ -401,7 +511,14 @@ function handleRegistrationPoseTracking(sortedPoses, video) {
 
         if (reg.waveFrames >= cfg.framesToConfirm) {
             const faceImage = captureFaceForPlayer(idx, targetPose);
-            if (faceImage) completePlayerRegistration(idx, faceImage);
+            if (faceImage) {
+                // Capture color signature at registration time
+                const setupCanvas = document.getElementById('setupCanvas');
+                const setupCx = setupCanvas.getContext('2d', { willReadFrequently: true });
+                const colorSig = sampleTorsoColor(targetPose, video, setupCx, setupCanvas);
+                if (colorSig) reg.colorSignature = colorSig;
+                completePlayerRegistration(idx, faceImage);
+            }
         }
     } else if (motionScore > 0) {
         indicator.textContent = 'WAVE YOUR HAND!';
@@ -460,13 +577,44 @@ function assignTwoPlayerPoses(sortedPoses, video, numLanes) {
         }
     }
 
-    // Step 2: assign unmatched poses by position
+    // Step 2: assign unmatched poses by position (enhanced with color scoring)
     const unmatched = sortedPoses.filter(p => p !== p0Pose && p !== p1Pose);
 
     if (!p0Pose && !p1Pose && unmatched.length >= 2) {
-        // Neither matched — rightmost in camera = P1
-        p0Pose = unmatched[unmatched.length - 1];
-        p1Pose = unmatched[0];
+        // Neither matched — try color signatures before falling back to position
+        const reg0 = webcamState.registeredPlayers[0];
+        const reg1 = webcamState.registeredPlayers[1];
+
+        // Position-based default: rightmost in camera = P1
+        let candidateP0 = unmatched[unmatched.length - 1];
+        let candidateP1 = unmatched[0];
+
+        if (reg0.colorSignature && reg1.colorSignature) {
+            const wcx = webcamState.ctx;
+            const wcvs = webcamState.canvas;
+            if (wcx && wcvs) {
+                wcx.drawImage(video, 0, 0, wcvs.width, wcvs.height);
+                const colorA = sampleTorsoColor(candidateP0, video, wcx, wcvs);
+                const colorB = sampleTorsoColor(candidateP1, video, wcx, wcvs);
+                if (colorA && colorB) {
+                    // Normal assignment: candidateP0→P0, candidateP1→P1
+                    const normalScore = compareColorSignatures(reg0.colorSignature, colorA)
+                                      + compareColorSignatures(reg1.colorSignature, colorB);
+                    // Swapped assignment: candidateP0→P1, candidateP1→P0
+                    const swapScore = compareColorSignatures(reg0.colorSignature, colorB)
+                                    + compareColorSignatures(reg1.colorSignature, colorA);
+
+                    if (swapScore - normalScore > CONFIG.colorTracking.swapThreshold) {
+                        // Color says swap vs position default
+                        candidateP0 = unmatched[0];
+                        candidateP1 = unmatched[unmatched.length - 1];
+                    }
+                    // If difference < threshold, keep position-based default
+                }
+            }
+        }
+        p0Pose = candidateP0;
+        p1Pose = candidateP1;
     } else if (!p0Pose && unmatched.length > 0) {
         p0Pose = unmatched[unmatched.length - 1];
     } else if (!p1Pose && unmatched.length > 0) {
@@ -483,6 +631,28 @@ function assignTwoPlayerPoses(sortedPoses, video, numLanes) {
     // Step 3: update tracking IDs
     if (p0Pose && p0Pose.id !== undefined) ids[0] = p0Pose.id;
     if (p1Pose && p1Pose.id !== undefined) ids[1] = p1Pose.id;
+
+    // Step 3b: adaptive color signature update (when matched confidently by ID)
+    const colorCfg = CONFIG.colorTracking;
+    if (gameState.frameCount % colorCfg.adaptiveFrameInterval === 0) {
+        for (let pi = 0; pi < 2; pi++) {
+            const pose = pi === 0 ? p0Pose : p1Pose;
+            const reg = webcamState.registeredPlayers[pi];
+            // Only update when pose was matched by tracking ID (confident match)
+            if (pose && pose.id !== undefined && pose.id === ids[pi] && reg.colorSignature) {
+                const wcx = webcamState.ctx;
+                const wcvs = webcamState.canvas;
+                if (wcx && wcvs) {
+                    const currentColor = sampleTorsoColor(pose, video, wcx, wcvs);
+                    if (currentColor) {
+                        reg.colorSignature = updateColorSignature(
+                            reg.colorSignature, currentColor, colorCfg.adaptiveAlpha
+                        );
+                    }
+                }
+            }
+        }
+    }
 
     // Step 4: assign to game players
     if (p0Pose) assignPoseToPlayer(0, p0Pose, video, numLanes);

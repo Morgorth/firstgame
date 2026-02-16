@@ -55,8 +55,8 @@ let webcamState = {
     registrationPhase: 'idle',          // 'idle' | 'registering' | 'ready'
     currentRegisteringPlayer: 0,
     registeredPlayers: [
-        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0, reachingOut: false },
-        { ready: false, faceImage: null, poseId: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0, reachingOut: false }
+        { ready: false, faceImage: null, poseId: null, colorSignature: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0, reachingOut: false },
+        { ready: false, faceImage: null, poseId: null, colorSignature: null, waveFrames: 0, wristHistories: { left: [], right: [] }, motionScore: 0, handsUpFrames: 0, reachingOut: false }
     ]
 };
 

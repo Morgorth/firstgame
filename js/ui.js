@@ -176,7 +176,7 @@ function selectControlMode(mode) {
     webcamState.playerTrackingIds = [null, null];
     webcamState.playerPoses = [null, null];
     webcamState.registeredPlayers.forEach(p => {
-        p.ready = false; p.faceImage = null; p.waveFrames = 0;
+        p.ready = false; p.faceImage = null; p.colorSignature = null; p.waveFrames = 0;
         p.wristHistories = { left: [], right: [] }; p.motionScore = 0;
     });
 
@@ -215,7 +215,7 @@ function selectPlayerCount(count) {
     webcamState.registrationPhase = 'idle';
     webcamState.currentRegisteringPlayer = 0;
     webcamState.registeredPlayers.forEach(p => {
-        p.ready = false; p.faceImage = null; p.waveFrames = 0;
+        p.ready = false; p.faceImage = null; p.colorSignature = null; p.waveFrames = 0;
         p.wristHistories = { left: [], right: [] }; p.motionScore = 0;
     });
 

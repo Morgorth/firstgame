@@ -62,6 +62,17 @@ const CONFIG = {
         reviveShips: 2,        // ships given on revive
         normalShips: 1,        // ships transferred when both alive
         reachThreshold: 40     // pixels wrist must extend past shoulder
+    },
+    colorTracking: {
+        hueBins: 8,
+        minSaturation: 0.15,
+        minValue: 0.15,
+        maxValue: 0.95,
+        minPixels: 20,
+        swapThreshold: 0.15,
+        adaptiveAlpha: 0.05,
+        adaptiveFrameInterval: 10,
+        pixelStep: 2
     }
 };
 
