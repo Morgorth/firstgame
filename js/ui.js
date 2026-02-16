@@ -6,7 +6,6 @@ function updateHUD() {
     document.getElementById('score').textContent = gameState.score;
 
     // Update nuke progress (per-player)
-    const killsPerCharge = CONFIG.superWeapon.killsPerCharge;
     if (gameState.playerCount === 2) {
         // Multi-player: update each player's nuke element
         for (let i = 0; i < 2; i++) {
@@ -17,8 +16,9 @@ function updateHUD() {
                 el.textContent = `READY! (x${charges})`;
                 el.classList.add('nuke-ready');
             } else {
-                const progress = gameState.playerKills[i] % killsPerCharge;
-                el.textContent = progress + '/' + killsPerCharge;
+                const kills = gameState.playerKills[i];
+                const needed = gameState.superWeaponNextThreshold[i];
+                el.textContent = kills + '/' + needed;
                 el.classList.remove('nuke-ready');
             }
         }
@@ -31,8 +31,9 @@ function updateHUD() {
                 nukeEl.textContent = `READY! (x${charges})`;
                 nukeEl.classList.add('nuke-ready');
             } else {
-                const progress = gameState.playerKills[0] % killsPerCharge;
-                nukeEl.textContent = progress + '/' + killsPerCharge;
+                const kills = gameState.playerKills[0];
+                const needed = gameState.superWeaponNextThreshold[0];
+                nukeEl.textContent = kills + '/' + needed;
                 nukeEl.classList.remove('nuke-ready');
             }
         }
