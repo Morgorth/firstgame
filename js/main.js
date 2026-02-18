@@ -109,6 +109,7 @@ function startGame() {
 }
 
 function gameOver() {
+    if (!gameState.running) return;   // prevent duplicate calls in same frame
     gameState.running = false;
     gameState.countdownActive = false;
     cancelCountdown();

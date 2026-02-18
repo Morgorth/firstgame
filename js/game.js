@@ -472,7 +472,7 @@ function update() {
                 for (let j = 0; j < 15; j++) {
                     gameState.particles.push(createParticle(player.x, player.y, '#ff0000'));
                 }
-                if (player.crowdSize <= 0) { player.active = false; checkGameOver(); }
+                if (player.crowdSize <= 0) { player.active = false; }
                 updateCrowdDisplay();
                 return false;
             }
@@ -482,7 +482,6 @@ function update() {
         if (e.y > PLAY_AREA.height + 50) {
             audioSystem.playExplosion();
             const dmg = Math.ceil(e.health / CONFIG.bullet.damage / 2);
-            let shieldAbsorbed = false;
             gameState.players.forEach((player, i) => {
                 if (!player.active) return;
                 if (gameState.activeEffects.shield[i] > 0) {
@@ -490,7 +489,6 @@ function update() {
                     for (let j = 0; j < 10; j++) {
                         gameState.particles.push(createParticle(player.x, player.y, '#00aaff'));
                     }
-                    shieldAbsorbed = true;
                     return;
                 }
                 player.crowdSize = Math.max(0, player.crowdSize - dmg);
@@ -502,13 +500,15 @@ function update() {
             // No specific player attribution for enemies passing the bottom
             gameState.hitEffect = 15;
             gameState.screenShake = { x: 5, y: 5 };
-            checkGameOver();
             updateCrowdDisplay();
             return false;
         }
 
         return e.health > 0;
     });
+
+    // Single game-over check after all enemy processing is complete
+    checkGameOver();
 
     // Move powerups & particles
     gameState.powerups = gameState.powerups.filter(p => p.active && (p.y += CONFIG.powerup.speed) < PLAY_AREA.height);
