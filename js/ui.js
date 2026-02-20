@@ -2,41 +2,26 @@
 
 // ── HUD ─────────────────────────────────────────────────────────────
 
+function _updateNukeEl(el, playerIndex) {
+    if (!el) return;
+    const charges = gameState.superWeaponCharges[playerIndex];
+    if (charges > 0) {
+        el.textContent = `READY! (x${charges})`;
+        el.classList.add('nuke-ready');
+    } else {
+        el.textContent = gameState.playerKills[playerIndex] + '/' + gameState.superWeaponNextThreshold[playerIndex];
+        el.classList.remove('nuke-ready');
+    }
+}
+
 function updateHUD() {
     document.getElementById('score').textContent = gameState.score;
 
-    // Update nuke progress (per-player)
     if (gameState.playerCount === 2) {
-        // Multi-player: update each player's nuke element
-        for (let i = 0; i < 2; i++) {
-            const el = document.getElementById(`p${i + 1}Nuke`);
-            if (!el) continue;
-            const charges = gameState.superWeaponCharges[i];
-            if (charges > 0) {
-                el.textContent = `READY! (x${charges})`;
-                el.classList.add('nuke-ready');
-            } else {
-                const kills = gameState.playerKills[i];
-                const needed = gameState.superWeaponNextThreshold[i];
-                el.textContent = kills + '/' + needed;
-                el.classList.remove('nuke-ready');
-            }
-        }
+        _updateNukeEl(document.getElementById('p1Nuke'), 0);
+        _updateNukeEl(document.getElementById('p2Nuke'), 1);
     } else {
-        // Single player: update the single nuke element
-        const nukeEl = document.getElementById('nukeProgress');
-        if (nukeEl) {
-            const charges = gameState.superWeaponCharges[0];
-            if (charges > 0) {
-                nukeEl.textContent = `READY! (x${charges})`;
-                nukeEl.classList.add('nuke-ready');
-            } else {
-                const kills = gameState.playerKills[0];
-                const needed = gameState.superWeaponNextThreshold[0];
-                nukeEl.textContent = kills + '/' + needed;
-                nukeEl.classList.remove('nuke-ready');
-            }
-        }
+        _updateNukeEl(document.getElementById('nukeProgress'), 0);
     }
 
     updateActiveEffectsHUD();

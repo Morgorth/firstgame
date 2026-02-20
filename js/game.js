@@ -12,8 +12,7 @@ function activateSuperWeapon(playerIndex) {
     gameState.superWeaponCharges[playerIndex]--;
 
     const cfg = CONFIG.superWeapon;
-    const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
-    const particleColor = isUnicorn ? '#FFD700' : '#00ffff';
+    const particleColor = gameTheme === 'unicorn' ? '#FFD700' : '#00ffff';
 
     for (let i = 0; i < gameState.enemies.length; i++) {
         const e = gameState.enemies[i];
@@ -50,8 +49,6 @@ function performFleetDonation() {
     const p0 = gameState.players[0];
     const p1 = gameState.players[1];
     const cfg = CONFIG.fleetDonate;
-    const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
-
     // Determine donor and receiver
     let donor, receiver, donorIdx, receiverIdx;
 
@@ -101,7 +98,7 @@ function performFleetDonation() {
     updateCrowdDisplay();
 
     // Spawn particles along the connection line between players
-    const particleColor = isUnicorn ? '#FF69B4' : '#00ffff';
+    const particleColor = gameTheme === 'unicorn' ? '#FF69B4' : '#00ffff';
     const midX = (donor.x + receiver.x) / 2;
     const midY = (donor.y + receiver.y) / 2;
     for (let i = 0; i < 20; i++) {
@@ -234,6 +231,8 @@ function update() {
     if (!gameState.players.some(p => p.active)) return;
 
     gameState.frameCount++;
+    const lanes = gameState.lanePositions ||
+        [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
 
     // Scroll stars
     gameState.stars.forEach(s => {
@@ -246,10 +245,8 @@ function update() {
         if (!player.active) return;
 
         if (controlMode === 'camera' && webcamState.active) {
-            const lanePositions = gameState.lanePositions ||
-                [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
-            const targetLane = Math.min(player.targetLane, lanePositions.length - 1);
-            player.x += (lanePositions[targetLane] - player.x) * 0.2;
+            const targetLane = Math.min(player.targetLane, lanes.length - 1);
+            player.x += (lanes[targetLane] - player.x) * 0.2;
         } else if (idx === 0) {
             if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.x -= CONFIG.player.speed;
             if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += CONFIG.player.speed;
@@ -318,8 +315,6 @@ function update() {
 
     // Boss enemy spawning: each live boss spawns a minion every 60 frames (~1 second)
     if (gameState.frameCount % 60 === 0) {
-        const lanes = gameState.lanePositions ||
-            [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
         for (let i = 0; i < gameState.enemies.length; i++) {
             const e = gameState.enemies[i];
             if (e.type !== 'boss' || e.health <= 0) continue;
@@ -331,8 +326,6 @@ function update() {
     }
 
     // Shifter dodge logic
-    const dodgeLanes = gameState.lanePositions ||
-        [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
     for (let i = 0; i < gameState.enemies.length; i++) {
         const e = gameState.enemies[i];
         if (e.type !== 'shifter' || e.health <= 0 || e.y <= 0) continue;
@@ -353,17 +346,17 @@ function update() {
         // Find current lane index
         let curLane = 0;
         let minDist = Infinity;
-        for (let li = 0; li < dodgeLanes.length; li++) {
-            const d = Math.abs(e.x - dodgeLanes[li]);
+        for (let li = 0; li < lanes.length; li++) {
+            const d = Math.abs(e.x - lanes[li]);
             if (d < minDist) { minDist = d; curLane = li; }
         }
 
         // Find adjacent lanes with alive enemies
         const candidates = [];
         for (const adj of [curLane - 1, curLane + 1]) {
-            if (adj < 0 || adj >= dodgeLanes.length) continue;
+            if (adj < 0 || adj >= lanes.length) continue;
             const count = gameState.enemies.filter(
-                other => other !== e && other.health > 0 && Math.abs(other.x - dodgeLanes[adj]) < 40
+                other => other !== e && other.health > 0 && Math.abs(other.x - lanes[adj]) < 40
             ).length;
             if (count > 0) candidates.push({ lane: adj, count });
         }
@@ -375,7 +368,7 @@ function update() {
             ? candidates[Math.floor(Math.random() * 2)]
             : candidates[0];
 
-        e.x = dodgeLanes[pick.lane];
+        e.x = lanes[pick.lane];
         e.lastDodgeFrame = gameState.frameCount;
     }
 
@@ -449,10 +442,9 @@ function update() {
             if (pu.health <= 0) {
                 const ownerIdx = bullet.owner || 0;
                 const owner = gameState.players[ownerIdx];
-                const isUnicorn = typeof gameTheme !== 'undefined' && gameTheme === 'unicorn';
                 const puType = pu.type || 'fleet';
                 const typeCfg = CONFIG.powerup.types[puType];
-                const particleColor = isUnicorn ? (typeCfg?.unicornColor || '#FFD700') : (typeCfg?.color || '#ffff00');
+                const particleColor = gameTheme === 'unicorn' ? (typeCfg?.unicornColor || '#FFD700') : (typeCfg?.color || '#ffff00');
 
                 if (puType === 'fleet') {
                     if (owner && owner.active && owner.crowdSize < CONFIG.player.maxCrowd) {
