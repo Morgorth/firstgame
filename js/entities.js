@@ -1,7 +1,7 @@
 // Factory functions for creating game entities.
 
 function createPlayer() {
-    return { x: PLAY_AREA.width / 2, y: PLAY_AREA.height - 60 };
+    return { x: PLAY_AREA.width / 2, y: PLAY_AREA.height - 40 };
 }
 
 function createBullet(x, y, owner = 0) {

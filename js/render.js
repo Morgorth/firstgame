@@ -772,13 +772,13 @@ function render() {
         const ph = PLAY_AREA.height;
         const fc = gameState.frameCount || 0;
 
-        // Lava pool glow at the bottom
-        const lavaGrad = ctx.createLinearGradient(0, ph * 0.82, 0, ph);
+        // Lava pool glow at the very bottom (thin strip — keeps gameplay area clear)
+        const lavaGrad = ctx.createLinearGradient(0, ph * 0.95, 0, ph);
         lavaGrad.addColorStop(0, 'rgba(0,0,0,0)');
-        lavaGrad.addColorStop(0.5, 'rgba(180,40,0,0.45)');
-        lavaGrad.addColorStop(1, 'rgba(255,80,0,0.70)');
+        lavaGrad.addColorStop(0.5, 'rgba(180,40,0,0.55)');
+        lavaGrad.addColorStop(1, 'rgba(255,80,0,0.85)');
         ctx.fillStyle = lavaGrad;
-        ctx.fillRect(0, ph * 0.82, pw, ph * 0.18);
+        ctx.fillRect(0, ph * 0.95, pw, ph * 0.05);
 
         // Lava surface — irregular bubbling rock ledge
         ctx.fillStyle = 'rgba(20,6,2,0.98)';
@@ -792,8 +792,8 @@ function render() {
         ].forEach(([fx, fy]) => ctx.lineTo(fx * pw, ph + fy * ph));
         ctx.lineTo(pw, ph); ctx.closePath(); ctx.fill();
 
-        // Lava pool cracks with orange glow
-        [[0.12,0.94,0.28,0.97],[0.35,0.96,0.55,0.93],[0.60,0.95,0.78,0.97],[0.82,0.94,0.96,0.96]]
+        // Lava pool cracks with orange glow (confined to lava strip)
+        [[0.12,0.96,0.28,0.98],[0.35,0.97,0.55,0.96],[0.60,0.96,0.78,0.98],[0.82,0.96,0.96,0.98]]
         .forEach(([x1,y1,x2,y2], fi) => {
             const lGrad = ctx.createLinearGradient(x1*pw, y1*ph, x2*pw, y2*ph);
             const flk = Math.sin(fc * 0.07 + fi * 1.8) * 0.25 + 0.75;
@@ -837,14 +837,15 @@ function render() {
             ctx.fillRect(tx - pw * 0.1, ty - ph * 0.08, pw * 0.2, ph * 0.16);
         });
 
-        // Stalagmites rising from lava ledge
-        ctx.fillStyle = 'rgba(14,6,2,0.96)';
-        [[0.08,0.09],[0.19,0.06],[0.30,0.10],[0.42,0.07],[0.50,0.11],
-         [0.60,0.07],[0.71,0.09],[0.82,0.06],[0.92,0.10]
+        // Stalagmites rising from lava — kept inside the lava strip so they
+        // don't intrude on the gameplay area above ph * 0.95
+        ctx.fillStyle = 'rgba(14,6,2,0.97)';
+        [[0.08,0.018],[0.19,0.013],[0.30,0.020],[0.42,0.015],[0.50,0.022],
+         [0.60,0.014],[0.71,0.018],[0.82,0.013],[0.92,0.020]
         ].forEach(([fx, fh]) => {
             const sw = pw * 0.028;
             const sh = ph * fh;
-            const baseY = ph * 0.96;
+            const baseY = ph * 0.975;
             ctx.beginPath();
             ctx.moveTo(fx * pw - sw / 2, baseY);
             ctx.lineTo(fx * pw, baseY - sh);
