@@ -122,7 +122,7 @@ function renderHighScores(containerId) {
         const d = new Date(entry.date);
         const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
-        const themeIcon = entry.theme === 'unicorn' ? '\uD83E\uDD84' : entry.theme === 'pacificrim' ? '\uD83E\uDD16' : '\uD83D\uDE80';
+        const themeIcon = entry.theme === 'unicorn' ? '\uD83E\uDD84' : entry.theme === 'pacificrim' ? '\uD83E\uDD16' : entry.theme === 'dragon' ? '\uD83D\uDC09' : '\uD83D\uDE80';
         const ctrlIcon = entry.controlMode === 'camera' ? '\uD83D\uDCF7' : '\u2328\uFE0F';
 
         return `<div class="high-score-entry${firstClass}">
@@ -394,6 +394,7 @@ function selectTheme(theme) {
     document.getElementById('spaceThemeBtn').classList.toggle('selected', theme === 'space');
     document.getElementById('unicornThemeBtn').classList.toggle('selected', theme === 'unicorn');
     document.getElementById('pacificrimThemeBtn').classList.toggle('selected', theme === 'pacificrim');
+    document.getElementById('dragonThemeBtn').classList.toggle('selected', theme === 'dragon');
 
     const title = document.getElementById('gameTitle');
     const subtitle = document.getElementById('gameSubtitle');
@@ -401,6 +402,7 @@ function selectTheme(theme) {
 
     container.classList.toggle('unicorn-theme', theme === 'unicorn');
     container.classList.toggle('pacificrim-theme', theme === 'pacificrim');
+    container.classList.toggle('dragon-theme', theme === 'dragon');
 
     if (theme === 'unicorn') {
         title.textContent = 'UNICORN MAGIC';
@@ -412,6 +414,11 @@ function selectTheme(theme) {
         subtitle.textContent = 'DEFEND THE BREACH';
         container.style.background = 'radial-gradient(ellipse at 50% 80%, rgba(0,80,120,0.4) 0%, transparent 60%), linear-gradient(180deg, #050d14 0%, #0a1e2e 60%, #0d2a1a 100%)';
         document.body.style.background = '#050d14';
+    } else if (theme === 'dragon') {
+        title.textContent = 'DRAGON GROTTO';
+        subtitle.textContent = 'SCORCH THE KNIGHTS';
+        container.style.background = 'radial-gradient(ellipse at 50% 100%, rgba(200,60,0,0.4) 0%, transparent 55%), linear-gradient(180deg, #0a0505 0%, #1a0a08 55%, #2d1006 100%)';
+        document.body.style.background = '#0a0505';
     } else {
         title.textContent = 'WAVE ASSAULT';
         subtitle.textContent = 'SURVIVE THE ONSLAUGHT';
