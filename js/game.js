@@ -130,19 +130,46 @@ function spawnWave() {
     // Boss wave every 10 waves
     if (w % 10 === 0) {
         const bossHpScale = 1 + Math.floor(w / 10) * 0.3;
-        const boss = createEnemy('boss', lanes[Math.floor(numLanes / 2)], -100);
-        boss.health = Math.ceil(CONFIG.enemy.boss.health * bossHpScale);
-        boss.maxHealth = boss.health;
-        gameState.enemies.push(boss);
+        const twoBosses = gameState.playerCount === 2 && w >= 20;
 
-        // Add 2-3 basic minions
-        const minionCount = 2 + Math.floor(Math.random() * 2);
-        for (let i = 0; i < minionCount; i++) {
-            const m = createEnemy('basic', lanes[i % numLanes], -80 - (i + 1) * 90);
-            gameState.enemies.push(m);
+        if (twoBosses) {
+            // Spawn two bosses side by side
+            const boss1 = createEnemy('boss', lanes[Math.floor(numLanes / 2) - 1] || lanes[0], -100);
+            boss1.health = Math.ceil(CONFIG.enemy.boss.health * bossHpScale);
+            boss1.maxHealth = boss1.health;
+            boss1.bossDirection = 1;
+            gameState.enemies.push(boss1);
+
+            const boss2 = createEnemy('boss', lanes[Math.floor(numLanes / 2) + 1] || lanes[numLanes - 1], -100);
+            boss2.health = Math.ceil(CONFIG.enemy.boss.health * bossHpScale);
+            boss2.maxHealth = boss2.health;
+            boss2.bossDirection = -1;
+            gameState.enemies.push(boss2);
+
+            // Add 2-3 basic minions
+            const minionCount = 2 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < minionCount; i++) {
+                const m = createEnemy('basic', lanes[i % numLanes], -80 - (i + 1) * 90);
+                gameState.enemies.push(m);
+            }
+
+            gameState.enemiesInWave = 2 + minionCount;
+        } else {
+            const boss = createEnemy('boss', lanes[Math.floor(numLanes / 2)], -100);
+            boss.health = Math.ceil(CONFIG.enemy.boss.health * bossHpScale);
+            boss.maxHealth = boss.health;
+            gameState.enemies.push(boss);
+
+            // Add 2-3 basic minions
+            const minionCount = 2 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < minionCount; i++) {
+                const m = createEnemy('basic', lanes[i % numLanes], -80 - (i + 1) * 90);
+                gameState.enemies.push(m);
+            }
+
+            gameState.enemiesInWave = 1 + minionCount;
         }
 
-        gameState.enemiesInWave = 1 + minionCount;
         gameState.enemiesKilled = 0;
         audioSystem.startMusic();
         return;
@@ -288,6 +315,20 @@ function update() {
             else if (e.x >= PLAY_AREA.width - e.width / 2 - 20) { e.bossDirection = -1; }
         }
     });
+
+    // Boss enemy spawning: each live boss spawns a minion every 60 frames (~1 second)
+    if (gameState.frameCount % 60 === 0) {
+        const lanes = gameState.lanePositions ||
+            [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
+        for (let i = 0; i < gameState.enemies.length; i++) {
+            const e = gameState.enemies[i];
+            if (e.type !== 'boss' || e.health <= 0) continue;
+            const spawnLane = lanes[Math.floor(Math.random() * lanes.length)];
+            const minion = createEnemy('basic', spawnLane, e.y + e.height / 2 + 10);
+            gameState.enemies.push(minion);
+            gameState.enemiesInWave++;
+        }
+    }
 
     // Shifter dodge logic
     const dodgeLanes = gameState.lanePositions ||
