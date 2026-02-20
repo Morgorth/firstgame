@@ -49,20 +49,9 @@ function createStars() {
 
 // Returns an array of {x,y} positions for the fleet grid around a player.
 function getCrowdPositions(playerIndex = 0) {
-    let playerX, playerY, size;
-
-    if (gameState.playerCount > 1) {
-        const player = gameState.players[playerIndex];
-        if (!player || !player.active) return [];
-        playerX = player.x;
-        playerY = player.y;
-        size = player.crowdSize;
-    } else {
-        if (!gameState.player) return [];
-        playerX = gameState.player.x;
-        playerY = gameState.player.y;
-        size = gameState.crowdSize;
-    }
+    const player = gameState.players[playerIndex];
+    if (!player || !player.active) return [];
+    const playerX = player.x, playerY = player.y, size = player.crowdSize;
 
     const positions = [];
     const spacing = 28;

@@ -129,8 +129,8 @@ function gameOver() {
         theme: gameTheme,
         controlMode
     };
-    const dominated = highScores.length < 10 || highScores.some(h => entry.score > h.score);
-    if (dominated && entry.score > 0) {
+    const isNewHighScore = entry.score > 0 && (highScores.length < 10 || highScores.some(h => entry.score > h.score));
+    if (isNewHighScore) {
         highScores.push(entry);
         highScores.sort((a, b) => b.score - a.score);
         highScores = highScores.slice(0, 10);
