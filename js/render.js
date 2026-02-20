@@ -44,9 +44,10 @@ function _getStarEmojiSprite() {
     });
 }
 
-// Cached background gradient (invalidated on resize)
+// Cached background gradient (invalidated on resize or theme change)
 let _bgGradientCache = null;
 let _bgGradientH = 0;
+let _bgGradientTheme = '';
 
 // ── Theme-specific sprite drawing ───────────────────────────────────
 
@@ -411,31 +412,336 @@ function drawSpaceEnemy(e, sc) {
     ctx.restore();
 }
 
+// ── Dragon theme drawing ─────────────────────────────────────────────
+
+// Dragon (player) — P1: crimson/gold, P2: emerald/gold
+function drawDragon(pos, playerIndex) {
+    const isP2 = playerIndex === 1;
+    const bodyColor  = isP2 ? '#1a6632' : '#8b1a1a';
+    const scaleColor = isP2 ? '#2a9a50' : '#bb2a2a';
+    const wingColor  = isP2 ? '#0f4422' : '#6a1010';
+    const eyeColor   = isP2 ? '#00ff88' : '#ff7700';
+    const hornColor  = '#ccaa00';
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+
+    // Left wing (batlike membrane, behind body)
+    ctx.fillStyle = wingColor;
+    ctx.beginPath();
+    ctx.moveTo(-5, -5);
+    ctx.lineTo(-32, -18);
+    ctx.lineTo(-36, 8);
+    ctx.lineTo(-18, 12);
+    ctx.lineTo(-5, 5);
+    ctx.closePath();
+    ctx.fill();
+    // Wing vein lines
+    ctx.strokeStyle = scaleColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-5, -4); ctx.lineTo(-32, -18); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-5, 2); ctx.lineTo(-26, -5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-5, 7); ctx.lineTo(-20, 10); ctx.stroke();
+
+    // Right wing
+    ctx.fillStyle = wingColor;
+    ctx.beginPath();
+    ctx.moveTo(5, -5);
+    ctx.lineTo(32, -18);
+    ctx.lineTo(36, 8);
+    ctx.lineTo(18, 12);
+    ctx.lineTo(5, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(5, -4); ctx.lineTo(32, -18); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, 2); ctx.lineTo(26, -5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, 7); ctx.lineTo(20, 10); ctx.stroke();
+
+    // Body / torso (oval)
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.ellipse(0, 5, 11, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Scale highlights on torso
+    ctx.fillStyle = scaleColor;
+    ctx.beginPath(); ctx.ellipse(-4, 0, 3, 4, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(4, 0, 3, 4, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 8, 3, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Head
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.ellipse(0, -13, 10, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Horns
+    ctx.fillStyle = hornColor;
+    ctx.beginPath(); ctx.moveTo(-6, -18); ctx.lineTo(-11, -31); ctx.lineTo(-2, -19); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(6, -18); ctx.lineTo(11, -31); ctx.lineTo(2, -19); ctx.closePath(); ctx.fill();
+
+    // Snout
+    ctx.fillStyle = scaleColor;
+    ctx.beginPath();
+    ctx.ellipse(0, -8, 6, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes (pulsing glow)
+    const eyePulse = Math.sin((gameState.frameCount || 0) * 0.10) * 0.3 + 0.7;
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(-5, -14, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5, -14, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = eyeColor;
+    ctx.globalAlpha = eyePulse;
+    ctx.beginPath(); ctx.arc(-5, -14, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5, -14, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Tail curling to side
+    ctx.strokeStyle = bodyColor;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 18);
+    ctx.quadraticCurveTo(18, 26, 22, 18);
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(22, 18);
+    ctx.quadraticCurveTo(28, 12, 24, 8);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// Black Knight (enemy) — various armored knight silhouettes
+function drawBlackKnight(e, sc) {
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.scale(sc, sc);
+
+    const armorPulse = Math.sin((gameState.frameCount || 0) * 0.08) * 0.3 + 0.7;
+
+    if (e.type === 'basic') {
+        // Footsoldier — plate armor, round shield, sword
+        // Round shield (left side)
+        ctx.fillStyle = '#1e1e1e';
+        ctx.beginPath(); ctx.arc(-16, 0, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#cc0000';
+        ctx.fillRect(-20, -2, 8, 3);   // red cross horizontal
+        ctx.fillRect(-17, -6, 2, 11);  // red cross vertical
+        // Plate body
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.moveTo(-9, -14); ctx.lineTo(-11, 10); ctx.lineTo(11, 10); ctx.lineTo(9, -14);
+        ctx.closePath(); ctx.fill();
+        // Gorget / collar ring
+        ctx.fillStyle = '#222';
+        ctx.fillRect(-9, -16, 18, 5);
+        // Helmet (sallet)
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath(); ctx.arc(0, -22, 10, 0, Math.PI * 2); ctx.fill();
+        // Visor slit with glowing eyes
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-8, -24, 16, 5);
+        ctx.fillStyle = `rgba(255,80,0,${0.6 * armorPulse})`;
+        ctx.fillRect(-5, -23, 10, 3);
+        // Sword (right, raised at angle)
+        ctx.fillStyle = '#555';
+        ctx.save(); ctx.rotate(-0.25);
+        ctx.fillRect(14, -28, 3, 24);  // blade
+        ctx.fillStyle = '#888';
+        ctx.fillRect(11, -6, 9, 3);    // crossguard
+        ctx.fillStyle = '#996600';
+        ctx.fillRect(14, -3, 3, 7);    // handle
+        ctx.restore();
+
+    } else if (e.type === 'fast') {
+        // Scout knight — light armor, twin daggers, crouched
+        ctx.fillStyle = '#1a1a2a';
+        // Slim torso
+        ctx.beginPath();
+        ctx.moveTo(-7, -10); ctx.lineTo(-8, 8); ctx.lineTo(8, 8); ctx.lineTo(7, -10);
+        ctx.closePath(); ctx.fill();
+        // Small bascinet helmet with visor
+        ctx.fillStyle = '#222233';
+        ctx.beginPath(); ctx.arc(0, -16, 8, 0, Math.PI * 2); ctx.fill();
+        // Pointed aventail
+        ctx.fillStyle = '#1a1a2a';
+        ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(0, -5); ctx.lineTo(6, -10); ctx.fill();
+        // Blue-white visor slit
+        ctx.fillStyle = `rgba(100,200,255,${0.7 * armorPulse})`;
+        ctx.fillRect(-5, -18, 10, 3);
+        // Twin daggers (angled outward)
+        ctx.fillStyle = '#666';
+        ctx.save(); ctx.rotate(0.3);
+        ctx.fillRect(-18, -20, 2, 14);
+        ctx.restore();
+        ctx.save(); ctx.rotate(-0.3);
+        ctx.fillRect(16, -20, 2, 14);
+        ctx.restore();
+        ctx.fillStyle = '#883300';
+        ctx.fillRect(-19, -8, 4, 3);
+        ctx.fillRect(15, -8, 4, 3);
+
+    } else if (e.type === 'shifter') {
+        // Shadow knight — billowing cloak, spectral horns, flickering
+        const flicker = (gameState.frameCount || 0) % 8 < 5;
+        ctx.globalAlpha = flicker ? 0.85 : 0.40;
+        // Billowing dark cloak
+        ctx.fillStyle = '#080808';
+        ctx.beginPath();
+        ctx.moveTo(0, -18); ctx.lineTo(-20, -2); ctx.lineTo(-24, 14);
+        ctx.lineTo(24, 14); ctx.lineTo(20, -2);
+        ctx.closePath(); ctx.fill();
+        // Shadowy helm
+        ctx.fillStyle = '#0f0f0f';
+        ctx.beginPath(); ctx.arc(0, -22, 10, 0, Math.PI * 2); ctx.fill();
+        // Curved horns
+        ctx.fillStyle = '#1a0a2a';
+        ctx.beginPath(); ctx.moveTo(-7, -28); ctx.lineTo(-13, -40); ctx.lineTo(-3, -28); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(7, -28); ctx.lineTo(13, -40); ctx.lineTo(3, -28); ctx.fill();
+        // Glowing purple eyes
+        ctx.globalAlpha = flicker ? armorPulse : 0.5;
+        ctx.fillStyle = '#bb00ff';
+        ctx.beginPath(); ctx.arc(-4, -23, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(4, -23, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+
+    } else if (e.type === 'tank') {
+        // Heavy knight — full gothic plate, tower shield, halberd
+        // Tower shield (left)
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.moveTo(-30, -20); ctx.lineTo(-30, 18); ctx.lineTo(-16, 24); ctx.lineTo(-14, -24);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-25, -12); ctx.lineTo(-25, 18); ctx.stroke();
+        ctx.fillStyle = '#aa0000';
+        ctx.fillRect(-28, -3, 10, 3);
+        ctx.fillRect(-22, -9, 2, 13);
+        // Armored body
+        ctx.fillStyle = '#0d0d0d';
+        ctx.beginPath();
+        ctx.moveTo(-12, -22); ctx.lineTo(-13, 18); ctx.lineTo(13, 18); ctx.lineTo(12, -22);
+        ctx.closePath(); ctx.fill();
+        // Pauldrons (large shoulder guards)
+        ctx.fillStyle = '#181818';
+        ctx.beginPath(); ctx.arc(-15, -16, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(15, -16, 8, 0, Math.PI * 2); ctx.fill();
+        // Great helm (flat-top)
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-13, -36, 26, 16);
+        ctx.fillRect(-11, -24, 22, 3);
+        // Eye slit glow
+        ctx.fillStyle = `rgba(255,40,0,${0.75 * armorPulse})`;
+        ctx.fillRect(-8, -30, 16, 4);
+        // Halberd (right)
+        ctx.fillStyle = '#555';
+        ctx.fillRect(15, -46, 3, 62);
+        ctx.fillStyle = '#888';
+        ctx.beginPath(); ctx.moveTo(15, -46); ctx.lineTo(26, -32); ctx.lineTo(18, -34); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#666';
+        ctx.beginPath(); ctx.moveTo(18, -34); ctx.lineTo(26, -26); ctx.lineTo(15, -30); ctx.closePath(); ctx.fill();
+
+    } else {
+        // Boss — Dark Lord mounted on a spectral warhorse
+        // Warhorse body
+        ctx.fillStyle = '#0a0a0a';
+        ctx.beginPath();
+        ctx.moveTo(-46, 2); ctx.lineTo(-50, 32); ctx.lineTo(-34, 40);
+        ctx.lineTo(34, 40); ctx.lineTo(50, 32); ctx.lineTo(46, 2); ctx.lineTo(0, -8);
+        ctx.closePath(); ctx.fill();
+        // Spectral mane
+        ctx.fillStyle = `rgba(200,0,60,${0.5 * armorPulse})`;
+        ctx.beginPath(); ctx.ellipse(-30, -4, 14, 7, 0.5, 0, Math.PI * 2); ctx.fill();
+        // Legs
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-40, 32, 8, 22);
+        ctx.fillRect(-22, 34, 8, 20);
+        ctx.fillRect(14, 34, 8, 20);
+        ctx.fillRect(32, 32, 8, 22);
+        // Dark Lord torso
+        ctx.fillStyle = '#0d0d0d';
+        ctx.beginPath();
+        ctx.moveTo(-20, -32); ctx.lineTo(-22, 2); ctx.lineTo(22, 2); ctx.lineTo(20, -32);
+        ctx.closePath(); ctx.fill();
+        // Dark Lord cloak
+        ctx.fillStyle = '#080808';
+        ctx.beginPath();
+        ctx.moveTo(-22, -10); ctx.lineTo(-32, 36); ctx.lineTo(32, 36); ctx.lineTo(22, -10);
+        ctx.closePath(); ctx.fill();
+        // Crown helm
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-16, -56, 32, 26);
+        // Crown spikes
+        ctx.fillStyle = '#2a2a2a';
+        ctx.beginPath(); ctx.moveTo(-16, -56); ctx.lineTo(-11, -70); ctx.lineTo(-6, -56); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-3, -56); ctx.lineTo(0, -74); ctx.lineTo(3, -56); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(6, -56); ctx.lineTo(11, -70); ctx.lineTo(16, -56); ctx.fill();
+        // Glowing red eyes
+        const eyeGlow = `rgba(255,0,0,${0.75 + armorPulse * 0.25})`;
+        ctx.fillStyle = eyeGlow;
+        ctx.beginPath(); ctx.arc(-8, -42, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(8, -42, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(-8, -42, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(8, -42, 2, 0, Math.PI * 2); ctx.fill();
+        // Massive two-handed sword (right)
+        ctx.fillStyle = '#444';
+        ctx.fillRect(23, -76, 5, 96);
+        ctx.fillStyle = '#777';
+        ctx.fillRect(18, -24, 15, 5);  // crossguard
+        ctx.fillStyle = '#aa7700';
+        ctx.fillRect(24, -10, 4, 14);  // handle
+        // Rune glow on blade
+        ctx.fillStyle = `rgba(255,0,0,${armorPulse * 0.8})`;
+        ctx.fillRect(24, -76, 3, 52);
+    }
+
+    ctx.restore();
+}
+
 // ── Main render ─────────────────────────────────────────────────────
 
 function render() {
     const isUnicorn = gameTheme === 'unicorn';
     const isPacificRim = gameTheme === 'pacificrim';
+    const isDragon = gameTheme === 'dragon';
 
     // Background
     if (isUnicorn) {
-        if (!_bgGradientCache || _bgGradientH !== canvas.height) {
+        if (!_bgGradientCache || _bgGradientH !== canvas.height || _bgGradientTheme !== 'unicorn') {
             _bgGradientCache = ctx.createLinearGradient(0, 0, 0, canvas.height);
             _bgGradientCache.addColorStop(0, '#87CEEB');
             _bgGradientCache.addColorStop(0.3, '#FFB6C1');
             _bgGradientCache.addColorStop(0.6, '#DDA0DD');
             _bgGradientCache.addColorStop(1, '#98FB98');
             _bgGradientH = canvas.height;
+            _bgGradientTheme = 'unicorn';
         }
         ctx.fillStyle = _bgGradientCache;
     } else if (isPacificRim) {
-        if (!_bgGradientCache || _bgGradientH !== canvas.height) {
+        if (!_bgGradientCache || _bgGradientH !== canvas.height || _bgGradientTheme !== 'pacificrim') {
             _bgGradientCache = ctx.createLinearGradient(0, 0, 0, canvas.height);
             _bgGradientCache.addColorStop(0, '#050d14');
             _bgGradientCache.addColorStop(0.55, '#0a1e2e');
             _bgGradientCache.addColorStop(0.75, '#0c2030');
             _bgGradientCache.addColorStop(1, '#061820');
             _bgGradientH = canvas.height;
+            _bgGradientTheme = 'pacificrim';
+        }
+        ctx.fillStyle = _bgGradientCache;
+    } else if (isDragon) {
+        if (!_bgGradientCache || _bgGradientH !== canvas.height || _bgGradientTheme !== 'dragon') {
+            _bgGradientCache = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            _bgGradientCache.addColorStop(0, '#0a0505');
+            _bgGradientCache.addColorStop(0.50, '#1a0a08');
+            _bgGradientCache.addColorStop(0.80, '#2a0e04');
+            _bgGradientCache.addColorStop(1, '#3d1200');
+            _bgGradientH = canvas.height;
+            _bgGradientTheme = 'dragon';
         }
         ctx.fillStyle = _bgGradientCache;
     } else {
@@ -460,6 +766,93 @@ function render() {
         );
     }
 
+    // Dragon grotto environment (drawn before stars/embers)
+    if (isDragon) {
+        const pw = PLAY_AREA.width;
+        const ph = PLAY_AREA.height;
+        const fc = gameState.frameCount || 0;
+
+        // Lava pool glow at the bottom
+        const lavaGrad = ctx.createLinearGradient(0, ph * 0.82, 0, ph);
+        lavaGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        lavaGrad.addColorStop(0.5, 'rgba(180,40,0,0.45)');
+        lavaGrad.addColorStop(1, 'rgba(255,80,0,0.70)');
+        ctx.fillStyle = lavaGrad;
+        ctx.fillRect(0, ph * 0.82, pw, ph * 0.18);
+
+        // Lava surface — irregular bubbling rock ledge
+        ctx.fillStyle = 'rgba(20,6,2,0.98)';
+        ctx.beginPath();
+        ctx.moveTo(0, ph);
+        [[0.02,-0.020],[0.05,-0.012],[0.09,-0.028],[0.13,-0.015],[0.17,-0.032],
+         [0.21,-0.010],[0.25,-0.024],[0.29,-0.018],[0.33,-0.030],[0.37,-0.013],
+         [0.41,-0.028],[0.45,-0.011],[0.49,-0.025],[0.53,-0.016],[0.57,-0.029],
+         [0.61,-0.008],[0.65,-0.023],[0.69,-0.016],[0.73,-0.031],[0.77,-0.012],
+         [0.81,-0.026],[0.85,-0.014],[0.89,-0.028],[0.93,-0.010],[0.97,-0.022],[1.0,-0.018]
+        ].forEach(([fx, fy]) => ctx.lineTo(fx * pw, ph + fy * ph));
+        ctx.lineTo(pw, ph); ctx.closePath(); ctx.fill();
+
+        // Lava pool cracks with orange glow
+        [[0.12,0.94,0.28,0.97],[0.35,0.96,0.55,0.93],[0.60,0.95,0.78,0.97],[0.82,0.94,0.96,0.96]]
+        .forEach(([x1,y1,x2,y2], fi) => {
+            const lGrad = ctx.createLinearGradient(x1*pw, y1*ph, x2*pw, y2*ph);
+            const flk = Math.sin(fc * 0.07 + fi * 1.8) * 0.25 + 0.75;
+            lGrad.addColorStop(0, `rgba(255,100,0,0)`);
+            lGrad.addColorStop(0.5, `rgba(255,160,0,${0.7 * flk})`);
+            lGrad.addColorStop(1, `rgba(255,100,0,0)`);
+            ctx.strokeStyle = lGrad;
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(x1*pw, y1*ph); ctx.lineTo(x2*pw, y2*ph); ctx.stroke();
+        });
+
+        // Cave walls — dark rocky side columns
+        ctx.fillStyle = 'rgba(12,5,3,0.98)';
+        ctx.fillRect(0, 0, pw * 0.06, ph);
+        ctx.fillRect(pw * 0.94, 0, pw * 0.06, ph);
+
+        // Stalactites hanging from ceiling
+        ctx.fillStyle = 'rgba(16,8,4,0.97)';
+        [[0.04,0.22],[0.10,0.14],[0.17,0.28],[0.24,0.10],[0.31,0.19],
+         [0.38,0.13],[0.44,0.24],[0.51,0.08],[0.57,0.20],[0.63,0.15],
+         [0.70,0.26],[0.77,0.11],[0.83,0.18],[0.90,0.22],[0.96,0.12]
+        ].forEach(([fx, fh], si) => {
+            const bw = pw * (0.04 + (si % 3) * 0.01);
+            const bh = ph * fh;
+            ctx.beginPath();
+            ctx.moveTo(fx * pw - bw / 2, 0);
+            ctx.lineTo(fx * pw, bh);
+            ctx.lineTo(fx * pw + bw / 2, 0);
+            ctx.closePath(); ctx.fill();
+        });
+
+        // Torch flames on cave walls (flickering radial glows)
+        [[0.07, 0.3],[0.07, 0.65],[0.93, 0.3],[0.93, 0.65]].forEach(([tfx, tfy], ti) => {
+            const tx = tfx * pw, ty = tfy * ph;
+            const flk = Math.sin(fc * 0.12 + ti * 2.1) * 0.30 + 0.70;
+            const tGrad = ctx.createRadialGradient(tx, ty, 0, tx, ty, pw * 0.08 * flk);
+            tGrad.addColorStop(0, `rgba(255,200,50,${0.70 * flk})`);
+            tGrad.addColorStop(0.35, `rgba(255,80,0,${0.35 * flk})`);
+            tGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = tGrad;
+            ctx.fillRect(tx - pw * 0.1, ty - ph * 0.08, pw * 0.2, ph * 0.16);
+        });
+
+        // Stalagmites rising from lava ledge
+        ctx.fillStyle = 'rgba(14,6,2,0.96)';
+        [[0.08,0.09],[0.19,0.06],[0.30,0.10],[0.42,0.07],[0.50,0.11],
+         [0.60,0.07],[0.71,0.09],[0.82,0.06],[0.92,0.10]
+        ].forEach(([fx, fh]) => {
+            const sw = pw * 0.028;
+            const sh = ph * fh;
+            const baseY = ph * 0.96;
+            ctx.beginPath();
+            ctx.moveTo(fx * pw - sw / 2, baseY);
+            ctx.lineTo(fx * pw, baseY - sh);
+            ctx.lineTo(fx * pw + sw / 2, baseY);
+            ctx.closePath(); ctx.fill();
+        });
+    }
+
     // Stars / sparkles / rain
     if (isUnicorn) {
         for (let i = 0; i < gameState.stars.length; i++) {
@@ -469,6 +862,18 @@ function render() {
             const sprite = _getSparkleSprite(spriteSize);
             ctx.globalAlpha = s.size / 2 + 0.3;
             ctx.drawImage(sprite, s.x, s.y);
+        }
+        ctx.globalAlpha = 1;
+    } else if (isDragon) {
+        // Floating embers drifting upward
+        for (let i = 0; i < gameState.stars.length; i++) {
+            const s = gameState.stars[i];
+            const alpha = s.size * 0.5 + 0.1;
+            ctx.globalAlpha = alpha;
+            const emberColor = s.size > 1.5 ? '#ff8800' : s.size > 1.0 ? '#ff4400' : '#ff2200';
+            ctx.fillStyle = emberColor;
+            const r = s.size * 1.5 + 0.5;
+            ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.fill();
         }
         ctx.globalAlpha = 1;
     } else if (isPacificRim) {
@@ -642,6 +1047,19 @@ function render() {
             ctx.drawImage(sparkle12, p.x, p.y);
         }
         ctx.globalAlpha = 1;
+    } else if (isDragon) {
+        // Fire sparks — glowing orange/red embers
+        for (let i = 0; i < gameState.particles.length; i++) {
+            const p = gameState.particles[i];
+            const alpha = p.life / p.maxLife;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = alpha > 0.6 ? '#ffaa00' : alpha > 0.3 ? '#ff5500' : '#cc2200';
+            ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = alpha * 0.35;
+            ctx.fillStyle = '#ff8800';
+            ctx.beginPath(); ctx.arc(p.x - p.vx, p.y - p.vy, 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
     } else if (isPacificRim) {
         // Debris sparks — larger, fiery
         for (let i = 0; i < gameState.particles.length; i++) {
@@ -675,6 +1093,8 @@ function render() {
                     drawUnicorn(pos.x, pos.y, 0.8);
                 } else if (isPacificRim) {
                     drawJaeger(pos, playerIndex);
+                } else if (isDragon) {
+                    drawDragon(pos, playerIndex);
                 } else {
                     drawSpaceShip(pos, playerIndex);
                 }
@@ -701,7 +1121,7 @@ function render() {
                 // Border ring (no shadowBlur — use double stroke for glow effect)
                 ctx.save();
                 ctx.translate(player.x, faceY);
-                const ringColor = isUnicorn ? '#FF69B4' : isPacificRim ? '#FF8C00' : playerColor;
+                const ringColor = isUnicorn ? '#FF69B4' : isPacificRim ? '#FF8C00' : isDragon ? '#ff6600' : playerColor;
                 ctx.strokeStyle = ringColor;
                 ctx.globalAlpha = 0.3;
                 ctx.lineWidth = 8;
@@ -722,7 +1142,7 @@ function render() {
             if (gameState.activeEffects.shield[playerIndex] > 0) {
                 const shieldPulse = Math.sin(gameState.frameCount * 0.12) * 0.15 + 0.85;
                 const shieldRadius = Math.sqrt(player.crowdSize) * 28 + 20;
-                const shieldColor = isUnicorn ? 'rgba(255,182,193,' : isPacificRim ? 'rgba(0,200,255,' : 'rgba(0,170,255,';
+                const shieldColor = isUnicorn ? 'rgba(255,182,193,' : isPacificRim ? 'rgba(0,200,255,' : isDragon ? 'rgba(255,100,0,' : 'rgba(0,170,255,';
                 ctx.strokeStyle = shieldColor + (0.6 * shieldPulse) + ')';
                 ctx.lineWidth = 4;
                 ctx.beginPath();
@@ -744,6 +1164,24 @@ function render() {
             const b = gameState.bullets[i];
             if (!b.active) continue;
             ctx.drawImage(heartSprite, b.x - 8, b.y - 3);
+        }
+    } else if (isDragon) {
+        // Fire breath — glowing fireballs
+        for (let i = 0; i < gameState.bullets.length; i++) {
+            const b = gameState.bullets[i];
+            if (!b.active) continue;
+            const isP2 = (b.owner || 0) === 1;
+            const coreColor  = isP2 ? '#88ff44' : '#ffaa00';
+            const outerColor = isP2 ? 'rgba(0,180,0,0.35)' : 'rgba(255,80,0,0.35)';
+            // Outer glow
+            ctx.fillStyle = outerColor;
+            ctx.beginPath(); ctx.arc(b.x, b.y + 5, 7, 0, Math.PI * 2); ctx.fill();
+            // Core fireball
+            ctx.fillStyle = coreColor;
+            ctx.beginPath(); ctx.arc(b.x, b.y + 5, 4, 0, Math.PI * 2); ctx.fill();
+            // Bright center
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(b.x, b.y + 4, 2, 0, Math.PI * 2); ctx.fill();
         }
     } else if (isPacificRim) {
         // Plasma cannon bolts — wide amber beams with glow
@@ -785,6 +1223,8 @@ function render() {
             drawWolf(e.x, e.y, sc * 0.9, wolfColor);
         } else if (isPacificRim) {
             drawKaiju(e, sc);
+        } else if (isDragon) {
+            drawBlackKnight(e, sc);
         } else {
             drawSpaceEnemy(e, sc);
         }
@@ -816,7 +1256,7 @@ function render() {
         const pulse = Math.sin(gameState.frameCount * 0.15) * 0.5 + 1;
         const puType = p.type || 'fleet';
         const typeCfg = CONFIG.powerup.types[puType];
-        const puColor = isUnicorn ? typeCfg.unicornColor : isPacificRim ? typeCfg.pacificrimColor : typeCfg.color;
+        const puColor = isUnicorn ? typeCfg.unicornColor : isPacificRim ? typeCfg.pacificrimColor : isDragon ? typeCfg.dragonColor : typeCfg.color;
 
         if (isUnicorn) {
             const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, 45 * pulse);
@@ -903,7 +1343,7 @@ function render() {
 
     // Hit flash overlay
     if (gameState.hitEffect > 0) {
-        const flashColor = isUnicorn ? '128,0,128' : isPacificRim ? '255,80,0' : '255,0,0';
+        const flashColor = isUnicorn ? '128,0,128' : isPacificRim ? '255,80,0' : isDragon ? '200,50,0' : '255,0,0';
         ctx.fillStyle = `rgba(${flashColor},${gameState.hitEffect / 50})`;
         ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
     }
@@ -969,6 +1409,38 @@ function render() {
             ctx.arc(centerX, centerY, ringRadius * 0.95, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
+        } else if (isDragon) {
+            // Dragon: molten lava wave erupting from the bottom
+            const progress = 1 - (effect / flashDuration);
+            const waveFrontY = PLAY_AREA.height * (1 - progress);
+            const bandHeight = 120;
+
+            // Full-screen heat wash at start
+            const heatAlpha = Math.max(0, (1 - progress * 2) * 0.5);
+            if (heatAlpha > 0) {
+                ctx.fillStyle = `rgba(180,40,0,${heatAlpha})`;
+                ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
+            }
+
+            // Lava gradient band sweeping upward
+            const lavaGrad = ctx.createLinearGradient(0, 0, PLAY_AREA.width, 0);
+            lavaGrad.addColorStop(0.0,  '#ff2200');
+            lavaGrad.addColorStop(0.2,  '#ff6600');
+            lavaGrad.addColorStop(0.4,  '#ffaa00');
+            lavaGrad.addColorStop(0.6,  '#ff6600');
+            lavaGrad.addColorStop(0.8,  '#ff2200');
+            lavaGrad.addColorStop(1.0,  '#ffaa00');
+
+            ctx.save();
+            ctx.globalAlpha = (1 - progress) * 0.55;
+            ctx.fillStyle = lavaGrad;
+            ctx.fillRect(0, waveFrontY - bandHeight / 2, PLAY_AREA.width, bandHeight);
+
+            // Bright molten leading edge
+            ctx.globalAlpha = (1 - progress) * 0.8;
+            ctx.fillStyle = '#ffdd88';
+            ctx.fillRect(0, waveFrontY - 4, PLAY_AREA.width, 8);
+            ctx.restore();
         } else {
             // Space theme: cyan flash (unchanged)
             const alpha = effect / flashDuration * 0.6;
@@ -984,7 +1456,7 @@ function render() {
         const p0 = gameState.players[0];
         const p1 = gameState.players[1];
         const ds = gameState.fleetDonateState;
-        const donateColor = isUnicorn ? '#FF69B4' : isPacificRim ? '#FF8C00' : '#00ffff';
+        const donateColor = isUnicorn ? '#FF69B4' : isPacificRim ? '#FF8C00' : isDragon ? '#ff6600' : '#00ffff';
 
         if (r0 || r1) {
             const midX = (p0.x + p1.x) / 2;
@@ -1042,7 +1514,20 @@ function render() {
                 ctx.restore();
 
                 // Heart / energy particles along the beam
-                if (isPacificRim && progress > 0.3) {
+                if (isDragon && progress > 0.3) {
+                    // Dragon fire sparks along beam
+                    const numSparks = Math.floor(progress * 5) + 2;
+                    for (let i = 0; i < numSparks; i++) {
+                        const t = (i + 1) / (numSparks + 1);
+                        const bx = p0.x + (p1.x - p0.x) * t;
+                        const by = p0.y + (p1.y - p0.y) * t;
+                        const jitter = Math.sin(gameState.frameCount * 0.18 + i * 1.7) * 14;
+                        ctx.fillStyle = `rgba(255,${Math.floor(100 + progress * 100)},0,${0.6 + progress * 0.4})`;
+                        ctx.globalAlpha = 0.8;
+                        ctx.beginPath(); ctx.arc(bx, by + jitter, 4 + progress * 3, 0, Math.PI * 2); ctx.fill();
+                        ctx.globalAlpha = 1;
+                    }
+                } else if (isPacificRim && progress > 0.3) {
                     // Neural drift arc sparks
                     const numSparks = Math.floor(progress * 6) + 2;
                     ctx.strokeStyle = `rgba(255,180,0,${0.6 + progress * 0.4})`;
@@ -1095,6 +1580,13 @@ function render() {
                 ctx.lineWidth = 3;
                 ctx.strokeText('\u2B50', player.x, iconY);
                 ctx.fillText('\u2B50', player.x, iconY);
+            } else if (isDragon) {
+                // Dragon fire — flame ready
+                ctx.fillStyle = '#ff6600';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 3;
+                ctx.strokeText('\uD83D\uDD25', player.x, iconY);
+                ctx.fillText('\uD83D\uDD25', player.x, iconY);
             } else if (isPacificRim) {
                 // Lightning bolt — neural handshake ready
                 ctx.fillStyle = '#FF8C00';
