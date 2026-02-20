@@ -285,6 +285,62 @@ body { background: #0a0015; font-family: 'Rajdhani', sans-serif; overflow: hidde
 .unicorn-theme .high-score-rank { color: #FF69B4; }
 .unicorn-theme .high-score-face { border-color: #FF69B4; }
 
+/* === Pacific Rim theme === */
+.pacificrim-theme #startScreen, .pacificrim-theme #gameOverScreen {
+    background: rgba(5,13,20,0.96);
+}
+.pacificrim-theme .game-title {
+    background: linear-gradient(135deg, #00ccff, #FF8C00, #00ccff);
+    background-size: 200% 200%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.pacificrim-theme .hud {
+    color: #FF8C00;
+    text-shadow: 0 0 10px rgba(255,140,0,0.8);
+}
+.pacificrim-theme .stat-label {
+    color: #00ccff;
+    opacity: 0.9;
+}
+.pacificrim-theme .crowd-pip {
+    background: #FF8C00;
+    box-shadow: 0 0 5px rgba(255,140,0,0.8);
+}
+.pacificrim-theme .player-hud.p1 { border-color: #0066cc; }
+.pacificrim-theme .player-hud.p2 { border-color: #cc2200; }
+.pacificrim-theme .player-hud.p1 .player-fleet { color: #00ccff; }
+.pacificrim-theme .player-hud.p2 .player-fleet { color: #ff6600; }
+.pacificrim-theme #countdownText {
+    text-shadow:
+        0 0 30px rgba(255,140,0,0.9),
+        0 0 60px rgba(0,200,255,0.6),
+        0 0 100px rgba(255,140,0,0.4);
+}
+.pacificrim-theme .btn {
+    background: linear-gradient(135deg, #0a1e2e, #1a3a50);
+    border-color: #FF8C00;
+    color: #FF8C00;
+    box-shadow: 0 0 20px rgba(255,140,0,0.3);
+}
+.pacificrim-theme .btn:hover {
+    background: linear-gradient(135deg, #1a3a50, #2a5a70);
+    box-shadow: 0 0 30px rgba(255,140,0,0.5);
+}
+.pacificrim-theme .theme-btn.selected {
+    border-color: #FF8C00;
+    background: rgba(255,140,0,0.15);
+    color: #FF8C00;
+}
+.pacificrim-theme .section-label { color: #FF8C00; }
+/* Pacific Rim high score overrides */
+.pacificrim-theme .high-score-entry { border-color: rgba(255,140,0,0.3); background: rgba(255,140,0,0.05); }
+.pacificrim-theme .high-score-entry.first-place { border-color: #00ccff; background: rgba(0,200,255,0.1); }
+.pacificrim-theme .high-score-rank { color: #FF8C00; }
+.pacificrim-theme .high-score-face { border-color: #FF8C00; }
+/* Pacific Rim active effects */
+.pacificrim-theme .shield-effect { color: #00ccff; border-color: #00ccff; background: rgba(0,200,255,0.15); }
+.pacificrim-theme .spread-effect { color: #FF8C00; border-color: #FF8C00; background: rgba(255,140,0,0.15); }
+
 /* === Active Effects HUD === */
 #activeEffects { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 .active-effect {

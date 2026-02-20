@@ -29,9 +29,9 @@ const CONFIG = {
         speed: 3,
         spawnChance: 0.12,
         types: {
-            fleet:  { color: '#ffff00', unicornColor: '#FFD700', duration: 0 },
-            shield: { color: '#00aaff', unicornColor: '#FFB6C1', duration: 600 },
-            spread: { color: '#ff8800', unicornColor: '#FF69B4', duration: 480 }
+            fleet:  { color: '#ffff00', unicornColor: '#FFD700', pacificrimColor: '#FF8C00', duration: 0 },
+            shield: { color: '#00aaff', unicornColor: '#FFB6C1', pacificrimColor: '#00BFFF', duration: 600 },
+            spread: { color: '#ff8800', unicornColor: '#FF69B4', pacificrimColor: '#FF4500', duration: 480 }
         }
     },
     wave: {

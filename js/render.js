@@ -134,6 +134,165 @@ function drawWolf(x, y, size, color) {
     ctx.restore();
 }
 
+// ── Pacific Rim theme drawing ───────────────────────────────────────
+
+// Jaeger (player) — P1: blue/silver Gipsy Danger, P2: red/gold Crimson Typhoon
+function drawJaeger(pos, playerIndex) {
+    const isPR2 = playerIndex === 1;
+    const primary   = isPR2 ? '#cc2200' : '#0066cc';
+    const secondary = isPR2 ? '#ffaa00' : '#00ccff';
+    const visor     = isPR2 ? '#ff6600' : '#00ffff';
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+
+    // Legs
+    ctx.fillStyle = primary;
+    ctx.fillRect(-9, 10, 7, 14);
+    ctx.fillRect(2, 10, 7, 14);
+
+    // Torso
+    ctx.fillStyle = primary;
+    ctx.beginPath();
+    ctx.moveTo(-14, -5); ctx.lineTo(-12, 10); ctx.lineTo(12, 10); ctx.lineTo(14, -5);
+    ctx.lineTo(10, -12); ctx.lineTo(-10, -12);
+    ctx.closePath(); ctx.fill();
+
+    // Chest detail
+    ctx.fillStyle = secondary;
+    ctx.fillRect(-5, -8, 10, 8);
+
+    // Shoulders
+    ctx.fillStyle = secondary;
+    ctx.beginPath(); ctx.arc(-16, -8, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(16, -8, 7, 0, Math.PI * 2); ctx.fill();
+
+    // Arms
+    ctx.fillStyle = primary;
+    ctx.fillRect(-20, -4, 6, 12);
+    ctx.fillRect(14, -4, 6, 12);
+
+    // Head
+    ctx.fillStyle = primary;
+    ctx.fillRect(-8, -24, 16, 13);
+
+    // Visor glow
+    const visorPulse = Math.sin((gameState.frameCount || 0) * 0.08) * 0.3 + 0.7;
+    ctx.fillStyle = visor;
+    ctx.globalAlpha = visorPulse;
+    ctx.fillRect(-6, -22, 12, 5);
+    ctx.globalAlpha = 1;
+
+    // Conn-Pod (top knot)
+    ctx.fillStyle = secondary;
+    ctx.fillRect(-4, -28, 8, 5);
+
+    ctx.restore();
+}
+
+// Kaiju (enemies) — monsters of various types
+function drawKaiju(e, sc) {
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.scale(sc, sc);
+
+    const biolumPulse = Math.sin((gameState.frameCount || 0) * 0.12) * 0.5 + 0.5;
+
+    if (e.type === 'basic') {
+        // Category II — hunched bruiser (Leatherback-like)
+        ctx.fillStyle = '#2a5a2a';
+        ctx.beginPath();
+        ctx.moveTo(0, -20); ctx.lineTo(-22, -5); ctx.lineTo(-25, 18);
+        ctx.lineTo(0, 25); ctx.lineTo(25, 18); ctx.lineTo(22, -5);
+        ctx.closePath(); ctx.fill();
+        // Bioluminescent vents
+        ctx.fillStyle = `rgba(0,255,80,${0.4 + biolumPulse * 0.5})`;
+        ctx.beginPath(); ctx.ellipse(-10, 5, 4, 8, 0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(10, 5, 4, 8, -0.3, 0, Math.PI * 2); ctx.fill();
+        // Eyes
+        ctx.fillStyle = `rgba(0,255,80,${0.7 + biolumPulse * 0.3})`;
+        ctx.beginPath(); ctx.arc(-8, -8, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(8, -8, 5, 0, Math.PI * 2); ctx.fill();
+
+    } else if (e.type === 'fast') {
+        // Category I — sleek quad runner (Raiju-like)
+        ctx.fillStyle = '#1a3a4a';
+        ctx.beginPath();
+        ctx.moveTo(0, -28); ctx.lineTo(-14, -5); ctx.lineTo(-16, 18);
+        ctx.lineTo(16, 18); ctx.lineTo(14, -5);
+        ctx.closePath(); ctx.fill();
+        // Streamlined fin
+        ctx.beginPath(); ctx.moveTo(-14, -5); ctx.lineTo(-22, -12); ctx.lineTo(-14, 0); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(14, -5); ctx.lineTo(22, -12); ctx.lineTo(14, 0); ctx.fill();
+        // Glowing eye stripe
+        ctx.fillStyle = `rgba(0,200,255,${0.6 + biolumPulse * 0.4})`;
+        ctx.fillRect(-10, -14, 20, 5);
+
+    } else if (e.type === 'shifter') {
+        // Category III — tentacled phaser (Otachi-like)
+        ctx.fillStyle = '#3a1a4a';
+        ctx.beginPath();
+        ctx.moveTo(0, -18); ctx.lineTo(-12, 0); ctx.lineTo(0, 20); ctx.lineTo(12, 0);
+        ctx.closePath(); ctx.fill();
+        // Tentacle fins
+        ctx.fillStyle = '#5a2a6a';
+        ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(-22, -8); ctx.lineTo(-18, 10); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(22, -8); ctx.lineTo(18, 10); ctx.fill();
+        // Phase glow
+        ctx.fillStyle = `rgba(180,0,255,${biolumPulse * 0.8})`;
+        ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+
+    } else if (e.type === 'tank') {
+        // Category IV — armored titan (Knifehead-like)
+        ctx.fillStyle = '#3a2a1a';
+        // Massive body
+        ctx.beginPath();
+        ctx.moveTo(0, -30); ctx.lineTo(-32, -15); ctx.lineTo(-38, 22);
+        ctx.lineTo(-22, 30); ctx.lineTo(22, 30); ctx.lineTo(38, 22); ctx.lineTo(32, -15);
+        ctx.closePath(); ctx.fill();
+        // Armored brow plates
+        ctx.fillStyle = '#5a3a1a';
+        ctx.beginPath(); ctx.moveTo(-20, -28); ctx.lineTo(0, -40); ctx.lineTo(20, -28); ctx.fill();
+        // Biolum belly
+        ctx.fillStyle = `rgba(255,80,0,${0.3 + biolumPulse * 0.4})`;
+        ctx.beginPath(); ctx.ellipse(0, 12, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
+        // Eyes
+        ctx.fillStyle = `rgba(255,60,0,${0.8 + biolumPulse * 0.2})`;
+        ctx.beginPath(); ctx.arc(-12, -10, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(12, -10, 7, 0, Math.PI * 2); ctx.fill();
+
+    } else {
+        // Category V Boss — Slattern (triple tail, massive)
+        // Main body
+        ctx.fillStyle = '#1a1a3a';
+        ctx.beginPath();
+        ctx.moveTo(0, -55); ctx.lineTo(-55, -25); ctx.lineTo(-65, 28);
+        ctx.lineTo(-45, 48); ctx.lineTo(45, 48); ctx.lineTo(65, 28); ctx.lineTo(55, -25);
+        ctx.closePath(); ctx.fill();
+        // Triple forehead crests
+        ctx.fillStyle = '#2a2a5a';
+        ctx.beginPath(); ctx.moveTo(-16, -52); ctx.lineTo(-8, -70); ctx.lineTo(0, -52); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -52); ctx.lineTo(8, -70); ctx.lineTo(16, -52); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-26, -44); ctx.lineTo(-18, -60); ctx.lineTo(-10, -44); ctx.fill();
+        // Tail spikes (side cannons)
+        ctx.fillStyle = '#3a3a6a';
+        ctx.fillRect(-78, -12, 18, 44);
+        ctx.fillRect(60, -12, 18, 44);
+        // Eyes — four, bioluminescent blue
+        const eyeColor = `rgba(0,150,255,${0.7 + biolumPulse * 0.3})`;
+        ctx.fillStyle = eyeColor;
+        ctx.beginPath(); ctx.arc(-22, -8, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(22, -8, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(-10, -22, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(10, -22, 6, 0, Math.PI * 2); ctx.fill();
+        // Pulsing PPDC blue core
+        ctx.fillStyle = `rgba(0,200,255,${biolumPulse * 0.7})`;
+        ctx.beginPath(); ctx.arc(0, 20, 16, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.restore();
+}
+
 // ── Space-theme ship drawing ────────────────────────────────────────
 
 function drawSpaceShip(pos, playerIndex) {
@@ -256,6 +415,7 @@ function drawSpaceEnemy(e, sc) {
 
 function render() {
     const isUnicorn = gameTheme === 'unicorn';
+    const isPacificRim = gameTheme === 'pacificrim';
 
     // Background
     if (isUnicorn) {
@@ -265,6 +425,16 @@ function render() {
             _bgGradientCache.addColorStop(0.3, '#FFB6C1');
             _bgGradientCache.addColorStop(0.6, '#DDA0DD');
             _bgGradientCache.addColorStop(1, '#98FB98');
+            _bgGradientH = canvas.height;
+        }
+        ctx.fillStyle = _bgGradientCache;
+    } else if (isPacificRim) {
+        if (!_bgGradientCache || _bgGradientH !== canvas.height) {
+            _bgGradientCache = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            _bgGradientCache.addColorStop(0, '#050d14');
+            _bgGradientCache.addColorStop(0.55, '#0a1e2e');
+            _bgGradientCache.addColorStop(0.75, '#0c2030');
+            _bgGradientCache.addColorStop(1, '#061820');
             _bgGradientH = canvas.height;
         }
         ctx.fillStyle = _bgGradientCache;
@@ -290,7 +460,7 @@ function render() {
         );
     }
 
-    // Stars / sparkles
+    // Stars / sparkles / rain
     if (isUnicorn) {
         for (let i = 0; i < gameState.stars.length; i++) {
             const s = gameState.stars[i];
@@ -301,6 +471,34 @@ function render() {
             ctx.drawImage(sprite, s.x, s.y);
         }
         ctx.globalAlpha = 1;
+    } else if (isPacificRim) {
+        // Rain streaks — diagonal lines
+        ctx.strokeStyle = 'rgba(100,180,220,0.25)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < gameState.stars.length; i++) {
+            const s = gameState.stars[i];
+            ctx.globalAlpha = s.size * 0.25;
+            const len = s.size * 18 + 8;
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(s.x + len * 0.15, s.y + len);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        // City silhouette at the bottom
+        ctx.fillStyle = 'rgba(5,20,30,0.85)';
+        const cityW = PLAY_AREA.width;
+        const cityY = PLAY_AREA.height - 80;
+        const buildings = [
+            [0, 60, 80], [85, 90, 60], [150, 50, 70], [225, 80, 50],
+            [280, 55, 90], [375, 70, 65], [445, 100, 55], [505, 60, 80],
+            [590, 75, 70], [665, 45, 95], [765, 85, 60], [830, 65, 75],
+            [910, 90, 50], [965, 55, 80], [1050, 70, 60], [1115, 80, 70],
+            [1200, 50, 90], [1255, 65, 60], [1325, 75, 75], [1405, 55, 85]
+        ];
+        for (const [bx, bh, bw] of buildings) {
+            ctx.fillRect(bx, cityY - bh, bw, bh + 80);
+        }
     } else {
         ctx.fillStyle = '#ffffff';
         for (let i = 0; i < gameState.stars.length; i++) {
@@ -321,6 +519,19 @@ function render() {
             ctx.drawImage(sparkle12, p.x, p.y);
         }
         ctx.globalAlpha = 1;
+    } else if (isPacificRim) {
+        // Debris sparks — larger, fiery
+        for (let i = 0; i < gameState.particles.length; i++) {
+            const p = gameState.particles[i];
+            const alpha = p.life / p.maxLife;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, 4, 4);
+            // Spark trail
+            ctx.globalAlpha = alpha * 0.4;
+            ctx.fillRect(p.x - p.vx, p.y - p.vy, 2, 2);
+        }
+        ctx.globalAlpha = 1;
     } else {
         for (let i = 0; i < gameState.particles.length; i++) {
             const p = gameState.particles[i];
@@ -339,6 +550,8 @@ function render() {
             (gameState._cachedCrowdPositions?.[playerIndex] || getCrowdPositions(playerIndex)).forEach(pos => {
                 if (isUnicorn) {
                     drawUnicorn(pos.x, pos.y, 0.8);
+                } else if (isPacificRim) {
+                    drawJaeger(pos, playerIndex);
                 } else {
                     drawSpaceShip(pos, playerIndex);
                 }
@@ -365,7 +578,7 @@ function render() {
                 // Border ring (no shadowBlur — use double stroke for glow effect)
                 ctx.save();
                 ctx.translate(player.x, faceY);
-                const ringColor = isUnicorn ? '#FF69B4' : playerColor;
+                const ringColor = isUnicorn ? '#FF69B4' : isPacificRim ? '#FF8C00' : playerColor;
                 ctx.strokeStyle = ringColor;
                 ctx.globalAlpha = 0.3;
                 ctx.lineWidth = 8;
@@ -386,7 +599,7 @@ function render() {
             if (gameState.activeEffects.shield[playerIndex] > 0) {
                 const shieldPulse = Math.sin(gameState.frameCount * 0.12) * 0.15 + 0.85;
                 const shieldRadius = Math.sqrt(player.crowdSize) * 28 + 20;
-                const shieldColor = isUnicorn ? 'rgba(255,182,193,' : 'rgba(0,170,255,';
+                const shieldColor = isUnicorn ? 'rgba(255,182,193,' : isPacificRim ? 'rgba(0,200,255,' : 'rgba(0,170,255,';
                 ctx.strokeStyle = shieldColor + (0.6 * shieldPulse) + ')';
                 ctx.lineWidth = 4;
                 ctx.beginPath();
@@ -409,6 +622,24 @@ function render() {
             if (!b.active) continue;
             ctx.drawImage(heartSprite, b.x - 8, b.y - 3);
         }
+    } else if (isPacificRim) {
+        // Plasma cannon bolts — wide amber beams with glow
+        for (let i = 0; i < gameState.bullets.length; i++) {
+            const b = gameState.bullets[i];
+            if (!b.active) continue;
+            const isP2 = (b.owner || 0) === 1;
+            const boltColor = isP2 ? '#ff6600' : '#00ccff';
+            const glowColor = isP2 ? 'rgba(255,100,0,0.3)' : 'rgba(0,200,255,0.3)';
+            // Glow
+            ctx.fillStyle = glowColor;
+            ctx.fillRect(b.x - 5, b.y - 2, 10, 14);
+            // Core bolt
+            ctx.fillStyle = boltColor;
+            ctx.fillRect(b.x - 2, b.y, 4, 12);
+            // Bright center
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(b.x - 1, b.y + 1, 2, 8);
+        }
     } else {
         for (let i = 0; i < gameState.bullets.length; i++) {
             const b = gameState.bullets[i];
@@ -429,6 +660,8 @@ function render() {
         if (isUnicorn) {
             const wolfColor = e.type === 'boss' ? '#8B0000' : e.type === 'tank' ? '#8B4513' : e.type === 'fast' ? '#A0A0A0' : e.type === 'shifter' ? '#9B30FF' : '#696969';
             drawWolf(e.x, e.y, sc * 0.9, wolfColor);
+        } else if (isPacificRim) {
+            drawKaiju(e, sc);
         } else {
             drawSpaceEnemy(e, sc);
         }
@@ -460,7 +693,7 @@ function render() {
         const pulse = Math.sin(gameState.frameCount * 0.15) * 0.5 + 1;
         const puType = p.type || 'fleet';
         const typeCfg = CONFIG.powerup.types[puType];
-        const puColor = isUnicorn ? typeCfg.unicornColor : typeCfg.color;
+        const puColor = isUnicorn ? typeCfg.unicornColor : isPacificRim ? typeCfg.pacificrimColor : typeCfg.color;
 
         if (isUnicorn) {
             const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, 45 * pulse);
@@ -547,7 +780,7 @@ function render() {
 
     // Hit flash overlay
     if (gameState.hitEffect > 0) {
-        const flashColor = isUnicorn ? '128,0,128' : '255,0,0';
+        const flashColor = isUnicorn ? '128,0,128' : isPacificRim ? '255,80,0' : '255,0,0';
         ctx.fillStyle = `rgba(${flashColor},${gameState.hitEffect / 50})`;
         ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
     }
@@ -583,6 +816,36 @@ function render() {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, waveFrontY - 3, PLAY_AREA.width, 6);
             ctx.restore();
+        } else if (isPacificRim) {
+            // Pacific Rim: EMP shockwave — white blast ring expanding outward
+            const progress = 1 - (effect / flashDuration);
+            const centerX = PLAY_AREA.width / 2;
+            const centerY = PLAY_AREA.height / 2;
+            const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY) * 1.4;
+
+            // Blinding white flash at start
+            const flashAlpha = Math.max(0, (1 - progress * 2.5) * 0.8);
+            if (flashAlpha > 0) {
+                ctx.fillStyle = `rgba(200,240,255,${flashAlpha})`;
+                ctx.fillRect(0, 0, PLAY_AREA.width, PLAY_AREA.height);
+            }
+
+            // Expanding shockwave ring
+            const ringRadius = maxRadius * progress;
+            const ringAlpha = (1 - progress) * 0.9;
+            ctx.save();
+            ctx.strokeStyle = `rgba(0,200,255,${ringAlpha})`;
+            ctx.lineWidth = 20 * (1 - progress);
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            // Inner glow ring
+            ctx.strokeStyle = `rgba(255,255,255,${ringAlpha * 0.6})`;
+            ctx.lineWidth = 8 * (1 - progress);
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, ringRadius * 0.95, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
         } else {
             // Space theme: cyan flash (unchanged)
             const alpha = effect / flashDuration * 0.6;
@@ -598,7 +861,7 @@ function render() {
         const p0 = gameState.players[0];
         const p1 = gameState.players[1];
         const ds = gameState.fleetDonateState;
-        const donateColor = isUnicorn ? '#FF69B4' : '#00ffff';
+        const donateColor = isUnicorn ? '#FF69B4' : isPacificRim ? '#FF8C00' : '#00ffff';
 
         if (r0 || r1) {
             const midX = (p0.x + p1.x) / 2;
@@ -656,7 +919,25 @@ function render() {
                 ctx.restore();
 
                 // Heart / energy particles along the beam
-                if (isUnicorn && progress > 0.3) {
+                if (isPacificRim && progress > 0.3) {
+                    // Neural drift arc sparks
+                    const numSparks = Math.floor(progress * 6) + 2;
+                    ctx.strokeStyle = `rgba(255,180,0,${0.6 + progress * 0.4})`;
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < numSparks; i++) {
+                        const t = (i + 1) / (numSparks + 1);
+                        const bx = p0.x + (p1.x - p0.x) * t;
+                        const by = p0.y + (p1.y - p0.y) * t;
+                        const jitter = Math.sin(gameState.frameCount * 0.2 + i * 1.5) * 12;
+                        ctx.beginPath();
+                        ctx.moveTo(bx - 6, by + jitter - 6);
+                        ctx.lineTo(bx + 2, by + jitter);
+                        ctx.lineTo(bx - 2, by + jitter + 4);
+                        ctx.lineTo(bx + 6, by + jitter + 10);
+                        ctx.stroke();
+                    }
+                    ctx.globalAlpha = 1;
+                } else if (isUnicorn && progress > 0.3) {
                     const heartSprite = _getHeartSprite();
                     const numHearts = Math.floor(progress * 5) + 1;
                     for (let i = 0; i < numHearts; i++) {
@@ -691,6 +972,13 @@ function render() {
                 ctx.lineWidth = 3;
                 ctx.strokeText('\u2B50', player.x, iconY);
                 ctx.fillText('\u2B50', player.x, iconY);
+            } else if (isPacificRim) {
+                // Lightning bolt — neural handshake ready
+                ctx.fillStyle = '#FF8C00';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 3;
+                ctx.strokeText('\u26A1', player.x, iconY);
+                ctx.fillText('\u26A1', player.x, iconY);
             } else {
                 ctx.fillStyle = '#00ffff';
                 ctx.strokeStyle = '#000';
