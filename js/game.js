@@ -86,7 +86,7 @@ function performFleetDonation() {
             receiver.x = lanePositions[Math.min(targetLane, lanePositions.length - 1)];
             receiver.targetLane = targetLane;
         }
-        receiver.y = PLAY_AREA.height - 60;
+        receiver.y = PLAY_AREA.height - 40;
 
         // Trigger revive flash on HUD
         showReviveFlash(receiverIdx);
