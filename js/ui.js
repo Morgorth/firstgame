@@ -122,7 +122,7 @@ function renderHighScores(containerId) {
         const d = new Date(entry.date);
         const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
-        const themeIcon = entry.theme === 'unicorn' ? '\uD83E\uDD84' : '\uD83D\uDE80';
+        const themeIcon = entry.theme === 'unicorn' ? '\uD83E\uDD84' : entry.theme === 'pacificrim' ? '\uD83E\uDD16' : '\uD83D\uDE80';
         const ctrlIcon = entry.controlMode === 'camera' ? '\uD83D\uDCF7' : '\u2328\uFE0F';
 
         return `<div class="high-score-entry${firstClass}">
@@ -393,18 +393,25 @@ function selectTheme(theme) {
     gameTheme = theme;
     document.getElementById('spaceThemeBtn').classList.toggle('selected', theme === 'space');
     document.getElementById('unicornThemeBtn').classList.toggle('selected', theme === 'unicorn');
+    document.getElementById('pacificrimThemeBtn').classList.toggle('selected', theme === 'pacificrim');
 
     const title = document.getElementById('gameTitle');
     const subtitle = document.getElementById('gameSubtitle');
     const container = document.getElementById('gameContainer');
 
     container.classList.toggle('unicorn-theme', theme === 'unicorn');
+    container.classList.toggle('pacificrim-theme', theme === 'pacificrim');
 
     if (theme === 'unicorn') {
         title.textContent = 'UNICORN MAGIC';
         subtitle.textContent = 'PROTECT THE RAINBOW';
         container.style.background = 'linear-gradient(180deg, #87CEEB 0%, #FFB6C1 30%, #DDA0DD 60%, #98FB98 100%)';
         document.body.style.background = '#FFB6C1';
+    } else if (theme === 'pacificrim') {
+        title.textContent = 'PACIFIC RIM';
+        subtitle.textContent = 'DEFEND THE BREACH';
+        container.style.background = 'radial-gradient(ellipse at 50% 80%, rgba(0,80,120,0.4) 0%, transparent 60%), linear-gradient(180deg, #050d14 0%, #0a1e2e 60%, #0d2a1a 100%)';
+        document.body.style.background = '#050d14';
     } else {
         title.textContent = 'WAVE ASSAULT';
         subtitle.textContent = 'SURVIVE THE ONSLAUGHT';
