@@ -1217,7 +1217,8 @@ function render() {
         const e = gameState.enemies[i];
         if (e.y < -100 || e.health <= 0) continue;
         const ships = Math.ceil(e.health / CONFIG.bullet.damage);
-        const sc = (e.type === 'boss' ? 1.8 : e.type === 'tank' ? 1.2 : e.type === 'fast' ? 0.9 : e.type === 'shifter' ? 0.7 : 1) * (1 + ships * 0.08);
+        const ecfg = CONFIG.enemy[e.type] || CONFIG.enemy.basic;
+        const sc = ecfg.renderScale * (1 + ships * ecfg.sizePerShip);
         if (isUnicorn) {
             const wolfColor = e.type === 'boss' ? '#8B0000' : e.type === 'tank' ? '#8B4513' : e.type === 'fast' ? '#A0A0A0' : e.type === 'shifter' ? '#9B30FF' : '#696969';
             drawWolf(e.x, e.y, sc * 0.9, wolfColor);

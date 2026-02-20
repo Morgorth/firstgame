@@ -17,11 +17,13 @@ const CONFIG = {
         damage: 10
     },
     enemy: {
-        basic: { width: 60, height: 60, speed: 2.5, health: 25, points: 10, color: '#ff0080' },
-        fast:  { width: 50, height: 50, speed: 5,   health: 15, points: 15, color: '#00ff00' },
-        tank:  { width: 90, height: 90, speed: 1.5, health: 60, points: 30, color: '#ff8800' },
-        shifter: { width: 35, height: 35, speed: 3.5, health: 10, points: 20, color: '#aa00ff', dodgeCooldown: 30, dodgeRange: 200 },
-        boss: { width: 150, height: 150, speed: 1.0, health: 600, points: 200, color: '#ff0000', horizontalSpeed: 1.5 }
+        // renderScale: base visual size multiplier applied in render.js
+        // sizePerShip: additional scale added per remaining health unit (bullet-damage chunks)
+        basic:   { width: 60,  height: 60,  speed: 2.5, health: 25,  points: 10,  color: '#ff0080', renderScale: 1.0, sizePerShip: 0.08 },
+        fast:    { width: 50,  height: 50,  speed: 5,   health: 15,  points: 15,  color: '#00ff00', renderScale: 0.9, sizePerShip: 0.08 },
+        tank:    { width: 90,  height: 90,  speed: 1.5, health: 60,  points: 30,  color: '#ff8800', renderScale: 1.2, sizePerShip: 0.08 },
+        shifter: { width: 35,  height: 35,  speed: 3.5, health: 10,  points: 20,  color: '#aa00ff', renderScale: 0.7, sizePerShip: 0.08, dodgeCooldown: 30, dodgeRange: 200 },
+        boss:    { width: 80,  height: 80,  speed: 1.0, health: 600, points: 200, color: '#ff0000', renderScale: 0.8, sizePerShip: 0.01, horizontalSpeed: 1.5 }
     },
     powerup: {
         width: 30,
