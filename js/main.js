@@ -155,6 +155,7 @@ document.getElementById('twoPlayerBtn').addEventListener('click', () => selectPl
 document.getElementById('setupStartBtn').addEventListener('click', startGame);
 document.getElementById('spaceThemeBtn').addEventListener('click', () => selectTheme('space'));
 document.getElementById('unicornThemeBtn').addEventListener('click', () => selectTheme('unicorn'));
+document.getElementById('pacificrimThemeBtn').addEventListener('click', () => selectTheme('pacificrim'));
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
 
