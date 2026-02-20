@@ -485,20 +485,143 @@ function render() {
             ctx.stroke();
         }
         ctx.globalAlpha = 1;
-        // City silhouette at the bottom
-        ctx.fillStyle = 'rgba(5,20,30,0.85)';
-        const cityW = PLAY_AREA.width;
-        const cityY = PLAY_AREA.height - 80;
-        const buildings = [
-            [0, 60, 80], [85, 90, 60], [150, 50, 70], [225, 80, 50],
-            [280, 55, 90], [375, 70, 65], [445, 100, 55], [505, 60, 80],
-            [590, 75, 70], [665, 45, 95], [765, 85, 60], [830, 65, 75],
-            [910, 90, 50], [965, 55, 80], [1050, 70, 60], [1115, 80, 70],
-            [1200, 50, 90], [1255, 65, 60], [1325, 75, 75], [1405, 55, 85]
+
+        // === Destroyed city — Shatterdome ruins ===
+        const pw = PLAY_AREA.width;
+        const ph = PLAY_AREA.height;
+        const gY = ph * 0.96;
+        const fc = gameState.frameCount || 0;
+
+        // Distant horizon fire-glow (burning ocean reflection)
+        const hGrad = ctx.createLinearGradient(0, ph * 0.60, 0, ph * 0.82);
+        hGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        hGrad.addColorStop(0.6, 'rgba(90,28,6,0.38)');
+        hGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = hGrad;
+        ctx.fillRect(0, ph * 0.60, pw, ph * 0.22);
+
+        // Far background ruins — tall dark skeletons for depth
+        ctx.fillStyle = 'rgba(7,15,22,0.95)';
+        [[0.00,0.06,0.36],[0.07,0.04,0.46],[0.12,0.08,0.31],[0.21,0.05,0.52],
+         [0.27,0.06,0.40],[0.34,0.05,0.56],[0.40,0.08,0.33],[0.49,0.05,0.49],
+         [0.55,0.07,0.43],[0.63,0.06,0.52],[0.70,0.08,0.34],[0.79,0.05,0.47],
+         [0.85,0.07,0.42],[0.93,0.06,0.54],[0.98,0.09,0.37]
+        ].forEach(([fx, fw, fh]) => {
+            ctx.fillRect(fx * pw, gY - fh * ph, fw * pw, fh * ph + 30);
+        });
+
+        // Mid-ground destroyed buildings — polygon ruins with jagged broken tops
+        // Format: [leftFrac, rightFrac, maxHeightFrac, normalizedProfile [[pctX, pctH], ...]]
+        // pctX=0 is left edge, pctX=1 is right; pctH=0 is ground, pctH=1 is maxHeight
+        const ruinDefs = [
+            [0.00, 0.068, 0.22, [[0,0],[.15,.90],[.28,.80],[.42,.95],[.55,.75],[.70,.88],[.85,.78],[1,0]]],
+            [0.07, 0.135, 0.10, [[0,0],[.2,.72],[.38,.88],[.55,.65],[.72,.80],[.88,.60],[1,0]]],
+            [0.14, 0.215, 0.30, [[0,0],[.12,.85],[.25,.95],[.38,.80],[.50,.90],[.65,.75],[.78,.88],[.92,.70],[1,0]]],
+            [0.22, 0.290, 0.14, [[0,0],[.18,.78],[.33,.90],[.48,.72],[.62,.85],[.78,.68],[.92,.80],[1,0]]],
+            [0.30, 0.385, 0.38, [[0,0],[.08,.78],[.18,.92],[.28,.82],[.40,.97],[.52,.84],[.63,.93],[.75,.80],[.87,.90],[1,0]]],
+            [0.39, 0.470, 0.20, [[0,0],[.15,.82],[.30,.92],[.45,.76],[.60,.88],[.75,.72],[.90,.85],[1,0]]],
+            [0.48, 0.545, 0.12, [[0,0],[.22,.74],[.40,.88],[.58,.70],[.75,.82],[.90,.65],[1,0]]],
+            [0.55, 0.635, 0.33, [[0,0],[.10,.80],[.22,.93],[.35,.84],[.47,.96],[.60,.81],[.72,.90],[.85,.76],[1,0]]],
+            [0.64, 0.720, 0.18, [[0,0],[.18,.80],[.35,.92],[.52,.75],[.68,.87],[.84,.70],[1,0]]],
+            [0.73, 0.815, 0.40, [[0,0],[.08,.75],[.18,.90],[.30,.82],[.42,.96],[.55,.85],[.65,.92],[.78,.80],[.90,.87],[1,0]]],
+            [0.82, 0.890, 0.13, [[0,0],[.20,.78],[.38,.88],[.55,.72],[.72,.84],[.88,.68],[1,0]]],
+            [0.90, 0.975, 0.28, [[0,0],[.12,.82],[.25,.93],[.38,.80],[.52,.91],[.65,.78],[.78,.88],[.92,.74],[1,0]]],
+            [0.98, 1.065, 0.22, [[0,0],[.15,.85],[.30,.95],[.45,.78],[.60,.90],[.75,.76],[.90,.88],[1,0]]],
         ];
-        for (const [bx, bh, bw] of buildings) {
-            ctx.fillRect(bx, cityY - bh, bw, bh + 80);
+        ctx.fillStyle = 'rgba(14,27,35,0.98)';
+        ruinDefs.forEach(([lx, rx, hy, profile]) => {
+            const bW = (rx - lx) * pw;
+            const bH = hy * ph;
+            ctx.beginPath();
+            ctx.moveTo(lx * pw, gY);
+            profile.forEach(([px, py]) => ctx.lineTo(lx * pw + px * bW, gY - py * bH));
+            ctx.lineTo(rx * pw, gY);
+            ctx.closePath();
+            ctx.fill();
+        });
+
+        // Exposed rebar / structural beams poking out of ruins
+        ctx.strokeStyle = 'rgba(30,45,55,1)';
+        ctx.lineWidth = 3;
+        [[0.04,0.21, 0.035,0.25],[0.16,0.29, 0.145,0.33],[0.31,0.37, 0.295,0.42],
+         [0.57,0.32, 0.555,0.37],[0.76,0.38, 0.748,0.44],[0.94,0.27, 0.928,0.31]
+        ].forEach(([fx1,fy1,fx2,fy2]) => {
+            ctx.beginPath();
+            ctx.moveTo(fx1*pw, gY - fy1*ph);
+            ctx.lineTo(fx2*pw, gY - fy2*ph);
+            ctx.stroke();
+        });
+
+        // Ground rubble layer — irregular mound of collapsed debris
+        ctx.fillStyle = 'rgba(18,33,42,1)';
+        ctx.beginPath();
+        ctx.moveTo(0, gY);
+        [[0.02,-0.016],[0.05,-0.010],[0.08,-0.022],[0.12,-0.013],[0.16,-0.028],
+         [0.20,-0.012],[0.24,-0.021],[0.28,-0.015],[0.32,-0.025],[0.36,-0.011],
+         [0.40,-0.026],[0.44,-0.009],[0.48,-0.022],[0.52,-0.013],[0.56,-0.024],
+         [0.60,-0.010],[0.64,-0.021],[0.68,-0.014],[0.72,-0.027],[0.76,-0.010],
+         [0.80,-0.022],[0.84,-0.013],[0.88,-0.025],[0.92,-0.009],[0.96,-0.020],
+         [0.99,-0.014],[1.00,-0.018]
+        ].forEach(([fx, fy]) => ctx.lineTo(fx * pw, gY + fy * ph));
+        ctx.lineTo(pw, gY + ph * 0.04);
+        ctx.lineTo(0, gY + ph * 0.04);
+        ctx.closePath();
+        ctx.fill();
+
+        // Flooded street — dark seawater pooling among the ruins
+        const waterY = gY - ph * 0.008;
+        const wGrad = ctx.createLinearGradient(0, waterY, 0, ph);
+        wGrad.addColorStop(0, 'rgba(0,30,50,0.88)');
+        wGrad.addColorStop(1, 'rgba(0,12,22,0.98)');
+        ctx.fillStyle = wGrad;
+        ctx.fillRect(0, waterY, pw, ph - waterY);
+        // Water shimmer lines
+        ctx.globalAlpha = 0.25;
+        ctx.strokeStyle = 'rgba(0,100,160,0.55)';
+        ctx.lineWidth = 1;
+        for (let wi = 0; wi < 6; wi++) {
+            const wOff = Math.sin(fc * 0.015 + wi * 1.2) * ph * 0.003;
+            ctx.beginPath();
+            ctx.moveTo(0, waterY + ph * 0.005 + wi * ph * 0.007 + wOff);
+            ctx.lineTo(pw, waterY + ph * 0.005 + wi * ph * 0.007 + wOff);
+            ctx.stroke();
         }
+        ctx.globalAlpha = 1;
+
+        // Fires — animated glowing blazes at ruin collapse points
+        [[0.068,0.10,0.018],[0.215,0.14,0.015],[0.385,0.35,0.024],
+         [0.47,0.08,0.014],[0.635,0.10,0.017],[0.815,0.37,0.027],
+         [0.975,0.26,0.020],[1.055,0.09,0.016]
+        ].forEach(([ffx, ffy, ffs], fi) => {
+            const fx = ffx * pw;
+            const fy = gY - ffy * ph;
+            const fsize = ffs * pw;
+            const flicker = Math.sin(fc * 0.10 + fi * 2.4) * 0.30 + 0.70;
+            const fGrad = ctx.createRadialGradient(fx, fy, 0, fx, fy, fsize * 2.8 * flicker);
+            fGrad.addColorStop(0,   `rgba(255,215,70,${0.80 * flicker})`);
+            fGrad.addColorStop(0.30, `rgba(255,90,10,${0.50 * flicker})`);
+            fGrad.addColorStop(0.65, `rgba(110,18,0,${0.22 * flicker})`);
+            fGrad.addColorStop(1,    'rgba(0,0,0,0)');
+            ctx.fillStyle = fGrad;
+            ctx.fillRect(fx - fsize * 3.5, fy - fsize * 3.5, fsize * 7, fsize * 7);
+            // Bright ember core
+            ctx.fillStyle = `rgba(255,245,160,${0.75 * flicker})`;
+            ctx.beginPath();
+            ctx.arc(fx, fy, fsize * 0.22 * flicker, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Low-hanging smog clouds drifting over the ruins
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = 'rgba(5,12,18,1)';
+        [[0.10, 0.30, 0.18, 0.055],[0.36, 0.25, 0.16, 0.048],
+         [0.62, 0.36, 0.20, 0.062],[0.84, 0.28, 0.17, 0.052]
+        ].forEach(([sfx, sfy, sfw, sfh]) => {
+            ctx.beginPath();
+            ctx.ellipse(sfx*pw, gY - sfy*ph, sfw*pw, sfh*ph, 0, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1;
     } else {
         ctx.fillStyle = '#ffffff';
         for (let i = 0; i < gameState.stars.length; i++) {
