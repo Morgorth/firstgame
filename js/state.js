@@ -111,7 +111,8 @@ let gameState = {
 };
 
 // ── High Scores ─────────────────────────────────────────────────────
-let highScores = [];
+let highScores = [];          // arcade scores
+let campaignScores = [];      // campaign scores (separate leaderboard)
 
 function loadHighScores() {
     try {
@@ -128,7 +129,23 @@ function saveHighScores() {
     } catch (e) { /* storage full or unavailable */ }
 }
 
+function loadCampaignScores() {
+    try {
+        const raw = localStorage.getItem('waveAssaultCampaignScores');
+        if (raw) campaignScores = JSON.parse(raw);
+    } catch (e) {
+        campaignScores = [];
+    }
+}
+
+function saveCampaignScores() {
+    try {
+        localStorage.setItem('waveAssaultCampaignScores', JSON.stringify(campaignScores));
+    } catch (e) { /* storage full or unavailable */ }
+}
+
 loadHighScores();
+loadCampaignScores();
 
 // Keyboard state map (updated by input.js).
 const keys = {};

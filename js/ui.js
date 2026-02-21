@@ -84,16 +84,19 @@ function showReviveFlash(playerIndex) {
 
 // ── High Scores ─────────────────────────────────────────────────────
 
-function renderHighScores(containerId) {
+// scores param: pass the array to render; defaults to arcade highScores
+function renderHighScores(containerId, scores) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    if (highScores.length === 0) {
+    const data = scores !== undefined ? scores : highScores;
+
+    if (data.length === 0) {
         container.innerHTML = '<div style="color:#888;font-family:Rajdhani,sans-serif;font-size:14px;padding:10px;">No scores yet — play a game!</div>';
         return;
     }
 
-    container.innerHTML = highScores.map((entry, i) => {
+    container.innerHTML = data.map((entry, i) => {
         const rank = i + 1;
         const firstClass = rank === 1 ? ' first-place' : '';
 
@@ -431,7 +434,7 @@ function showActCompleteOverlay(completedAct, nextAct, fleetBonus, onComplete) {
 function showCampaignCompleteScreen() {
     document.getElementById('campaignFinalScore').textContent = gameState.score;
     document.getElementById('campaignCompleteScreen').classList.remove('hidden');
-    renderHighScores('campaignHighScores');
+    renderHighScores('campaignHighScores', campaignScores);
 }
 
 // ── Game mode selection ───────────────────────────────────────────────

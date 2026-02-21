@@ -136,7 +136,7 @@ function gameOver() {
     document.getElementById('finalWave').textContent = gameState.wave;
     document.getElementById('gameOverScreen').classList.remove('hidden');
 
-    // Save high score
+    // Save to the appropriate leaderboard
     const playerFaces = gameState.players.map(p => p.faceImage || null);
     const entry = {
         score: gameState.score,
@@ -147,14 +147,26 @@ function gameOver() {
         controlMode,
         campaignAct: gameState.campaignMode ? gameState.campaignAct : undefined
     };
-    const isNewHighScore = entry.score > 0 && (highScores.length < 10 || highScores.some(h => entry.score > h.score));
-    if (isNewHighScore) {
-        highScores.push(entry);
-        highScores.sort((a, b) => b.score - a.score);
-        highScores = highScores.slice(0, 10);
-        saveHighScores();
+
+    if (gameState.campaignMode) {
+        // Campaign death → campaign leaderboard
+        if (entry.score > 0 && (campaignScores.length < 10 || campaignScores.some(h => entry.score > h.score))) {
+            campaignScores.push(entry);
+            campaignScores.sort((a, b) => b.score - a.score);
+            campaignScores = campaignScores.slice(0, 10);
+            saveCampaignScores();
+        }
+        renderHighScores('gameOverHighScores', campaignScores);
+    } else {
+        // Arcade death → arcade leaderboard
+        if (entry.score > 0 && (highScores.length < 10 || highScores.some(h => entry.score > h.score))) {
+            highScores.push(entry);
+            highScores.sort((a, b) => b.score - a.score);
+            highScores = highScores.slice(0, 10);
+            saveHighScores();
+        }
+        renderHighScores('gameOverHighScores');
     }
-    renderHighScores('gameOverHighScores');
 }
 
 function gameLoop() {

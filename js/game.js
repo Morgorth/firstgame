@@ -171,7 +171,7 @@ function triggerCampaignComplete() {
     audioSystem.stopMusic();
     audioSystem.playGameOver();
 
-    // Save to high scores with campaign tag (wave was incremented past the last boss; store the actual cleared wave)
+    // Save to campaign leaderboard (wave was incremented past the last boss; store the actual cleared wave)
     const entry = {
         score: gameState.score,
         wave: gameState.wave - 1,
@@ -180,11 +180,11 @@ function triggerCampaignComplete() {
         theme: 'campaign',
         controlMode
     };
-    if (entry.score > 0 && (highScores.length < 10 || highScores.some(h => entry.score > h.score))) {
-        highScores.push(entry);
-        highScores.sort((a, b) => b.score - a.score);
-        highScores = highScores.slice(0, 10);
-        saveHighScores();
+    if (entry.score > 0 && (campaignScores.length < 10 || campaignScores.some(h => entry.score > h.score))) {
+        campaignScores.push(entry);
+        campaignScores.sort((a, b) => b.score - a.score);
+        campaignScores = campaignScores.slice(0, 10);
+        saveCampaignScores();
     }
 
     showCampaignCompleteScreen();
