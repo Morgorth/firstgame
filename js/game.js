@@ -39,7 +39,7 @@ function checkSuperWeaponThreshold(playerIndex) {
     gameState.playerKills[playerIndex]++;
     if (gameState.playerKills[playerIndex] >= gameState.superWeaponNextThreshold[playerIndex]) {
         gameState.superWeaponCharges[playerIndex]++;
-        gameState.superWeaponNextThreshold[playerIndex] += CONFIG.superWeapon.killsPerCharge + Math.floor(gameState.wave / 3);
+        gameState.superWeaponNextThreshold[playerIndex] += CONFIG.superWeapon.killsPerCharge + gameState.wave;
     }
 }
 
