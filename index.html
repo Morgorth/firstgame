@@ -21,6 +21,10 @@
                 <div class="hud-left">
                     <div><div class="stat-label">SCORE</div><div class="stat" id="score">0</div></div>
                     <div><div class="stat-label">WAVE</div><div class="stat" id="wave">1</div></div>
+                    <div id="campaignActDisplay" class="hidden">
+                        <div class="stat-label">ACT</div>
+                        <div class="stat campaign-act-stat" id="campaignActText">1 · SPACE SECTOR</div>
+                    </div>
                     <div id="activeEffects"></div>
                 </div>
                 <div class="hud-right">
@@ -54,12 +58,31 @@
             <h1 class="game-title" id="gameTitle">WAVE ASSAULT</h1>
             <p class="subtitle" id="gameSubtitle">SURVIVE THE ONSLAUGHT</p>
 
-            <div class="section-label">THEME</div>
-            <div class="theme-selection">
-                <button class="theme-btn selected" id="spaceThemeBtn"><span class="theme-icon">🚀</span><span>SPACE</span></button>
-                <button class="theme-btn" id="unicornThemeBtn"><span class="theme-icon">🦄</span><span>UNICORN</span></button>
-                <button class="theme-btn" id="pacificrimThemeBtn"><span class="theme-icon">🤖</span><span>PACIFIC RIM</span></button>
-                <button class="theme-btn" id="dragonThemeBtn"><span class="theme-icon">🐉</span><span>DRAGON</span></button>
+            <div class="section-label">MODE</div>
+            <div class="mode-selection">
+                <button class="mode-btn selected" id="arcadeModeBtn">
+                    <span class="mode-icon">&#x1F30A;</span>
+                    <span class="mode-name">ARCADE</span>
+                    <span class="mode-desc">Endless waves</span>
+                </button>
+                <button class="mode-btn" id="campaignModeBtn">
+                    <span class="mode-icon">&#x1F3C6;</span>
+                    <span class="mode-name">CAMPAIGN</span>
+                    <span class="mode-desc">4 acts &middot; 10 waves each</span>
+                </button>
+            </div>
+            <div id="campaignModeDesc" class="campaign-mode-desc hidden">
+                Space &rarr; Unicorn &rarr; Pacific Rim &rarr; Dragon &nbsp;&middot;&nbsp; Increasing difficulty &nbsp;&middot;&nbsp; Fleet bonuses between acts
+            </div>
+
+            <div id="themeSectionContainer">
+                <div class="section-label">THEME <span class="theme-label-note">(arcade only)</span></div>
+                <div class="theme-selection">
+                    <button class="theme-btn selected" id="spaceThemeBtn"><span class="theme-icon">🚀</span><span>SPACE</span></button>
+                    <button class="theme-btn" id="unicornThemeBtn"><span class="theme-icon">🦄</span><span>UNICORN</span></button>
+                    <button class="theme-btn" id="pacificrimThemeBtn"><span class="theme-icon">🤖</span><span>PACIFIC RIM</span></button>
+                    <button class="theme-btn" id="dragonThemeBtn"><span class="theme-icon">🐉</span><span>DRAGON</span></button>
+                </div>
             </div>
 
             <div class="section-label">CONTROLS</div>
@@ -124,9 +147,29 @@
             <button class="btn hidden" id="setupStartBtn">START GAME</button>
         </div>
 
+        <!-- Act complete overlay (campaign mode) -->
+        <div id="actCompleteOverlay" class="hidden">
+            <div class="act-complete-content">
+                <div class="act-complete-title" id="actCompleteTitle">ACT 1 COMPLETE!</div>
+                <div class="act-complete-theme" id="actCompleteTheme">SPACE SECTOR CLEARED</div>
+                <div class="act-complete-bonus" id="actCompleteBonus">+3 FLEET SHIPS</div>
+                <div class="act-complete-next" id="actCompleteNext">NEXT: UNICORN REALM</div>
+            </div>
+        </div>
+
         <!-- Countdown overlay -->
         <div id="countdownOverlay" class="hidden">
             <div id="countdownText"></div>
+        </div>
+
+        <!-- Campaign complete screen -->
+        <div id="campaignCompleteScreen" class="hidden">
+            <h1 class="game-title campaign-victory-title">CAMPAIGN COMPLETE!</h1>
+            <p class="subtitle">All 4 realms defended!</p>
+            <div class="final-score">SCORE: <span id="campaignFinalScore">0</span></div>
+            <div class="section-label" style="margin-bottom:10px">HIGH SCORES</div>
+            <div class="high-scores-container" id="campaignHighScores"></div>
+            <button class="btn" id="campaignRestartBtn">PLAY AGAIN</button>
         </div>
 
         <!-- Game over screen -->

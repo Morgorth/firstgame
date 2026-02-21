@@ -19,6 +19,7 @@ window.addEventListener('resize', resizeCanvas);
 // Current selections (set from UI before game starts).
 let controlMode = 'keyboard';
 let gameTheme = 'space';
+let gameMode = 'arcade';   // 'arcade' | 'campaign'
 
 // Webcam / pose-detection state.
 let webcamState = {
@@ -99,13 +100,19 @@ let gameState = {
     // Fleet donation (hold-hands gesture)
     fleetDonateState: { holdFrames: 0, cooldown: 0 },
 
+    // Campaign mode state
+    campaignMode: false,
+    campaignAct: 0,               // 0-indexed current act (0–3)
+    campaignActTransitioning: false,  // true while act-complete overlay is showing
+
     // Legacy single-player compat (player 0 mirror).
     player: null,
     crowdSize: 1
 };
 
 // ── High Scores ─────────────────────────────────────────────────────
-let highScores = [];
+let highScores = [];          // arcade scores
+let campaignScores = [];      // campaign scores (separate leaderboard)
 
 function loadHighScores() {
     try {
@@ -122,7 +129,23 @@ function saveHighScores() {
     } catch (e) { /* storage full or unavailable */ }
 }
 
+function loadCampaignScores() {
+    try {
+        const raw = localStorage.getItem('waveAssaultCampaignScores');
+        if (raw) campaignScores = JSON.parse(raw);
+    } catch (e) {
+        campaignScores = [];
+    }
+}
+
+function saveCampaignScores() {
+    try {
+        localStorage.setItem('waveAssaultCampaignScores', JSON.stringify(campaignScores));
+    } catch (e) { /* storage full or unavailable */ }
+}
+
 loadHighScores();
+loadCampaignScores();
 
 // Keyboard state map (updated by input.js).
 const keys = {};

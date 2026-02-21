@@ -28,7 +28,12 @@ function updateHUD() {
 }
 
 function updateWave() {
-    document.getElementById('wave').textContent = gameState.wave;
+    if (gameState.campaignMode) {
+        const actWave = ((gameState.wave - 1) % CONFIG.campaign.wavesPerAct) + 1;
+        document.getElementById('wave').textContent = actWave + '/' + CONFIG.campaign.wavesPerAct;
+    } else {
+        document.getElementById('wave').textContent = gameState.wave;
+    }
 }
 
 let _lastCrowdSize = -1;
@@ -79,16 +84,19 @@ function showReviveFlash(playerIndex) {
 
 // ── High Scores ─────────────────────────────────────────────────────
 
-function renderHighScores(containerId) {
+// scores param: pass the array to render; defaults to arcade highScores
+function renderHighScores(containerId, scores) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    if (highScores.length === 0) {
+    const data = scores !== undefined ? scores : highScores;
+
+    if (data.length === 0) {
         container.innerHTML = '<div style="color:#888;font-family:Rajdhani,sans-serif;font-size:14px;padding:10px;">No scores yet — play a game!</div>';
         return;
     }
 
-    container.innerHTML = highScores.map((entry, i) => {
+    container.innerHTML = data.map((entry, i) => {
         const rank = i + 1;
         const firstClass = rank === 1 ? ' first-place' : '';
 
@@ -107,15 +115,17 @@ function renderHighScores(containerId) {
         const d = new Date(entry.date);
         const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
-        const themeIcon = entry.theme === 'unicorn' ? '\uD83E\uDD84' : entry.theme === 'pacificrim' ? '\uD83E\uDD16' : entry.theme === 'dragon' ? '\uD83D\uDC09' : '\uD83D\uDE80';
+        const isCampaignEntry = entry.theme === 'campaign';
+        const themeIcon = isCampaignEntry ? '\uD83C\uDFC6' : entry.theme === 'unicorn' ? '\uD83E\uDD84' : entry.theme === 'pacificrim' ? '\uD83E\uDD16' : entry.theme === 'dragon' ? '\uD83D\uDC09' : '\uD83D\uDE80';
         const ctrlIcon = entry.controlMode === 'camera' ? '\uD83D\uDCF7' : '\u2328\uFE0F';
+        const modeLabel = isCampaignEntry ? 'Campaign' : 'Arcade';
 
         return `<div class="high-score-entry${firstClass}">
             <div class="high-score-rank">#${rank}</div>
             <div class="high-score-faces">${facesHtml}</div>
             <div class="high-score-info">
                 <div class="high-score-score">${entry.score.toLocaleString()}</div>
-                <div class="high-score-meta">Wave ${entry.wave} &middot; ${dateStr} &middot; ${themeIcon} ${ctrlIcon}</div>
+                <div class="high-score-meta">Wave ${entry.wave} &middot; ${dateStr} &middot; ${themeIcon} ${modeLabel} ${ctrlIcon}</div>
             </div>
         </div>`;
     }).join('');
@@ -318,11 +328,19 @@ function startWaveCountdown(onComplete) {
 
     const isFirstWave = gameState.wave === 1;
 
+    // In campaign mode show the wave number relative to the current act (e.g. "1/10")
+    const actWave = gameState.campaignMode
+        ? ((gameState.wave - 1) % CONFIG.campaign.wavesPerAct) + 1
+        : gameState.wave;
+    const waveLabel = gameState.campaignMode
+        ? actWave + '/' + CONFIG.campaign.wavesPerAct
+        : gameState.wave;
+
     const steps = [];
     if (isFirstWave) {
         steps.push({ text: 'READY?', voice: 'Are you ready?', delay: 1200 });
     } else {
-        steps.push({ text: 'WAVE ' + gameState.wave, voice: 'Wave ' + gameState.wave, delay: 900 });
+        steps.push({ text: 'WAVE ' + waveLabel, voice: 'Wave ' + actWave, delay: 900 });
     }
     steps.push(
         { text: '3', voice: '3', delay: 650, beep: true },
@@ -370,6 +388,70 @@ function startWaveCountdown(onComplete) {
 function cancelCountdown() {
     _countdownId++;
     document.getElementById('countdownOverlay').classList.add('hidden');
+}
+
+// ── Campaign HUD ─────────────────────────────────────────────────────
+
+function updateCampaignHUD() {
+    const el = document.getElementById('campaignActDisplay');
+    if (!el) return;
+    if (gameState.campaignMode) {
+        const act = gameState.campaignAct;
+        const cfg = CONFIG.campaign.acts[act];
+        document.getElementById('campaignActText').textContent =
+            'ACT ' + (act + 1) + ' \u00b7 ' + cfg.name.toUpperCase();
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+// ── Act complete overlay ──────────────────────────────────────────────
+
+function showActCompleteOverlay(completedAct, nextAct, fleetBonus, onComplete) {
+    const actNames = CONFIG.campaign.acts.map(a => a.name);
+    const overlay = document.getElementById('actCompleteOverlay');
+
+    document.getElementById('actCompleteTitle').textContent =
+        'ACT ' + (completedAct + 1) + ' COMPLETE!';
+    document.getElementById('actCompleteTheme').textContent =
+        actNames[completedAct].toUpperCase() + ' CLEARED';
+    document.getElementById('actCompleteBonus').textContent =
+        fleetBonus > 0 ? '+' + fleetBonus + ' FLEET SHIPS' : '';
+    document.getElementById('actCompleteNext').textContent =
+        'NEXT: ' + actNames[nextAct].toUpperCase();
+
+    overlay.classList.remove('hidden');
+
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        onComplete();
+    }, CONFIG.campaign.transitionMs);
+}
+
+// ── Campaign complete screen ──────────────────────────────────────────
+
+function showCampaignCompleteScreen() {
+    document.getElementById('campaignFinalScore').textContent = gameState.score;
+    document.getElementById('campaignCompleteScreen').classList.remove('hidden');
+    renderHighScores('campaignHighScores', campaignScores);
+}
+
+// ── Game mode selection ───────────────────────────────────────────────
+
+function selectGameMode(mode) {
+    gameMode = mode;
+    document.getElementById('arcadeModeBtn').classList.toggle('selected', mode === 'arcade');
+    document.getElementById('campaignModeBtn').classList.toggle('selected', mode === 'campaign');
+
+    const themeSection = document.getElementById('themeSectionContainer');
+    if (themeSection) {
+        themeSection.style.opacity = mode === 'campaign' ? '0.4' : '1';
+        themeSection.style.pointerEvents = mode === 'campaign' ? 'none' : '';
+    }
+
+    const modeDesc = document.getElementById('campaignModeDesc');
+    if (modeDesc) modeDesc.classList.toggle('hidden', mode !== 'campaign');
 }
 
 // ── Theme selection ─────────────────────────────────────────────────

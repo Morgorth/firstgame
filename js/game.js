@@ -17,7 +17,7 @@ function activateSuperWeapon(playerIndex) {
     for (let i = 0; i < gameState.enemies.length; i++) {
         const e = gameState.enemies[i];
         if (e.health <= 0) continue;
-        gameState.score += e.points;
+        gameState.score += Math.floor(e.points * getCampaignScoreMult());
         gameState.enemiesKilled++;
         gameState.totalKills++;
         checkSuperWeaponThreshold(playerIndex);
@@ -117,10 +117,91 @@ function performFleetDonation() {
     }
 }
 
+// ── Campaign helpers ─────────────────────────────────────────────────
+
+function getCampaignScoreMult() {
+    if (!gameState.campaignMode) return 1.0;
+    const act = Math.min(gameState.campaignAct, CONFIG.campaign.acts.length - 1);
+    return CONFIG.campaign.acts[act].scoreMult;
+}
+
+function triggerActTransition(completedAct, nextAct) {
+    const nextActCfg = CONFIG.campaign.acts[nextAct];
+    const fleetBonus = nextActCfg.fleetBonus;
+
+    gameState.campaignActTransitioning = true;
+    gameState.countdownActive = true;   // block wave spawning during overlay
+
+    showActCompleteOverlay(completedAct, nextAct, fleetBonus, () => {
+        if (!gameState.running) return;
+
+        // Award fleet bonus to every active player
+        gameState.players.forEach((p, i) => {
+            if (!p.active) return;
+            p.crowdSize = Math.min(p.crowdSize + fleetBonus, CONFIG.player.maxCrowd);
+            if (i === 0) gameState.crowdSize = p.crowdSize;
+        });
+        updateCrowdDisplay();
+
+        // Switch theme and advance act counter
+        gameTheme = CONFIG.campaign.themeOrder[nextAct];
+        gameState.campaignAct = nextAct;
+        gameState.campaignActTransitioning = false;
+        // Sync body/container background colours to the new theme
+        selectTheme(gameTheme);
+        updateCampaignHUD();
+        audioSystem.stopMusic();
+
+        // Start wave countdown then spawn the next wave
+        gameState.countdownActive = true;
+        updateWave();
+        startWaveCountdown(() => {
+            if (!gameState.running) return;
+            gameState.countdownActive = false;
+            spawnWave();
+        });
+    });
+}
+
+function triggerCampaignComplete() {
+    if (!gameState.running) return;
+    gameState.running = false;
+    gameState.countdownActive = false;
+    cancelCountdown();
+    audioSystem.stopMusic();
+    audioSystem.playGameOver();
+
+    // Save to campaign leaderboard (wave was incremented past the last boss; store the actual cleared wave)
+    const entry = {
+        score: gameState.score,
+        wave: gameState.wave - 1,
+        date: new Date().toISOString(),
+        playerFaces: gameState.players.map(p => p.faceImage || null),
+        theme: 'campaign',
+        controlMode
+    };
+    if (entry.score > 0 && (campaignScores.length < 10 || campaignScores.some(h => entry.score > h.score))) {
+        campaignScores.push(entry);
+        campaignScores.sort((a, b) => b.score - a.score);
+        campaignScores = campaignScores.slice(0, 10);
+        saveCampaignScores();
+    }
+
+    showCampaignCompleteScreen();
+}
+
 // ── Wave spawning ───────────────────────────────────────────────────
 
 function spawnWave() {
     const w = gameState.wave;
+
+    // Campaign per-act difficulty scaling
+    const actIdx = gameState.campaignMode
+        ? Math.min(Math.floor((w - 1) / CONFIG.campaign.wavesPerAct), CONFIG.campaign.acts.length - 1)
+        : 0;
+    const actCfg = gameState.campaignMode ? CONFIG.campaign.acts[actIdx] : null;
+    const actHpScale  = actCfg ? actCfg.hpScale  : 1.0;
+    const actSpdScale = actCfg ? actCfg.spdScale : 1.0;
 
     const lanes = gameState.lanePositions ||
         [PLAY_AREA.width * 0.33, PLAY_AREA.width * 0.5, PLAY_AREA.width * 0.67];
@@ -128,7 +209,7 @@ function spawnWave() {
 
     // Boss wave every 10 waves
     if (w % 10 === 0) {
-        const bossHpScale = 1 + Math.floor(w / 10) * 0.2;
+        const bossHpScale = (1 + Math.floor(w / 10) * 0.2) * actHpScale;
         const twoBosses = gameState.playerCount === 2 && w >= 20;
 
         if (twoBosses) {
@@ -238,9 +319,9 @@ function spawnWave() {
         }
 
         const enemy = createEnemy(type, lanes[laneIdx], -80 - Math.floor(i / numLanes) * 90);
-        enemy.health = Math.ceil(enemy.maxHealth * hp);
+        enemy.health = Math.ceil(enemy.maxHealth * hp * actHpScale);
         enemy.maxHealth = enemy.health;
-        enemy.speed *= spd;
+        enemy.speed *= spd * actSpdScale;
         gameState.enemies.push(enemy);
     }
 }
@@ -509,7 +590,7 @@ function update() {
 
                 if (enemy.health <= 0) {
                     audioSystem.playEnemyKill();
-                    gameState.score += enemy.points;
+                    gameState.score += Math.floor(enemy.points * getCampaignScoreMult());
                     gameState.enemiesKilled++;
                     gameState.totalKills++;
                     checkSuperWeaponThreshold(bullet.owner);
@@ -674,6 +755,18 @@ function update() {
                     gameState.crowdSize = p1.crowdSize;
                     updateCrowdDisplay();
                 }
+            }
+
+            // Campaign: detect act transition after a boss wave
+            if (gameState.campaignMode && gameState.wave % CONFIG.campaign.wavesPerAct === 1 && gameState.wave > 1) {
+                const completedAct = Math.floor((gameState.wave - 2) / CONFIG.campaign.wavesPerAct);
+                if (completedAct >= CONFIG.campaign.themeOrder.length - 1) {
+                    // All acts cleared — victory!
+                    triggerCampaignComplete();
+                } else {
+                    triggerActTransition(completedAct, completedAct + 1);
+                }
+                return; // skip normal countdown
             }
 
             updateWave();

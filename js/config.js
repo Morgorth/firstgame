@@ -75,6 +75,19 @@ const CONFIG = {
         normalShips: 1,        // ships transferred when both alive
         reachThreshold: 40     // pixels wrist must extend past shoulder
     },
+    campaign: {
+        themeOrder: ['space', 'unicorn', 'pacificrim', 'dragon'],
+        wavesPerAct: 10,
+        // Per act: enemy HP multiplier, speed multiplier, fleet bonus awarded on entering this act,
+        // score multiplier for kills, and display name.
+        acts: [
+            { hpScale: 0.80, spdScale: 0.85, fleetBonus: 0,  scoreMult: 1.0, name: 'Space Sector'   },
+            { hpScale: 1.00, spdScale: 1.00, fleetBonus: 3,  scoreMult: 1.3, name: 'Unicorn Realm'  },
+            { hpScale: 1.25, spdScale: 1.10, fleetBonus: 4,  scoreMult: 1.7, name: 'Pacific Breach' },
+            { hpScale: 1.55, spdScale: 1.20, fleetBonus: 5,  scoreMult: 2.2, name: 'Dragon Grotto'  }
+        ],
+        transitionMs: 4500   // ms the act-complete overlay is displayed
+    },
     colorTracking: {
         hueBins: 8,
         minSaturation: 0.15,
