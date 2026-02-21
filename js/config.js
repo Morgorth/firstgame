@@ -8,7 +8,7 @@ const CONFIG = {
         speed: 15,
         maxCrowd: 100,
         startCrowd: 3,
-        fireRate: 10        // frames between auto-shots
+        fireRate: 16        // frames between auto-shots
     },
     bullet: {
         width: 3,

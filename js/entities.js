@@ -54,7 +54,7 @@ function getCrowdPositions(playerIndex = 0) {
     const playerX = player.x, playerY = player.y, size = player.crowdSize;
 
     const positions = [];
-    const spacing = 28;
+    const spacing = 20;
     // Wider formation: more columns than rows to stay flat at the bottom
     const cols = Math.ceil(Math.sqrt(size * 2));
     const rows = Math.ceil(size / cols);
