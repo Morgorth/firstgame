@@ -19,6 +19,7 @@ window.addEventListener('resize', resizeCanvas);
 // Current selections (set from UI before game starts).
 let controlMode = 'keyboard';
 let gameTheme = 'space';
+let gameMode = 'arcade';   // 'arcade' | 'campaign'
 
 // Webcam / pose-detection state.
 let webcamState = {
@@ -98,6 +99,11 @@ let gameState = {
 
     // Fleet donation (hold-hands gesture)
     fleetDonateState: { holdFrames: 0, cooldown: 0 },
+
+    // Campaign mode state
+    campaignMode: false,
+    campaignAct: 0,               // 0-indexed current act (0–3)
+    campaignActTransitioning: false,  // true while act-complete overlay is showing
 
     // Legacy single-player compat (player 0 mirror).
     player: null,

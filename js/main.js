@@ -1,6 +1,9 @@
 // Game lifecycle: startGame, gameOver, gameLoop, and all UI event bindings.
 
 function startGame() {
+    // Hide campaign complete screen if it was showing
+    document.getElementById('campaignCompleteScreen').classList.add('hidden');
+
     audioSystem.init();
     audioSystem.stopMusic();
     const playerCount = controlMode === 'camera' ? webcamState.playerCount : 1;
@@ -33,6 +36,14 @@ function startGame() {
         }
     ];
 
+    // Campaign setup: override theme to the first act
+    const isCampaign = gameMode === 'campaign';
+    if (isCampaign) {
+        gameTheme = CONFIG.campaign.themeOrder[0];
+        // Re-apply start-screen theme styling for consistency
+        selectTheme(gameTheme);
+    }
+
     gameState = {
         ...gameState,
         running: true,
@@ -64,7 +75,10 @@ function startGame() {
         superWeaponNextThreshold: [CONFIG.superWeapon.killsPerCharge, CONFIG.superWeapon.killsPerCharge],
         superWeaponFlashEffect: 0,
         activeEffects: { shield: [0, 0], spread: [0, 0], rapidfire: [0, 0], regen: [0, 0] },
-        fleetDonateState: { holdFrames: 0, cooldown: 0 }
+        fleetDonateState: { holdFrames: 0, cooldown: 0 },
+        campaignMode: isCampaign,
+        campaignAct: 0,
+        campaignActTransitioning: false
     };
 
     if (controlMode === 'camera') {
@@ -98,6 +112,7 @@ function startGame() {
 
     updateHUD();
     updateWave();
+    updateCampaignHUD();
     _lastCrowdSize = -1; // force pip rebuild on game start
     updateCrowdDisplay();
 
@@ -128,8 +143,9 @@ function gameOver() {
         wave: gameState.wave,
         date: new Date().toISOString(),
         playerFaces,
-        theme: gameTheme,
-        controlMode
+        theme: gameState.campaignMode ? 'campaign' : gameTheme,
+        controlMode,
+        campaignAct: gameState.campaignMode ? gameState.campaignAct : undefined
     };
     const isNewHighScore = entry.score > 0 && (highScores.length < 10 || highScores.some(h => entry.score > h.score));
     if (isNewHighScore) {
@@ -150,6 +166,9 @@ function gameLoop() {
 
 // ── Event bindings ──────────────────────────────────────────────────
 
+document.getElementById('arcadeModeBtn').addEventListener('click', () => selectGameMode('arcade'));
+document.getElementById('campaignModeBtn').addEventListener('click', () => selectGameMode('campaign'));
+document.getElementById('campaignRestartBtn').addEventListener('click', startGame);
 document.getElementById('keyboardModeBtn').addEventListener('click', () => selectControlMode('keyboard'));
 document.getElementById('cameraModeBtn').addEventListener('click', () => selectControlMode('camera'));
 document.getElementById('onePlayerBtn').addEventListener('click', () => selectPlayerCount(1));
