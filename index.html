@@ -2,215 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>WAVE ASSAULT</title>
-
-    <!-- External dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.0"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MORGORTH GAMES</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas"></canvas>
+    <header class="site-header">
+        <h1 class="site-title">MORGORTH GAMES</h1>
+        <p class="site-subtitle">Choose your game</p>
+    </header>
 
-        <!-- HUD overlay -->
-        <div id="ui">
-            <div class="hud">
-                <div class="hud-left">
-                    <div><div class="stat-label">SCORE</div><div class="stat" id="score">0</div></div>
-                    <div><div class="stat-label">WAVE</div><div class="stat" id="wave">1</div></div>
-                    <div id="campaignActDisplay" class="hidden">
-                        <div class="stat-label">ACT</div>
-                        <div class="stat campaign-act-stat" id="campaignActText">1 · SPACE SECTOR</div>
-                    </div>
-                    <div id="activeEffects"></div>
-                </div>
-                <div class="hud-right">
-                    <!-- Single-player HUD -->
-                    <div id="singlePlayerHud">
-                        <div class="stat-label">FLEET SIZE</div>
-                        <div class="stat" id="crowdSize">1</div>
-                        <div class="crowd-indicator" id="crowdIndicator"></div>
-                        <div class="stat-label">NUKE</div>
-                        <div class="stat" id="nukeProgress">0/50</div>
-                    </div>
-                    <!-- Multi-player HUD -->
-                    <div id="multiPlayerHud" class="hidden hud-players">
-                        <div class="player-hud p1" id="p1Hud">
-                            <img class="player-face" id="p1HudFace" src="" alt="P1">
-                            <div class="player-fleet" id="p1Fleet">3</div>
-                            <div class="player-nuke" id="p1Nuke">0/50</div>
-                        </div>
-                        <div class="player-hud p2" id="p2Hud">
-                            <img class="player-face" id="p2HudFace" src="" alt="P2">
-                            <div class="player-fleet" id="p2Fleet">3</div>
-                            <div class="player-nuke" id="p2Nuke">0/50</div>
-                        </div>
-                    </div>
+    <main class="game-grid">
+
+        <!-- Wave Assault — playable -->
+        <a class="game-card" href="wave-assault/index.html" aria-label="Play Wave Assault">
+            <div class="card-badge badge-playable">PLAYABLE</div>
+            <div class="card-preview" aria-hidden="true">
+                <span class="preview-anim">🚀🛸🤖🐉🦄</span>
+                <span class="preview-anim preview-anim--enemies">👾👾👾💀👾</span>
+            </div>
+            <div class="card-body">
+                <h2 class="card-title">WAVE ASSAULT</h2>
+                <p class="card-desc">
+                    Survive endless waves of enemies in your chosen theme —
+                    Space, Unicorn, Pacific Rim, or Dragon. Grow your fleet,
+                    charge your nuke, and outlast the onslaught.
+                </p>
+                <div class="card-tags">
+                    <span class="tag">Wave Shooter</span>
+                    <span class="tag">1–2 Players</span>
+                    <span class="tag">Camera Mode</span>
                 </div>
             </div>
-        </div>
+        </a>
 
-        <!-- Start screen -->
-        <div id="startScreen">
-            <h1 class="game-title" id="gameTitle">WAVE ASSAULT</h1>
-            <p class="subtitle" id="gameSubtitle">SURVIVE THE ONSLAUGHT</p>
-
-            <div class="section-label">MODE</div>
-            <div class="mode-selection">
-                <button class="mode-btn selected" id="arcadeModeBtn">
-                    <span class="mode-icon">&#x1F30A;</span>
-                    <span class="mode-name">ARCADE</span>
-                    <span class="mode-desc">Endless waves</span>
-                </button>
-                <button class="mode-btn" id="campaignModeBtn">
-                    <span class="mode-icon">&#x1F3C6;</span>
-                    <span class="mode-name">CAMPAIGN</span>
-                    <span class="mode-desc">4 acts &middot; 10 waves each</span>
-                </button>
+        <!-- Three.js 3D game — coming soon -->
+        <div class="game-card game-card--disabled" aria-label="Coming soon: 3D Void Runner">
+            <div class="card-badge badge-soon">COMING SOON</div>
+            <div class="card-preview" aria-hidden="true">
+                <span class="preview-anim preview-anim--muted">🌌🪐✨🛸🌠</span>
             </div>
-            <div id="campaignModeDesc" class="campaign-mode-desc hidden">
-                Space &rarr; Unicorn &rarr; Pacific Rim &rarr; Dragon &nbsp;&middot;&nbsp; Increasing difficulty &nbsp;&middot;&nbsp; Fleet bonuses between acts
-            </div>
-
-            <div id="themeSectionContainer">
-                <div class="section-label">THEME <span class="theme-label-note">(arcade only)</span></div>
-                <div class="theme-selection">
-                    <button class="theme-btn selected" id="spaceThemeBtn"><span class="theme-icon">🚀</span><span>SPACE</span></button>
-                    <button class="theme-btn" id="unicornThemeBtn"><span class="theme-icon">🦄</span><span>UNICORN</span></button>
-                    <button class="theme-btn" id="pacificrimThemeBtn"><span class="theme-icon">🤖</span><span>PACIFIC RIM</span></button>
-                    <button class="theme-btn" id="dragonThemeBtn"><span class="theme-icon">🐉</span><span>DRAGON</span></button>
+            <div class="card-body">
+                <h2 class="card-title">3D VOID RUNNER</h2>
+                <p class="card-desc">
+                    A fully three-dimensional space runner built with Three.js.
+                    Dodge asteroids, collect power cores, and push for the high
+                    score in a procedurally generated void.
+                </p>
+                <div class="card-tags">
+                    <span class="tag">3D / Three.js</span>
+                    <span class="tag">Runner</span>
+                    <span class="tag">Procedural</span>
                 </div>
             </div>
+        </div>
 
-            <div class="section-label">CONTROLS</div>
-            <div class="control-mode-selection">
-                <button class="control-btn selected" id="keyboardModeBtn"><span class="control-icon">⌨️</span><span>KEYBOARD</span></button>
-                <button class="control-btn" id="cameraModeBtn"><span class="control-icon">📷</span><span>CAMERA</span></button>
+        <!-- Phaser 3 game — coming soon -->
+        <div class="game-card game-card--disabled" aria-label="Coming soon: Phaser Dungeon Crawler">
+            <div class="card-badge badge-soon">COMING SOON</div>
+            <div class="card-preview" aria-hidden="true">
+                <span class="preview-anim preview-anim--muted">⚔️🗡️🧙🐲🏰</span>
             </div>
-
-            <div class="camera-status" id="cameraStatus"></div>
-
-            <div id="playerCountContainer" class="hidden">
-                <div class="section-label">PLAYERS</div>
-                <div class="player-count-selection">
-                    <button class="player-count-btn selected" id="onePlayerBtn"><span class="player-count-icon">👤</span><span>1 PLAYER</span></button>
-                    <button class="player-count-btn" id="twoPlayerBtn"><span class="player-count-icon">👥</span><span>2 PLAYERS</span></button>
+            <div class="card-body">
+                <h2 class="card-title">DUNGEON CRAWLER</h2>
+                <p class="card-desc">
+                    Explore procedurally generated dungeons, battle monsters,
+                    and loot treasure. Built with Phaser 3 for a classic
+                    top-down RPG experience.
+                </p>
+                <div class="card-tags">
+                    <span class="tag">Phaser 3</span>
+                    <span class="tag">RPG</span>
+                    <span class="tag">Roguelite</span>
                 </div>
             </div>
-
-            <div class="section-label">HIGH SCORES</div>
-            <div class="high-scores-container" id="startHighScores"></div>
-
-            <div class="ready-indicator" id="armsUpIndicator">WAVE YOUR HAND ABOVE YOUR HEAD!</div>
-            <button class="btn" id="startBtn">START GAME</button>
-            <div class="instructions" id="instructions">
-                MOVE: Arrow Keys / A-D / Mouse / Touch<br>
-                AUTO-FIRE: Always Active<br>
-                SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>
-                STOP ENEMIES: They cost 1 ship if they pass OR hit you!
-            </div>
         </div>
 
-        <!-- Webcam overlay -->
-        <div id="webcamContainer" class="hidden">
-            <div class="webcam-label" id="webcamLabel">AI POSE</div>
-            <video id="webcamVideo" autoplay playsinline muted></video>
-            <canvas id="webcamCanvas"></canvas>
-            <div id="positionIndicator"><div id="positionMarker"></div><div id="positionMarkerP2"></div></div>
-        </div>
+    </main>
 
-        <!-- Player registration screen (camera mode) -->
-        <div id="playerSetupScreen" class="hidden">
-            <h2 class="player-setup-title p1" id="setupTitle">PLAYER 1 - GET READY!</h2>
-            <p class="player-setup-instruction" id="setupInstruction">Stand on the LEFT side and wave your hand</p>
-            <div class="player-setup-webcam" id="setupWebcam">
-                <canvas id="setupCanvas" style="width:100%;height:100%"></canvas>
-            </div>
-            <div class="ready-indicator" id="setupWaveIndicator">RAISE YOUR HAND!</div>
-            <div class="players-ready-container" id="playersReadyContainer">
-                <div class="player-ready-card p1" id="p1ReadyCard">
-                    <img class="player-face-preview" id="p1FacePreview" src="" alt="P1" style="display:none">
-                    <div class="player-count-icon" id="p1FacePlaceholder">👤</div>
-                    <div class="player-ready-label p1">PLAYER 1</div>
-                    <div class="player-ready-status" id="p1ReadyStatus">WAITING...</div>
-                </div>
-                <div class="player-ready-card p2 hidden" id="p2ReadyCard">
-                    <img class="player-face-preview" id="p2FacePreview" src="" alt="P2" style="display:none">
-                    <div class="player-count-icon" id="p2FacePlaceholder">👤</div>
-                    <div class="player-ready-label p2">PLAYER 2</div>
-                    <div class="player-ready-status" id="p2ReadyStatus">WAITING...</div>
-                </div>
-            </div>
-            <button class="btn hidden" id="setupStartBtn">START GAME</button>
-        </div>
-
-        <!-- Act complete overlay (campaign mode) -->
-        <div id="actCompleteOverlay" class="hidden">
-            <div class="act-complete-content">
-                <div class="act-complete-title" id="actCompleteTitle">ACT 1 COMPLETE!</div>
-                <div class="act-complete-theme" id="actCompleteTheme">SPACE SECTOR CLEARED</div>
-                <div class="act-complete-bonus" id="actCompleteBonus">+3 FLEET SHIPS</div>
-                <div class="act-complete-next" id="actCompleteNext">NEXT: UNICORN REALM</div>
-            </div>
-        </div>
-
-        <!-- Countdown overlay -->
-        <div id="countdownOverlay" class="hidden">
-            <div id="countdownText"></div>
-        </div>
-
-        <!-- Campaign complete screen -->
-        <div id="campaignCompleteScreen" class="hidden">
-            <h1 class="game-title campaign-victory-title">CAMPAIGN COMPLETE!</h1>
-            <p class="subtitle">All 4 realms defended!</p>
-            <div class="final-score">SCORE: <span id="campaignFinalScore">0</span></div>
-            <div class="section-label" style="margin-bottom:10px">HIGH SCORES</div>
-            <div class="high-scores-container" id="campaignHighScores"></div>
-            <button class="btn" id="campaignRestartBtn">PLAY AGAIN</button>
-        </div>
-
-        <!-- Game over screen -->
-        <div id="gameOverScreen" class="hidden">
-            <h1 class="game-title">GAME OVER</h1>
-            <div class="final-score">SCORE: <span id="finalScore">0</span></div>
-            <div class="stat" style="margin-bottom:30px">WAVE REACHED: <span id="finalWave">1</span></div>
-            <div class="section-label">THEME</div>
-            <div class="theme-selection">
-                <button class="theme-btn" id="goSpaceThemeBtn"><span class="theme-icon">🚀</span><span>SPACE</span></button>
-                <button class="theme-btn" id="goUnicornThemeBtn"><span class="theme-icon">🦄</span><span>UNICORN</span></button>
-                <button class="theme-btn" id="goPacificrimThemeBtn"><span class="theme-icon">🤖</span><span>PACIFIC RIM</span></button>
-                <button class="theme-btn" id="goDragonThemeBtn"><span class="theme-icon">🐉</span><span>DRAGON</span></button>
-            </div>
-            <div class="section-label">HIGH SCORES</div>
-            <div class="high-scores-container" id="gameOverHighScores"></div>
-            <button class="btn" id="restartBtn">PLAY AGAIN</button>
-        </div>
-    </div>
-
-    <!-- Game scripts — load order matters -->
-    <!-- Core -->
-    <script src="js/config.js"></script>
-    <script src="js/state.js"></script>
-    <script src="js/entities.js"></script>
-    <script src="js/input.js"></script>
-    <script src="js/webcam.js"></script>
-    <script src="js/audio.js"></script>
-    <script src="js/game.js"></script>
-    <!-- Render sub-modules (sprites → themes → bg → entities → effects → orchestrator) -->
-    <script src="js/render-sprites.js"></script>
-    <script src="js/render-theme-unicorn.js"></script>
-    <script src="js/render-theme-pacificrim.js"></script>
-    <script src="js/render-theme-space.js"></script>
-    <script src="js/render-theme-dragon.js"></script>
-    <script src="js/render-background.js"></script>
-    <script src="js/render-entities.js"></script>
-    <script src="js/render-effects.js"></script>
-    <script src="js/render.js"></script>
-    <!-- UI & lifecycle -->
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
+    <footer class="site-footer">
+        <p>&copy; 2025 Morgorth Games &middot; Browser-based games built with vanilla JS, Three.js &amp; Phaser 3</p>
+    </footer>
 </body>
 </html>
