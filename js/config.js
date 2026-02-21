@@ -24,7 +24,7 @@ const CONFIG = {
         fast:    { width: 50,  height: 50,  speed: 5,   health: 15,  points: 15,  color: '#00ff00', renderScale: 0.9, sizePerShip: 0.08 },
         tank:    { width: 90,  height: 90,  speed: 1.5, health: 60,  points: 30,  color: '#ff8800', renderScale: 1.2, sizePerShip: 0.08, fireRate: 200 },
         shifter: { width: 35,  height: 35,  speed: 3.5, health: 10,  points: 20,  color: '#aa00ff', renderScale: 0.7, sizePerShip: 0.08, dodgeCooldown: 30, dodgeRange: 200 },
-        boss:    { width: 80,  height: 80,  speed: 1.0, health: 600, points: 200, color: '#ff0000', renderScale: 0.8, sizePerShip: 0.01, horizontalSpeed: 1.5, fireRate: 120 }
+        boss:    { width: 80,  height: 80,  speed: 0.5, health: 600, points: 200, color: '#ff0000', renderScale: 0.8, sizePerShip: 0.01, horizontalSpeed: 1.5, fireRate: 180 }
     },
     powerup: {
         width: 30,
