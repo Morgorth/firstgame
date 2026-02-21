@@ -120,6 +120,7 @@ function gameOver() {
     document.getElementById('finalScore').textContent = gameState.score;
     document.getElementById('finalWave').textContent = gameState.wave;
     document.getElementById('gameOverScreen').classList.remove('hidden');
+    selectTheme(gameTheme);
 
     // Save high score
     const playerFaces = gameState.players.map(p => p.faceImage || null);
@@ -159,6 +160,10 @@ document.getElementById('spaceThemeBtn').addEventListener('click', () => selectT
 document.getElementById('unicornThemeBtn').addEventListener('click', () => selectTheme('unicorn'));
 document.getElementById('pacificrimThemeBtn').addEventListener('click', () => selectTheme('pacificrim'));
 document.getElementById('dragonThemeBtn').addEventListener('click', () => selectTheme('dragon'));
+document.getElementById('goSpaceThemeBtn').addEventListener('click', () => selectTheme('space'));
+document.getElementById('goUnicornThemeBtn').addEventListener('click', () => selectTheme('unicorn'));
+document.getElementById('goPacificrimThemeBtn').addEventListener('click', () => selectTheme('pacificrim'));
+document.getElementById('goDragonThemeBtn').addEventListener('click', () => selectTheme('dragon'));
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
 
