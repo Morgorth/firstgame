@@ -9,7 +9,6 @@ const CONFIG = {
         maxCrowd: 100,
         startCrowd: 3,
         fireRate: 16,       // frames between auto-shots
-        fireColumns: 3,     // fixed number of bullet columns (independent of fleet size)
         fireSpacing: 30     // pixels between fire columns
     },
     bullet: {

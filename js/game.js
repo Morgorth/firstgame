@@ -276,7 +276,7 @@ function update() {
     if (!gameState.countdownActive && gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
         gameState.players.forEach((player, idx) => {
             if (!player.active) return;
-            const nCols = CONFIG.player.fireColumns;
+            const nCols = Math.max(1, Math.floor(player.crowdSize / 10)); // 1 col <20, 2 col ≥20, 3 col ≥30 …
             const fSpacing = CONFIG.player.fireSpacing;
             for (let c = 0; c < nCols; c++) {
                 const fx = player.x + (c - (nCols - 1) / 2) * fSpacing;
