@@ -7,7 +7,7 @@ argument-hint: "[area-to-focus: config|state|entities|input|webcam|audio|game|re
 
 # Wave Assault — Codebase Guide
 
-This is a browser-based wave shooter game with two themes (space/unicorn) and two control modes (keyboard/camera with MoveNet pose detection). Supports 1–2 players.
+This is a browser-based wave shooter game with four themes (space/unicorn/pacificrim/dragon) and two control modes (keyboard/camera with MoveNet pose detection). Supports 1–2 players.
 
 ## File Map (read ONLY what you need)
 
@@ -16,17 +16,30 @@ This is a browser-based wave shooter game with two themes (space/unicorn) and tw
 | **Tuning** | `js/config.js` | `CONFIG` (player/bullet/enemy/powerup/wave/superWeapon stats), `SKELETON_CONNECTIONS`, `PLAYER_COLORS` |
 | **State** | `js/state.js` | `canvas`, `ctx`, `PLAY_AREA`, `gameState`, `webcamState`, `keys`, `controlMode`, `gameTheme` |
 | **Entities** | `js/entities.js` | `createPlayer/Bullet/Enemy/Powerup/Particle/Stars()`, `getCrowdPositions()` |
-| **Input** | `js/input.js` | Keyboard `keydown/keyup` → `keys` map (4 lines) |
+| **Input** | `js/input.js` | Keyboard `keydown/keyup` → `keys` map |
 | **Camera** | `js/webcam.js` | Webcam init, MoveNet pose detector, wave-gesture detection, player registration, debug overlays, fallback edge detection |
 | **Audio** | `js/audio.js` | `audioSystem` — music, SFX, speech synthesis, tempo control |
 | **Logic** | `js/game.js` | `checkCollision()`, `activateSuperWeapon()`, `checkSuperWeaponThreshold()`, `spawnWave()`, `update()` (movement, shooting, collisions, wave progression), `checkGameOver()` |
-| **Drawing** | `js/render.js` | `drawUnicorn/Wolf/SpaceShip/SpaceEnemy()`, `render()` (background, stars, players, bullets, enemies, powerups, effects, super weapon flash) |
 | **UI** | `js/ui.js` | `updateHUD/Wave/CrowdDisplay()`, `selectControlMode/PlayerCount/Theme()`, registration UI, countdown |
 | **Lifecycle** | `js/main.js` | `startGame()`, `gameOver()`, `gameLoop()`, all DOM event bindings, boot |
 | **HTML** | `index.html` | DOM structure only — no logic, no styles |
 | **CSS** | `styles.css` | All styling |
 
-**Script load order**: config → state → entities → input → webcam → audio → game → render → ui → main
+### Render sub-modules (render.js is now split — read only the relevant file)
+
+| File | What's inside |
+|------|---------------|
+| `js/render-sprites.js` | Sprite/image cache (`_ensureSprite`, `_getSparkleSprite`, `_getHeartSprite`, `_getStarEmojiSprite`), background gradient cache, `RENDER_THEME` constants table, `getTheme()` helper |
+| `js/render-theme-unicorn.js` | `drawUnicorn()`, `drawWolf()`, `drawUnicornEnemy()` |
+| `js/render-theme-pacificrim.js` | `drawJaeger()`, `drawKaiju()` |
+| `js/render-theme-space.js` | `drawSpaceShip()`, `drawSpaceEnemy()` |
+| `js/render-theme-dragon.js` | `drawDragon()`, `drawBlackKnight()` |
+| `js/render-background.js` | `drawBackground()`, `drawDragonEnvironment()`, `drawPacificRimEnvironment()`, `drawStars()` |
+| `js/render-entities.js` | `drawParticles()`, `drawPlayers()`, `drawBullets()`, `drawEnemies()`, `drawPowerups()` |
+| `js/render-effects.js` | `drawHitFlash()`, `drawSuperWeaponFlash()`, `drawDonationBeams()`, `drawChargeIndicators()` |
+| `js/render.js` | Thin `render()` orchestrator — calls all sub-modules in draw order |
+
+**Script load order**: config → state → entities → input → webcam → audio → game → render-sprites → render-theme-unicorn → render-theme-pacificrim → render-theme-space → render-theme-dragon → render-background → render-entities → render-effects → render → ui → main
 
 ## How to efficiently work on a task
 
@@ -34,25 +47,33 @@ This is a browser-based wave shooter game with two themes (space/unicorn) and tw
 
 - **Changing game balance** (enemy speed, health, damage, spawn rates) → `js/config.js` + `js/game.js:spawnWave`
 - **Changing player movement or shooting** → `js/game.js:update`
-- **Changing visuals/sprites** → `js/render.js`
+- **Changing a player sprite** → the matching `js/render-theme-*.js`
+- **Changing an enemy sprite** → the matching `js/render-theme-*.js`
+- **Changing background / environment visuals** → `js/render-background.js`
+- **Changing particle / explosion effects** → `js/render-entities.js:drawParticles`
+- **Changing screen overlays (hit flash, nuke flash)** → `js/render-effects.js`
+- **Changing fleet donation beam visuals** → `js/render-effects.js:drawDonationBeams`
+- **Changing powerup rendering** → `js/render-entities.js:drawPowerups`
+- **Adding a new theme** → new `js/render-theme-<name>.js` + update `render-sprites.js:RENDER_THEME` + `render-background.js` + `render-entities.js` + `render-effects.js` + `render.js` + `js/ui.js:selectTheme` + `styles.css` + `index.html`
 - **Changing HUD or screens** → `js/ui.js` + `index.html`
 - **Changing camera/pose behavior** → `js/webcam.js`
-- **Adding new entity types** → `js/config.js` + `js/entities.js` + `js/game.js` + `js/render.js`
+- **Adding new entity types** → `js/config.js` + `js/entities.js` + `js/game.js` + matching `js/render-theme-*.js` + `js/render-entities.js`
 - **Changing game flow** (start, restart, game over) → `js/main.js`
 - **Changing styling** → `styles.css`
-- **Super weapon / nuke changes** → `js/game.js` (activation + threshold), `js/state.js` (charges/kills state), `js/render.js` (flash effect), `js/ui.js` (HUD progress)
+- **Super weapon / nuke changes** → `js/game.js` (activation + threshold), `js/state.js` (charges/kills state), `js/render-effects.js` (flash), `js/render-effects.js:drawChargeIndicators` (icon), `js/render-sprites.js:RENDER_THEME` (icon/colour), `js/ui.js` (HUD progress)
 - **Audio/music changes** → `js/audio.js`
 
 ### Step 2: Understand the globals
 
 All files share these globals (no modules):
 - `CONFIG` — immutable game constants
+- `RENDER_THEME` — per-theme visual constants (donateColor, shieldColor, chargeIcon, etc.)
 - `gameState` — mutable runtime state (see key fields below)
 - `webcamState` — camera/pose state (`.active`, `.targetLane`, `.registeredPlayers[]`, etc.)
 - `canvas`, `ctx` — the game canvas and its 2D context
 - `PLAY_AREA` — virtual coordinate space (2× viewport)
 - `controlMode` — `'keyboard'` or `'camera'`
-- `gameTheme` — `'space'` or `'unicorn'`
+- `gameTheme` — `'space'` | `'unicorn'` | `'pacificrim'` | `'dragon'`
 - `keys` — keyboard state map
 
 ### Step 3: Key gameState fields
@@ -87,7 +108,8 @@ gameState.playerCount       // 1 or 2
 - **Super weapon**: Per-player. `playerKills[i]` hits `superWeaponNextThreshold[i]` → charge earned → threshold advances by `killsPerCharge`. Activation: keyboard=Space (P1), camera=hands-up gesture.
 - **Auto-fire**: Every `CONFIG.player.fireRate` frames, bullets from all `getCrowdPositions()`.
 - **Wave progression**: All enemies killed + none on screen → countdown → next wave.
-- **Rendering**: Virtual coords scaled to screen via `ctx.scale()`. Unicorn theme: rainbow wave nuke, wolves as enemies, unicorns as players. Space theme: cyan flash nuke, spaceships.
+- **Theme helper**: Every render sub-function receives `T = getTheme()` → `{ isUnicorn, isPacificRim, isDragon, isSpace, theme }` where `theme` is the matching `RENDER_THEME` entry.
+- **Rendering**: Virtual coords scaled to screen via `ctx.scale()`. Use `RENDER_THEME[gameTheme]` for per-theme colours instead of inline ternary chains.
 
 ## If the user asks to focus on a specific area
 
