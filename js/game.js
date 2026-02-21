@@ -276,14 +276,16 @@ function update() {
     if (!gameState.countdownActive && gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
         gameState.players.forEach((player, idx) => {
             if (!player.active) return;
-            gameState._cachedCrowdPositions[idx].forEach(p => {
-                gameState.bullets.push(createBullet(p.x, p.y, idx));
-                // Spread shot: extra bullets at ±15px offset
+            const nCols = CONFIG.player.fireColumns;
+            const fSpacing = CONFIG.player.fireSpacing;
+            for (let c = 0; c < nCols; c++) {
+                const fx = player.x + (c - (nCols - 1) / 2) * fSpacing;
+                gameState.bullets.push(createBullet(fx, player.y, idx));
                 if (gameState.activeEffects.spread[idx] > 0) {
-                    gameState.bullets.push(createBullet(p.x - 15, p.y, idx));
-                    gameState.bullets.push(createBullet(p.x + 15, p.y, idx));
+                    gameState.bullets.push(createBullet(fx - 15, player.y, idx));
+                    gameState.bullets.push(createBullet(fx + 15, player.y, idx));
                 }
-            });
+            }
         });
         gameState.lastShot = gameState.frameCount;
     }
