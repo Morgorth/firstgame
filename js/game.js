@@ -126,7 +126,7 @@ function spawnWave() {
 
     // Boss wave every 10 waves
     if (w % 10 === 0) {
-        const bossHpScale = 1 + Math.floor(w / 10) * 0.3;
+        const bossHpScale = 1 + Math.floor(w / 10) * 0.2;
         const twoBosses = gameState.playerCount === 2 && w >= 20;
 
         if (twoBosses) {
@@ -179,7 +179,7 @@ function spawnWave() {
     else if (w === 3) { count = 6;                  hp = 0.7; spd = 0.85; }
     else if (w <= 5)  { count = 6 + w;              hp = 0.8; spd = 0.9;  }
     else if (w <= 10) { count = 8 + (w - 5) * 2;   hp = 1;   spd = 1;    }
-    else              { count = 18 + (w - 10) * 2;  hp = 1 + (w - 10) * 0.1; spd = 1 + (w - 10) * 0.05; }
+    else              { count = 18 + (w - 10) * 2;  hp = Math.min(1 + (w - 10) * 0.06, 2.5); spd = Math.min(1 + (w - 10) * 0.03, 1.5); }
 
     if (gameState.playerCount === 2) count = Math.ceil(count * 1.3);
     count = Math.min(count, 50);
@@ -276,14 +276,16 @@ function update() {
     if (!gameState.countdownActive && gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
         gameState.players.forEach((player, idx) => {
             if (!player.active) return;
-            gameState._cachedCrowdPositions[idx].forEach(p => {
-                gameState.bullets.push(createBullet(p.x, p.y, idx));
-                // Spread shot: extra bullets at ±15px offset
+            const nCols = Math.max(1, Math.floor(player.crowdSize / 10)); // 1 col <20, 2 col ≥20, 3 col ≥30 …
+            const fSpacing = CONFIG.player.fireSpacing;
+            for (let c = 0; c < nCols; c++) {
+                const fx = player.x + (c - (nCols - 1) / 2) * fSpacing;
+                gameState.bullets.push(createBullet(fx, player.y, idx));
                 if (gameState.activeEffects.spread[idx] > 0) {
-                    gameState.bullets.push(createBullet(p.x - 15, p.y, idx));
-                    gameState.bullets.push(createBullet(p.x + 15, p.y, idx));
+                    gameState.bullets.push(createBullet(fx - 15, player.y, idx));
+                    gameState.bullets.push(createBullet(fx + 15, player.y, idx));
                 }
-            });
+            }
         });
         gameState.lastShot = gameState.frameCount;
     }
@@ -413,7 +415,7 @@ function update() {
                     gameState.totalKills++;
                     checkSuperWeaponThreshold(bullet.owner);
 
-                    const chance = gameState.wave <= 3 ? 0.25 : gameState.wave <= 5 ? 0.18 : CONFIG.powerup.spawnChance;
+                    const chance = gameState.wave <= 3 ? 0.25 : gameState.wave <= 5 ? 0.18 : gameState.wave <= 10 ? CONFIG.powerup.spawnChance : Math.min(CONFIG.powerup.spawnChance + (gameState.wave - 10) * 0.004, 0.22);
                     if (Math.random() < chance) {
                         const pu = createPowerup(enemy.x, enemy.y);
                         pu.owner = bullet.owner;
