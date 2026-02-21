@@ -297,7 +297,7 @@ function update() {
     if (!gameState.countdownActive && gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
         gameState.players.forEach((player, idx) => {
             if (!player.active) return;
-            const nCols = Math.max(1, Math.floor(player.crowdSize / 10)); // 1 col <20, 2 col ≥20, 3 col ≥30 …
+            const nCols = Math.max(1, Math.floor(player.crowdSize / 2)); // scale to half fleet size
             const fSpacing = CONFIG.player.fireSpacing;
             for (let c = 0; c < nCols; c++) {
                 const fx = player.x + (c - (nCols - 1) / 2) * fSpacing;
@@ -317,7 +317,7 @@ function update() {
         gameState.players.forEach((player, idx) => {
             if (!player.active || gameState.activeEffects.rapidfire[idx] <= 0) return;
             anyFired = true;
-            const nCols = Math.max(1, Math.floor(player.crowdSize / 10));
+            const nCols = Math.max(1, Math.floor(player.crowdSize / 2)); // scale to half fleet size
             const fSpacing = CONFIG.player.fireSpacing;
             for (let c = 0; c < nCols; c++) {
                 const fx = player.x + (c - (nCols - 1) / 2) * fSpacing;
