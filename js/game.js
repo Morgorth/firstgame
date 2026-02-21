@@ -39,7 +39,7 @@ function checkSuperWeaponThreshold(playerIndex) {
     gameState.playerKills[playerIndex]++;
     if (gameState.playerKills[playerIndex] >= gameState.superWeaponNextThreshold[playerIndex]) {
         gameState.superWeaponCharges[playerIndex]++;
-        gameState.superWeaponNextThreshold[playerIndex] += CONFIG.superWeapon.killsPerCharge + gameState.wave;
+        gameState.superWeaponNextThreshold[playerIndex] += CONFIG.superWeapon.killsPerCharge + Math.floor(gameState.wave / 3);
     }
 }
 
@@ -126,7 +126,7 @@ function spawnWave() {
 
     // Boss wave every 10 waves
     if (w % 10 === 0) {
-        const bossHpScale = 1 + Math.floor(w / 10) * 0.3;
+        const bossHpScale = 1 + Math.floor(w / 10) * 0.2;
         const twoBosses = gameState.playerCount === 2 && w >= 20;
 
         if (twoBosses) {
@@ -179,7 +179,7 @@ function spawnWave() {
     else if (w === 3) { count = 6;                  hp = 0.7; spd = 0.85; }
     else if (w <= 5)  { count = 6 + w;              hp = 0.8; spd = 0.9;  }
     else if (w <= 10) { count = 8 + (w - 5) * 2;   hp = 1;   spd = 1;    }
-    else              { count = 18 + (w - 10) * 2;  hp = 1 + (w - 10) * 0.1; spd = 1 + (w - 10) * 0.05; }
+    else              { count = 18 + (w - 10) * 2;  hp = Math.min(1 + (w - 10) * 0.06, 2.5); spd = Math.min(1 + (w - 10) * 0.03, 1.5); }
 
     if (gameState.playerCount === 2) count = Math.ceil(count * 1.3);
     count = Math.min(count, 50);
@@ -413,7 +413,7 @@ function update() {
                     gameState.totalKills++;
                     checkSuperWeaponThreshold(bullet.owner);
 
-                    const chance = gameState.wave <= 3 ? 0.25 : gameState.wave <= 5 ? 0.18 : CONFIG.powerup.spawnChance;
+                    const chance = gameState.wave <= 3 ? 0.25 : gameState.wave <= 5 ? 0.18 : gameState.wave <= 10 ? CONFIG.powerup.spawnChance : Math.min(CONFIG.powerup.spawnChance + (gameState.wave - 10) * 0.004, 0.22);
                     if (Math.random() < chance) {
                         const pu = createPowerup(enemy.x, enemy.y);
                         pu.owner = bullet.owner;
