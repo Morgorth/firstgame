@@ -26,6 +26,7 @@ function activateSuperWeapon(playerIndex) {
         }
     }
     gameState.enemies = [];
+    gameState.enemyBullets = [];
 
     gameState.superWeaponFlashEffect = cfg.flashDuration;
     gameState.screenShake = { x: cfg.shakeIntensity, y: cfg.shakeIntensity };
@@ -39,7 +40,8 @@ function checkSuperWeaponThreshold(playerIndex) {
     gameState.playerKills[playerIndex]++;
     if (gameState.playerKills[playerIndex] >= gameState.superWeaponNextThreshold[playerIndex]) {
         gameState.superWeaponCharges[playerIndex]++;
-        gameState.superWeaponNextThreshold[playerIndex] += CONFIG.superWeapon.killsPerCharge + gameState.wave;
+        const waveBonus = Math.min(gameState.wave, CONFIG.superWeapon.maxWaveBonus);
+        gameState.superWeaponNextThreshold[playerIndex] += CONFIG.superWeapon.killsPerCharge + waveBonus;
     }
 }
 
@@ -168,6 +170,7 @@ function spawnWave() {
         }
 
         gameState.enemiesKilled = 0;
+        gameState.enemyBullets = [];
         audioSystem.startMusic();
         return;
     }
@@ -186,9 +189,14 @@ function spawnWave() {
 
     gameState.enemiesInWave = count;
     gameState.enemiesKilled = 0;
+    gameState.enemyBullets = [];
 
     // Start music when wave spawns
     audioSystem.startMusic();
+
+    // Pick a formation pattern for variety (waves 1-3 always spread)
+    const formationOptions = ['spread', 'vshape', 'pincer', 'column'];
+    const formationName = w <= 3 ? 'spread' : formationOptions[(w + Math.floor(Math.random() * 2)) % formationOptions.length];
 
     for (let i = 0; i < count; i++) {
         let type = 'basic';
@@ -202,8 +210,21 @@ function spawnWave() {
             type = Math.random() < 0.15 ? 'fast' : 'basic';
         }
 
-        // Shifters must spawn in a lane that already has another enemy
-        let laneIdx = i % numLanes;
+        // Assign lane based on formation pattern
+        let laneIdx;
+        if (formationName === 'vshape') {
+            const center = Math.floor(numLanes / 2);
+            const pos = i % numLanes;
+            if (pos === 0) laneIdx = center;
+            else if (pos % 2 === 1) laneIdx = Math.max(0, center - Math.ceil(pos / 2));
+            else laneIdx = Math.min(numLanes - 1, center + pos / 2);
+        } else if (formationName === 'pincer') {
+            laneIdx = i % 2 === 0 ? 0 : numLanes - 1;
+        } else if (formationName === 'column') {
+            laneIdx = Math.floor(numLanes / 2);
+        } else {
+            laneIdx = i % numLanes; // spread (default)
+        }
         if (type === 'shifter') {
             const occupiedLanes = [];
             for (let li = 0; li < numLanes; li++) {
@@ -290,6 +311,26 @@ function update() {
         gameState.lastShot = gameState.frameCount;
     }
 
+    // Rapid-fire: extra mid-cycle shots for players with the rapidfire effect
+    if (!gameState.countdownActive && gameState.frameCount - gameState.lastRapidShot >= Math.floor(CONFIG.player.fireRate / 2)) {
+        let anyFired = false;
+        gameState.players.forEach((player, idx) => {
+            if (!player.active || gameState.activeEffects.rapidfire[idx] <= 0) return;
+            anyFired = true;
+            const nCols = Math.max(1, Math.floor(player.crowdSize / 10));
+            const fSpacing = CONFIG.player.fireSpacing;
+            for (let c = 0; c < nCols; c++) {
+                const fx = player.x + (c - (nCols - 1) / 2) * fSpacing;
+                gameState.bullets.push(createBullet(fx, player.y, idx));
+                if (gameState.activeEffects.spread[idx] > 0) {
+                    gameState.bullets.push(createBullet(fx - 15, player.y, idx));
+                    gameState.bullets.push(createBullet(fx + 15, player.y, idx));
+                }
+            }
+        });
+        if (anyFired) gameState.lastRapidShot = gameState.frameCount;
+    }
+
     // Move bullets
     gameState.bullets = gameState.bullets.filter(b => {
         b.y -= CONFIG.bullet.speed;
@@ -373,6 +414,63 @@ function update() {
         e.x = lanes[pick.lane];
         e.lastDodgeFrame = gameState.frameCount;
     }
+
+    // Enemy shooting: tank fires single straight shot, boss fires a spread
+    for (let i = 0; i < gameState.enemies.length; i++) {
+        const e = gameState.enemies[i];
+        if (e.health <= 0 || e.y < 0) continue;
+        if (e.type !== 'tank' && e.type !== 'boss') continue;
+        const fireRate = e.fireRate || (e.type === 'boss' ? CONFIG.enemy.boss.fireRate : CONFIG.enemy.tank.fireRate);
+        if (gameState.frameCount - e.lastFireFrame < fireRate) continue;
+
+        const speed = CONFIG.enemyBullet.speed;
+        if (e.type === 'boss') {
+            // Spread: three bullets fanning outward
+            for (const vx of [-2.5, 0, 2.5]) {
+                gameState.enemyBullets.push(createEnemyBullet(e.x, e.y + e.height / 2, vx, speed));
+            }
+        } else {
+            // Tank: single straight shot
+            gameState.enemyBullets.push(createEnemyBullet(e.x, e.y + e.height / 2, 0, speed));
+        }
+        e.lastFireFrame = gameState.frameCount;
+    }
+
+    // Move enemy bullets & check collision with players
+    const ebw = CONFIG.enemyBullet.width, ebh = CONFIG.enemyBullet.height;
+    gameState.enemyBullets = gameState.enemyBullets.filter(eb => {
+        if (!eb.active) return false;
+        eb.x += eb.vx;
+        eb.y += eb.vy;
+        if (eb.y > PLAY_AREA.height + 20) return false;
+
+        for (let i = 0; i < gameState.players.length; i++) {
+            const player = gameState.players[i];
+            if (!player.active) continue;
+            const crowdRadius = Math.sqrt(player.crowdSize) * 28;
+            if (!checkCollision(
+                { x: eb.x - ebw / 2, y: eb.y - ebh / 2 },
+                { x: player.x - crowdRadius / 2, y: player.y - crowdRadius / 2 },
+                ebw, ebh, crowdRadius, crowdRadius
+            )) continue;
+
+            if (gameState.activeEffects.shield[i] > 0) {
+                gameState.activeEffects.shield[i] = 0;
+                for (let j = 0; j < 8; j++) gameState.particles.push(createParticle(player.x, player.y, '#00aaff'));
+            } else {
+                player.crowdSize = Math.max(0, player.crowdSize - CONFIG.enemyBullet.damage);
+                if (i === 0) gameState.crowdSize = player.crowdSize;
+                gameState.hitEffect = 15;
+                gameState.screenShake = { x: 6, y: 6 };
+                for (let j = 0; j < 8; j++) gameState.particles.push(createParticle(player.x, player.y, '#ff0000'));
+                if (player.crowdSize <= 0) player.active = false;
+                updateCrowdDisplay();
+            }
+            eb.active = false;
+            return false;
+        }
+        return true;
+    });
 
     // Bullet vs enemy collisions (lane-bucketed for performance)
     // Bucket enemies by horizontal lane for O(bullets * enemies_in_lane) instead of O(bullets * enemies)
@@ -458,6 +556,10 @@ function update() {
                     gameState.activeEffects.shield[ownerIdx] = CONFIG.powerup.types.shield.duration;
                 } else if (puType === 'spread') {
                     gameState.activeEffects.spread[ownerIdx] = CONFIG.powerup.types.spread.duration;
+                } else if (puType === 'rapidfire') {
+                    gameState.activeEffects.rapidfire[ownerIdx] = CONFIG.powerup.types.rapidfire.duration;
+                } else if (puType === 'regen') {
+                    gameState.activeEffects.regen[ownerIdx] = CONFIG.powerup.types.regen.duration;
                 }
 
                 for (let i = 0; i < 8; i++) {
@@ -594,8 +696,22 @@ function update() {
 
     // Tick down active effects
     for (let i = 0; i < gameState.players.length; i++) {
-        if (gameState.activeEffects.shield[i] > 0) gameState.activeEffects.shield[i]--;
-        if (gameState.activeEffects.spread[i] > 0) gameState.activeEffects.spread[i]--;
+        if (gameState.activeEffects.shield[i] > 0)    gameState.activeEffects.shield[i]--;
+        if (gameState.activeEffects.spread[i] > 0)    gameState.activeEffects.spread[i]--;
+        if (gameState.activeEffects.rapidfire[i] > 0) gameState.activeEffects.rapidfire[i]--;
+        if (gameState.activeEffects.regen[i] > 0)     gameState.activeEffects.regen[i]--;
+    }
+
+    // Regen: restore 1 ship per interval while active
+    for (let i = 0; i < gameState.players.length; i++) {
+        if (gameState.activeEffects.regen[i] > 0 && gameState.frameCount % CONFIG.powerup.types.regen.interval === 0) {
+            const player = gameState.players[i];
+            if (player.active && player.crowdSize < CONFIG.player.maxCrowd) {
+                player.crowdSize++;
+                if (i === 0) gameState.crowdSize = player.crowdSize;
+                updateCrowdDisplay();
+            }
+        }
     }
 
     // Decay super weapon flash effect

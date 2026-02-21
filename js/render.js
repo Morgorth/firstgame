@@ -52,6 +52,7 @@ function render() {
     // ── Game entities ──────────────────────────────────────────────────
     if (gameState.running) drawPlayers(T);
     drawBullets(T);
+    drawEnemyBullets(T);
     drawEnemies(T);
     drawPowerups(T);
 

@@ -74,6 +74,31 @@ function drawPlayers({ isUnicorn, isPacificRim, isDragon, theme }) {
     });
 }
 
+// ── Enemy bullets ────────────────────────────────────────────────────
+
+function drawEnemyBullets({ isUnicorn, isPacificRim, isDragon }) {
+    for (let i = 0; i < gameState.enemyBullets.length; i++) {
+        const b = gameState.enemyBullets[i];
+        if (!b.active) continue;
+        let outerColor, coreColor;
+        if (isUnicorn) {
+            outerColor = 'rgba(180,0,80,0.35)'; coreColor = '#ff0066';
+        } else if (isDragon) {
+            outerColor = 'rgba(80,0,120,0.4)';  coreColor = '#cc00ff';
+        } else if (isPacificRim) {
+            outerColor = 'rgba(0,180,0,0.35)';  coreColor = '#00ff44';
+        } else {
+            outerColor = 'rgba(255,0,0,0.3)';   coreColor = '#ff3300';
+        }
+        ctx.fillStyle = outerColor;
+        ctx.beginPath(); ctx.arc(b.x, b.y, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = coreColor;
+        ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(b.x, b.y, 2, 0, Math.PI * 2); ctx.fill();
+    }
+}
+
 // ── Bullets ──────────────────────────────────────────────────────────
 
 function drawBullets({ isUnicorn, isPacificRim, isDragon }) {
@@ -197,7 +222,10 @@ function drawPowerups({ isUnicorn, isPacificRim, isDragon }) {
                 const sz = 44 * pulse;
                 ctx.drawImage(starSprite, -sz / 2, -sz / 2, sz, sz);
             } else {
-                const emojiChar = puType === 'shield' ? '\uD83D\uDEE1\uFE0F' : '\u2728';
+                const emojiChar = puType === 'shield'    ? '\uD83D\uDEE1\uFE0F'
+                                : puType === 'spread'    ? '\u2728'
+                                : puType === 'rapidfire' ? '\u26A1'
+                                :                         '\uD83D\uDC9A'; // green heart for regen
                 ctx.font = `${Math.round(36 * pulse)}px Arial`;
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillStyle = puColor;
@@ -231,12 +259,25 @@ function drawPowerups({ isUnicorn, isPacificRim, isDragon }) {
                 ctx.moveTo(0, -15); ctx.lineTo(-12, -5); ctx.lineTo(-10, 10);
                 ctx.lineTo(0, 15);  ctx.lineTo(10, 10);  ctx.lineTo(12, -5);
                 ctx.closePath(); ctx.stroke(); ctx.fill();
-            } else {
+            } else if (puType === 'spread') {
                 // Spread — triple bars
                 ctx.fillStyle = puColor;
                 ctx.fillRect(-8, -10, 16, 4); ctx.fillRect(-12, -2, 24, 4); ctx.fillRect(-8, 6, 16, 4);
                 ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
                 ctx.strokeRect(-8, -10, 16, 4); ctx.strokeRect(-12, -2, 24, 4); ctx.strokeRect(-8, 6, 16, 4);
+            } else if (puType === 'rapidfire') {
+                // Rapid fire — lightning bolt
+                ctx.fillStyle = puColor;
+                ctx.beginPath();
+                ctx.moveTo(4, -14); ctx.lineTo(-5, 2);  ctx.lineTo(0, 2);
+                ctx.lineTo(-4, 14); ctx.lineTo(5, -2);  ctx.lineTo(0, -2);
+                ctx.closePath(); ctx.stroke(); ctx.fill();
+            } else if (puType === 'regen') {
+                // Regen — plus / cross
+                ctx.fillStyle = puColor;
+                ctx.fillRect(-3, -13, 6, 26); ctx.fillRect(-13, -3, 26, 6);
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+                ctx.strokeRect(-3, -13, 6, 26); ctx.strokeRect(-13, -3, 26, 6);
             }
         }
 

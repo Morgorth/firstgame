@@ -22,9 +22,9 @@ const CONFIG = {
         // sizePerShip: additional scale added per remaining health unit (bullet-damage chunks)
         basic:   { width: 60,  height: 60,  speed: 2.5, health: 25,  points: 10,  color: '#ff0080', renderScale: 1.0, sizePerShip: 0.08 },
         fast:    { width: 50,  height: 50,  speed: 5,   health: 15,  points: 15,  color: '#00ff00', renderScale: 0.9, sizePerShip: 0.08 },
-        tank:    { width: 90,  height: 90,  speed: 1.5, health: 60,  points: 30,  color: '#ff8800', renderScale: 1.2, sizePerShip: 0.08 },
+        tank:    { width: 90,  height: 90,  speed: 1.5, health: 60,  points: 30,  color: '#ff8800', renderScale: 1.2, sizePerShip: 0.08, fireRate: 200 },
         shifter: { width: 35,  height: 35,  speed: 3.5, health: 10,  points: 20,  color: '#aa00ff', renderScale: 0.7, sizePerShip: 0.08, dodgeCooldown: 30, dodgeRange: 200 },
-        boss:    { width: 80,  height: 80,  speed: 1.0, health: 600, points: 200, color: '#ff0000', renderScale: 0.8, sizePerShip: 0.01, horizontalSpeed: 1.5 }
+        boss:    { width: 80,  height: 80,  speed: 1.0, health: 600, points: 200, color: '#ff0000', renderScale: 0.8, sizePerShip: 0.01, horizontalSpeed: 1.5, fireRate: 120 }
     },
     powerup: {
         width: 30,
@@ -32,10 +32,18 @@ const CONFIG = {
         speed: 3,
         spawnChance: 0.12,
         types: {
-            fleet:  { color: '#ffff00', unicornColor: '#FFD700', pacificrimColor: '#FF8C00', dragonColor: '#ff6600', duration: 0 },
-            shield: { color: '#00aaff', unicornColor: '#FFB6C1', pacificrimColor: '#00BFFF', dragonColor: '#ff3300', duration: 600 },
-            spread: { color: '#ff8800', unicornColor: '#FF69B4', pacificrimColor: '#FF4500', dragonColor: '#ffaa00', duration: 480 }
+            fleet:     { color: '#ffff00', unicornColor: '#FFD700', pacificrimColor: '#FF8C00', dragonColor: '#ff6600', duration: 0 },
+            shield:    { color: '#00aaff', unicornColor: '#FFB6C1', pacificrimColor: '#00BFFF', dragonColor: '#ff3300', duration: 600 },
+            spread:    { color: '#ff8800', unicornColor: '#FF69B4', pacificrimColor: '#FF4500', dragonColor: '#ffaa00', duration: 480 },
+            rapidfire: { color: '#ff4400', unicornColor: '#FF1493', pacificrimColor: '#FF6347', dragonColor: '#ff2200', duration: 360 },
+            regen:     { color: '#00ff88', unicornColor: '#98FF98', pacificrimColor: '#00FA9A', dragonColor: '#44ff44', duration: 480, interval: 60 }
         }
+    },
+    enemyBullet: {
+        width: 8,
+        height: 14,
+        speed: 7,
+        damage: 1   // ships lost per hit
     },
     wave: {
         delay: 300           // frames to wait between waves
@@ -53,6 +61,7 @@ const CONFIG = {
     },
     superWeapon: {
         killsPerCharge: 50,          // cumulative kills between each charge earned
+        maxWaveBonus: 30,            // cap on per-wave increment to keep late-game nukes earnable
         activationKey: ' ',        // Space bar for keyboard mode
         handsUpHoldFrames: 12,     // ~200ms hold to prevent accidental activation
         flashDuration: 40,         // screen flash frames (longer for rainbow sweep)

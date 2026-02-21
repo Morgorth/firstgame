@@ -40,6 +40,7 @@ function startGame() {
         players,
         player: createPlayer(),
         bullets: [],
+        enemyBullets: [],
         enemies: [],
         powerups: [],
         particles: [],
@@ -50,6 +51,7 @@ function startGame() {
         enemiesKilled: 0,
         frameCount: 0,
         lastShot: 0,
+        lastRapidShot: 0,
         crowdSize: CONFIG.player.startCrowd,
         stars: createStars(),
         hitEffect: 0,
@@ -61,7 +63,7 @@ function startGame() {
         superWeaponCharges: [0, 0],
         superWeaponNextThreshold: [CONFIG.superWeapon.killsPerCharge, CONFIG.superWeapon.killsPerCharge],
         superWeaponFlashEffect: 0,
-        activeEffects: { shield: [0, 0], spread: [0, 0] },
+        activeEffects: { shield: [0, 0], spread: [0, 0], rapidfire: [0, 0], regen: [0, 0] },
         fleetDonateState: { holdFrames: 0, cooldown: 0 }
     };
 

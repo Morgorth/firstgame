@@ -64,6 +64,7 @@ let webcamState = {
 let gameState = {
     running: false,
     bullets: [],
+    enemyBullets: [],
     enemies: [],
     powerups: [],
     particles: [],
@@ -74,6 +75,7 @@ let gameState = {
     enemiesKilled: 0,
     frameCount: 0,
     lastShot: 0,
+    lastRapidShot: 0,
     stars: [],
     hitEffect: 0,
     screenShake: { x: 0, y: 0 },
@@ -92,7 +94,7 @@ let gameState = {
     ],
 
     // Active power-up effects (remaining frames per player)
-    activeEffects: { shield: [0, 0], spread: [0, 0] },
+    activeEffects: { shield: [0, 0], spread: [0, 0], rapidfire: [0, 0], regen: [0, 0] },
 
     // Fleet donation (hold-hands gesture)
     fleetDonateState: { holdFrames: 0, cooldown: 0 },

@@ -10,13 +10,17 @@ function createBullet(x, y, owner = 0) {
 
 function createEnemy(type, x, y) {
     const cfg = CONFIG.enemy[type];
-    return { type, x, y, health: cfg.health, maxHealth: cfg.health, ...cfg, lastDodgeFrame: 0, bossDirection: type === 'boss' ? 1 : 0 };
+    return { type, x, y, health: cfg.health, maxHealth: cfg.health, ...cfg, lastDodgeFrame: 0, lastFireFrame: 0, bossDirection: type === 'boss' ? 1 : 0 };
+}
+
+function createEnemyBullet(x, y, vx, vy) {
+    return { x, y, vx, vy, active: true };
 }
 
 function createPowerup(x, y, type) {
     if (!type) {
         const r = Math.random();
-        type = r < 0.75 ? 'fleet' : r < 0.90 ? 'shield' : 'spread';
+        type = r < 0.55 ? 'fleet' : r < 0.70 ? 'shield' : r < 0.85 ? 'spread' : r < 0.93 ? 'rapidfire' : 'regen';
     }
     return { x, y, active: true, health: 20, maxHealth: 20, type };
 }
