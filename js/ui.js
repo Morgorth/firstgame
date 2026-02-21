@@ -325,11 +325,19 @@ function startWaveCountdown(onComplete) {
 
     const isFirstWave = gameState.wave === 1;
 
+    // In campaign mode show the wave number relative to the current act (e.g. "1/10")
+    const actWave = gameState.campaignMode
+        ? ((gameState.wave - 1) % CONFIG.campaign.wavesPerAct) + 1
+        : gameState.wave;
+    const waveLabel = gameState.campaignMode
+        ? actWave + '/' + CONFIG.campaign.wavesPerAct
+        : gameState.wave;
+
     const steps = [];
     if (isFirstWave) {
         steps.push({ text: 'READY?', voice: 'Are you ready?', delay: 1200 });
     } else {
-        steps.push({ text: 'WAVE ' + gameState.wave, voice: 'Wave ' + gameState.wave, delay: 900 });
+        steps.push({ text: 'WAVE ' + waveLabel, voice: 'Wave ' + actWave, delay: 900 });
     }
     steps.push(
         { text: '3', voice: '3', delay: 650, beep: true },

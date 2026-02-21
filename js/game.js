@@ -147,6 +147,8 @@ function triggerActTransition(completedAct, nextAct) {
         gameTheme = CONFIG.campaign.themeOrder[nextAct];
         gameState.campaignAct = nextAct;
         gameState.campaignActTransitioning = false;
+        // Sync body/container background colours to the new theme
+        selectTheme(gameTheme);
         updateCampaignHUD();
         audioSystem.stopMusic();
 
@@ -169,10 +171,10 @@ function triggerCampaignComplete() {
     audioSystem.stopMusic();
     audioSystem.playGameOver();
 
-    // Save to high scores with campaign tag
+    // Save to high scores with campaign tag (wave was incremented past the last boss; store the actual cleared wave)
     const entry = {
         score: gameState.score,
-        wave: gameState.wave,
+        wave: gameState.wave - 1,
         date: new Date().toISOString(),
         playerFaces: gameState.players.map(p => p.faceImage || null),
         theme: 'campaign',
