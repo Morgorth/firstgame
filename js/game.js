@@ -356,13 +356,14 @@ function update() {
         }
     });
 
-    // Boss enemy spawning: each live boss spawns a minion every 60 frames (~1 second)
-    if (gameState.frameCount % 60 === 0) {
-        for (let i = 0; i < gameState.enemies.length; i++) {
+    // Boss enemy spawning: each live boss spawns a minion every 120 frames (~2 seconds)
+    if (gameState.frameCount % 120 === 0) {
+        const bossCount = gameState.enemies.length; // snapshot to avoid iterating newly-pushed minions
+        for (let i = 0; i < bossCount; i++) {
             const e = gameState.enemies[i];
             if (e.type !== 'boss' || e.health <= 0) continue;
             const spawnLane = lanes[Math.floor(Math.random() * lanes.length)];
-            const minion = createEnemy('basic', spawnLane, e.y + e.height / 2 + 10);
+            const minion = createEnemy('basic', spawnLane, -CONFIG.enemy.basic.height);
             gameState.enemies.push(minion);
             gameState.enemiesInWave++;
         }
