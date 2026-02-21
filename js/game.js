@@ -20,7 +20,8 @@ function activateSuperWeapon(playerIndex) {
         gameState.score += Math.floor(e.points * getCampaignScoreMult());
         gameState.enemiesKilled++;
         gameState.totalKills++;
-        checkSuperWeaponThreshold(playerIndex);
+        // Super weapon kills do NOT award nuke charges — otherwise firing the
+        // weapon refills itself when many enemies are on screen.
         for (let j = 0; j < cfg.particlesPerEnemy; j++) {
             gameState.particles.push(createParticle(e.x, e.y, particleColor));
         }
@@ -378,8 +379,10 @@ function update() {
     if (!gameState.countdownActive && gameState.frameCount - gameState.lastShot >= CONFIG.player.fireRate) {
         gameState.players.forEach((player, idx) => {
             if (!player.active) return;
-            const nCols = Math.max(1, Math.floor(player.crowdSize / 2)); // scale to half fleet size
+            const fleetCols = Math.ceil(Math.sqrt(player.crowdSize * 2));
+            const maxSpread = (fleetCols - 1) * 20; // fleet visual width (spacing=20)
             const fSpacing = CONFIG.player.fireSpacing;
+            const nCols = Math.max(1, Math.min(Math.floor(player.crowdSize / 2), Math.floor(maxSpread / fSpacing) + 1));
             for (let c = 0; c < nCols; c++) {
                 const fx = player.x + (c - (nCols - 1) / 2) * fSpacing;
                 gameState.bullets.push(createBullet(fx, player.y, idx));
@@ -398,8 +401,10 @@ function update() {
         gameState.players.forEach((player, idx) => {
             if (!player.active || gameState.activeEffects.rapidfire[idx] <= 0) return;
             anyFired = true;
-            const nCols = Math.max(1, Math.floor(player.crowdSize / 2)); // scale to half fleet size
+            const fleetCols = Math.ceil(Math.sqrt(player.crowdSize * 2));
+            const maxSpread = (fleetCols - 1) * 20;
             const fSpacing = CONFIG.player.fireSpacing;
+            const nCols = Math.max(1, Math.min(Math.floor(player.crowdSize / 2), Math.floor(maxSpread / fSpacing) + 1));
             for (let c = 0; c < nCols; c++) {
                 const fx = player.x + (c - (nCols - 1) / 2) * fSpacing;
                 gameState.bullets.push(createBullet(fx, player.y, idx));
