@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sonic Half-Pipe</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════ Three.js canvas ═══════════════════════ -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- ═══════════════════════ TITLE SCREEN ═════════════════════════ -->
+<div id="titleScreen" class="screen">
+    <h1 class="title-logo">Sonic Half-Pipe</h1>
+    <p class="title-sub">Collect 50 rings. Dodge everything.</p>
+
+    <div class="title-btn-group">
+        <button class="btn btn-cyan" onclick="onTitlePlay1()">1P Keyboard</button>
+        <button class="btn btn-pink" onclick="onTitlePlay2()">2P Keyboard</button>
+        <button class="btn btn-gold" onclick="onTitleCamera1()">1P Camera</button>
+        <button class="btn btn-green" onclick="onTitleCamera2()">2P Camera</button>
+    </div>
+
+    <section class="hs-section">
+        <h2>High Scores</h2>
+        <table class="hs-table">
+            <thead>
+                <tr><th>#</th><th>Name</th><th>Score</th><th>Rings</th></tr>
+            </thead>
+            <tbody id="highScoreBody"></tbody>
+        </table>
+    </section>
+
+    <p class="controls-hint">
+        P1: ← → jump(↑/Space) crouch(↓) &nbsp;|&nbsp; P2: J L jump(I) crouch(K)
+    </p>
+</div>
+
+<!-- ═══════════════════════ SETUP SCREEN ════════════════════════ -->
+<div id="setupScreen" class="screen hidden">
+    <h2 id="setupTitle" class="player-setup-title p1">PLAYER 1 – GET READY!</h2>
+    <p id="setupInstruction">Stand in front of the camera and wave your hand</p>
+    <p id="setupWaveIndicator">WAVE YOUR HAND!</p>
+
+    <div class="player-cards">
+        <!-- P1 card -->
+        <div class="player-card" id="p1ReadyCard">
+            <div class="face-preview-container">
+                <img id="p1FacePreview" src="" alt="P1" style="display:none" />
+                <div class="face-placeholder" id="p1FacePlaceholder">👤</div>
+            </div>
+            <span style="color:#00ffff;font-size:0.8rem;font-weight:700;">PLAYER 1</span>
+            <span class="ready-status" id="p1ReadyStatus">WAITING…</span>
+        </div>
+
+        <!-- P2 card (hidden for 1P) -->
+        <div class="player-card hidden" id="p2ReadyCard">
+            <div class="face-preview-container">
+                <img id="p2FacePreview" src="" alt="P2" style="display:none" />
+                <div class="face-placeholder" id="p2FacePlaceholder">👤</div>
+            </div>
+            <span style="color:#ff00ff;font-size:0.8rem;font-weight:700;">PLAYER 2</span>
+            <span class="ready-status" id="p2ReadyStatus">WAITING…</span>
+        </div>
+    </div>
+
+    <button class="btn btn-gold hidden" id="setupStartBtn" onclick="onSetupStart()" style="margin-top:1rem;font-size:1.1rem;">
+        START GAME!
+    </button>
+    <button class="btn btn-white" onclick="showTitleScreen()" style="margin-top:0.6rem;font-size:0.8rem;">
+        ← Back
+    </button>
+</div>
+
+<!-- ═══════════════════════ GAME SCREEN ═════════════════════════ -->
+<div id="gameScreen" class="screen hidden">
+
+    <!-- HUD -->
+    <div id="hud">
+        <!-- P1 -->
+        <div class="hud-player p1">
+            <img id="hudFaceP1" class="hud-face" src="" alt="P1" />
+            <div class="hud-info">
+                <div id="hudRings" class="hud-rings">P1 RINGS: 0/50</div>
+                <div class="ring-bar-wrap">
+                    <div id="ringBarP1Fill" class="ring-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Centre info -->
+        <div class="hud-center">
+            <div id="hudScore" class="hud-score">SCORE: 0</div>
+            <div id="hudSpeed" class="hud-speed">SPEED: 7</div>
+        </div>
+
+        <!-- P2 (hidden for 1P) -->
+        <div class="hud-player p2 hidden" id="hudP2">
+            <img id="hudFaceP2" class="hud-face" src="" alt="P2" />
+            <div class="hud-info">
+                <div id="hudP2Rings" class="hud-rings">P2 RINGS: 0/50</div>
+                <div class="ring-bar-wrap">
+                    <div id="ringBarP2Fill" class="ring-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Countdown -->
+    <div id="countdownEl" class="hidden"></div>
+
+</div>
+
+<!-- ═══════════════════════ END SCREEN ══════════════════════════ -->
+<div id="endScreen" class="screen hidden">
+    <h1 id="endTitle">GAME OVER</h1>
+    <p id="endMessage"></p>
+    <p id="endScore">Score: 0</p>
+    <p id="endRings">Rings: 0</p>
+
+    <div class="end-name-row">
+        <input id="endNameInput" type="text" maxlength="10" placeholder="YOUR NAME" />
+        <button class="btn btn-gold" onclick="onEndSubmitScore()">SAVE</button>
+    </div>
+
+    <section class="hs-section" style="margin-top:1rem">
+        <h2>High Scores</h2>
+        <table class="hs-table">
+            <thead>
+                <tr><th>#</th><th>Name</th><th>Score</th><th>Rings</th></tr>
+            </thead>
+            <tbody id="highScoreBody"></tbody>
+        </table>
+    </section>
+
+    <div class="end-buttons">
+        <button class="btn btn-cyan" onclick="onEndRestart()">PLAY AGAIN</button>
+        <button class="btn btn-white" onclick="onEndTitle()">TITLE</button>
+    </div>
+</div>
+
+<!-- ═══════════════════════ WEBCAM OVERLAY ══════════════════════ -->
+<div id="webcamContainer" class="hidden">
+    <div class="webcam-header" onclick="toggleWebcamOverlay()">
+        <span>📷 CAMERA</span>
+        <span>▼</span>
+    </div>
+    <div class="webcam-body">
+        <video id="webcamVideo" autoplay muted playsinline></video>
+        <canvas id="webcamCanvas"></canvas>
+        <div id="cameraStatus">Initializing…</div>
+        <div class="position-indicator">
+            <div id="positionMarker"   class="lane-marker" style="left:90px;background:#00ffff;">P1</div>
+            <div id="positionMarkerP2" class="lane-marker" style="left:90px;background:#ff00ff;display:none">P2</div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ SCRIPTS ═════════════════════════════ -->
+<!-- TensorFlow.js + MoveNet -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+
+<!-- Game modules (order matters: config → state → audio → input → webcam → game → render → ui → main) -->
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/webcam.js"></script>
+<script src="js/game.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
