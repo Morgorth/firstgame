@@ -177,6 +177,20 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+// ── High score clear handler ─────────────────────────────────────────
+
+function handleClearScores(type) {
+    if (type === 'campaign') {
+        clearCampaignScores();
+        renderHighScores('campaignHighScores', campaignScores);
+        renderHighScores('gameOverHighScores', campaignScores);
+    } else {
+        clearArcadeScores();
+        renderHighScores('startHighScores');
+        renderHighScores('gameOverHighScores');
+    }
+}
+
 // ── Event bindings ──────────────────────────────────────────────────
 
 document.getElementById('arcadeModeBtn').addEventListener('click', () => selectGameMode('arcade'));

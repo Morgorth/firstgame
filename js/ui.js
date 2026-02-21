@@ -91,6 +91,9 @@ function renderHighScores(containerId, scores) {
 
     const data = scores !== undefined ? scores : highScores;
 
+    const isCampaign = scores !== undefined;
+    const clearType = isCampaign ? 'campaign' : 'arcade';
+
     if (data.length === 0) {
         container.innerHTML = '<div style="color:#888;font-family:Rajdhani,sans-serif;font-size:14px;padding:10px;">No scores yet — play a game!</div>';
         return;
@@ -129,6 +132,8 @@ function renderHighScores(containerId, scores) {
             </div>
         </div>`;
     }).join('');
+
+    container.innerHTML += `<div class="high-score-clear-row"><button class="clear-scores-btn" onclick="handleClearScores('${clearType}')">Clear Scores</button></div>`;
 }
 
 // ── Active Effects HUD ──────────────────────────────────────────────
