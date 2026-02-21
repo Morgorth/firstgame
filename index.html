@@ -140,7 +140,8 @@
         </div>
     </div>
 
-    <!-- Game scripts (order matters: config → state → entities → input → webcam → game → render → ui → main) -->
+    <!-- Game scripts — load order matters -->
+    <!-- Core -->
     <script src="js/config.js"></script>
     <script src="js/state.js"></script>
     <script src="js/entities.js"></script>
@@ -148,7 +149,17 @@
     <script src="js/webcam.js"></script>
     <script src="js/audio.js"></script>
     <script src="js/game.js"></script>
+    <!-- Render sub-modules (sprites → themes → bg → entities → effects → orchestrator) -->
+    <script src="js/render-sprites.js"></script>
+    <script src="js/render-theme-unicorn.js"></script>
+    <script src="js/render-theme-pacificrim.js"></script>
+    <script src="js/render-theme-space.js"></script>
+    <script src="js/render-theme-dragon.js"></script>
+    <script src="js/render-background.js"></script>
+    <script src="js/render-entities.js"></script>
+    <script src="js/render-effects.js"></script>
     <script src="js/render.js"></script>
+    <!-- UI & lifecycle -->
     <script src="js/ui.js"></script>
     <script src="js/main.js"></script>
 </body>
