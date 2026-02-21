@@ -380,6 +380,10 @@ function selectTheme(theme) {
     document.getElementById('unicornThemeBtn').classList.toggle('selected', theme === 'unicorn');
     document.getElementById('pacificrimThemeBtn').classList.toggle('selected', theme === 'pacificrim');
     document.getElementById('dragonThemeBtn').classList.toggle('selected', theme === 'dragon');
+    document.getElementById('goSpaceThemeBtn').classList.toggle('selected', theme === 'space');
+    document.getElementById('goUnicornThemeBtn').classList.toggle('selected', theme === 'unicorn');
+    document.getElementById('goPacificrimThemeBtn').classList.toggle('selected', theme === 'pacificrim');
+    document.getElementById('goDragonThemeBtn').classList.toggle('selected', theme === 'dragon');
 
     const title = document.getElementById('gameTitle');
     const subtitle = document.getElementById('gameSubtitle');
