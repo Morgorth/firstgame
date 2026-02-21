@@ -144,6 +144,16 @@ function saveCampaignScores() {
     } catch (e) { /* storage full or unavailable */ }
 }
 
+function clearArcadeScores() {
+    highScores = [];
+    try { localStorage.removeItem('waveAssaultHighScores'); } catch(e) {}
+}
+
+function clearCampaignScores() {
+    campaignScores = [];
+    try { localStorage.removeItem('waveAssaultCampaignScores'); } catch(e) {}
+}
+
 loadHighScores();
 loadCampaignScores();
 
