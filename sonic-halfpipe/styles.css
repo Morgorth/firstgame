@@ -422,56 +422,143 @@ body {
 
 /* ── Unicorn Academy theme overrides ────────────────────────────── */
 
+/* ── Animations ─────────────────────────────────────────────────── */
+@keyframes rainbowShift {
+    0%   { background-position:   0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position:   0% 50%; }
+}
+
+@keyframes unicornPulse {
+    0%, 100% { text-shadow: 0 0 20px #FF69B4, 0 0 40px #FF69B466; }
+    50%      { text-shadow: 0 0 30px #DA70D6, 0 0 60px #DA70D666; }
+}
+
+@keyframes sparkleFloat {
+    0%   { transform: translateY(0px)   rotate(0deg);   opacity: 0.8; }
+    50%  { transform: translateY(-8px)  rotate(180deg); opacity: 1.0; }
+    100% { transform: translateY(0px)   rotate(360deg); opacity: 0.8; }
+}
+
 body.theme-unicorn {
-    --cyan:  #FF69B4;   /* hot pink replaces cyan  */
-    --pink:  #DA70D6;   /* orchid replaces magenta */
+    --cyan:  #FF69B4;   /* hot pink  */
+    --pink:  #DA70D6;   /* orchid    */
     --gold:  #FFD700;
     --dark:  #0A0018;
-    --panel: rgba(20, 0, 40, 0.88);
+    --panel: rgba(22, 0, 44, 0.90);
 }
 
+/* Title screen — layered radial glows give depth behind the 3-D canvas */
 body.theme-unicorn #titleScreen {
-    background: linear-gradient(160deg, rgba(20,0,40,0.93) 0%, rgba(60,0,80,0.93) 100%);
+    background:
+        radial-gradient(ellipse at 72% 18%, rgba(255,105,180,0.18) 0%, transparent 48%),
+        radial-gradient(ellipse at 28% 72%, rgba(170,0,255,0.16) 0%, transparent 48%),
+        linear-gradient(160deg, rgba(8,0,24,0.96) 0%, rgba(44,0,72,0.96) 50%, rgba(70,0,55,0.96) 100%);
 }
 
+/* Animated rainbow gradient title */
 body.theme-unicorn .title-logo {
-    background: linear-gradient(90deg, #FF69B4, #DA70D6, #FFD700, #87CEEB);
+    background: linear-gradient(
+        90deg,
+        #ff0066, #ff69b4, #da70d6, #ffd700, #87ceeb, #aaffcc, #ff69b4, #ff0066
+    );
+    background-size: 280% 100%;
+    animation: rainbowShift 5s ease infinite;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    filter: drop-shadow(0 0 18px #FF69B488);
+    filter: drop-shadow(0 0 28px #FF69B455);
 }
 
 body.theme-unicorn .title-sub {
     color: #DDA0DD;
+    letter-spacing: 0.2em;
+    animation: unicornPulse 3.5s ease-in-out infinite;
 }
 
-body.theme-unicorn .hs-section h2 { color: #FF69B4; }
-body.theme-unicorn .hs-table th   { color: #DA70D6; }
+/* Unicorn button — rainbow active glow */
+body.theme-unicorn .btn-unicorn.active {
+    color: #FF69B4;
+    border-color: #FF69B4;
+    box-shadow: 0 0 18px rgba(255,105,180,0.55), inset 0 0 10px rgba(255,105,180,0.12);
+}
+
+/* Action buttons */
+body.theme-unicorn .btn-cyan  { color: #FF69B4; border-color: #FF69B4; }
+body.theme-unicorn .btn-pink  { color: #DA70D6; border-color: #DA70D6; }
+body.theme-unicorn .btn-cyan:hover,
+body.theme-unicorn .btn-cyan:focus  { box-shadow: 0 0 18px rgba(255,105,180,0.60); }
+body.theme-unicorn .btn-pink:hover,
+body.theme-unicorn .btn-pink:focus  { box-shadow: 0 0 18px rgba(218,112,214,0.60); }
+
+/* High score section */
+body.theme-unicorn .hs-section h2  { color: #FF69B4; }
+body.theme-unicorn .hs-table th    { color: #DA70D6; }
 body.theme-unicorn .hs-table td:first-child { color: #FFD700; }
+body.theme-unicorn .hs-table td    { border-bottom-color: rgba(255,105,180,0.12); }
+
+/* Setup screen */
+body.theme-unicorn #setupScreen { background: rgba(8,0,22,0.92); }
 
 body.theme-unicorn .player-setup-title.p1 {
     color: #FF69B4;
-    text-shadow: 0 0 20px #FF69B4;
+    text-shadow: 0 0 24px #FF69B4, 0 0 48px #FF69B466;
 }
 body.theme-unicorn .player-setup-title.p2 {
     color: #DA70D6;
-    text-shadow: 0 0 20px #DA70D6;
+    text-shadow: 0 0 24px #DA70D6, 0 0 48px #DA70D666;
 }
 
+body.theme-unicorn .player-card {
+    border-color: rgba(255,105,180,0.30);
+    background: rgba(30,0,55,0.90);
+}
+
+/* HUD */
 body.theme-unicorn #hud {
-    background: linear-gradient(to bottom, rgba(20,0,40,0.75) 0%, transparent 100%);
+    background: linear-gradient(to bottom, rgba(18,0,36,0.78) 0%, transparent 100%);
 }
-body.theme-unicorn .hud-face      { border-color: #FF69B4; }
-body.theme-unicorn .hud-player.p2 .hud-face { border-color: #DA70D6; }
+body.theme-unicorn .hud-player    { border-color: rgba(255,105,180,0.22); }
+body.theme-unicorn .hud-face      { border-color: #FF69B4; box-shadow: 0 0 8px #FF69B466; }
+body.theme-unicorn .hud-player.p2 .hud-face { border-color: #DA70D6; box-shadow: 0 0 8px #DA70D666; }
 body.theme-unicorn .hud-rings     { color: #FFD700; }
+body.theme-unicorn .hud-score     { color: #FF69B4; }
+body.theme-unicorn .hud-speed     { color: #DA70D6; }
 
+/* Ring progress bars — hot pink for P1, orchid for P2 */
+body.theme-unicorn #ringBarP1Fill {
+    background: linear-gradient(90deg, #FF69B4, #FFD700);
+    box-shadow: 0 0 6px #FF69B4;
+}
+body.theme-unicorn #ringBarP2Fill {
+    background: linear-gradient(90deg, #DA70D6, #87CEEB);
+    box-shadow: 0 0 6px #DA70D6;
+}
+
+/* Countdown */
 body.theme-unicorn #countdownEl {
     color: #FF69B4;
-    text-shadow: 0 0 40px #FF69B4;
+    text-shadow: 0 0 30px #FF69B4, 0 0 60px #FF69B466;
 }
 
+/* End screen */
+body.theme-unicorn #endScreen {
+    background:
+        radial-gradient(ellipse at 50% 30%, rgba(255,105,180,0.14) 0%, transparent 55%),
+        rgba(8,0,22,0.94);
+}
+body.theme-unicorn #endTitle { color: #FF69B4; text-shadow: 0 0 30px #FF69B4; }
+body.theme-unicorn #endScore,
+body.theme-unicorn #endRings { color: #FFD700; }
+body.theme-unicorn #endNameInput:focus { border-color: #FF69B4; box-shadow: 0 0 8px #FF69B466; }
+
+/* Webcam overlay */
 body.theme-unicorn .webcam-header { color: #FF69B4; }
+body.theme-unicorn #cameraStatus  { color: #DA70D6; }
+body.theme-unicorn #webcamContainer {
+    border-color: rgba(255,105,180,0.28);
+    box-shadow: 0 0 16px rgba(255,105,180,0.18);
+}
 
 /* ── Responsive tweaks ──────────────────────────────────────────── */
 @media (max-width: 480px) {
