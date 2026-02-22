@@ -8,7 +8,21 @@ document.addEventListener('keydown', e => {
     if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) {
         e.preventDefault();
     }
+
+    // F11: toggle fullscreen
+    if (e.code === 'F11') {
+        e.preventDefault();
+        toggleFullscreen();
+    }
 });
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+        document.exitFullscreen();
+    }
+}
 
 document.addEventListener('keyup', e => {
     keys[e.code] = false;
