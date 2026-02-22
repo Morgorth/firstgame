@@ -586,9 +586,10 @@ function handleRegistrationPoseTracking(sortedPoses, video) {
     updateRegistrationWaveIndicator(reg.waveFrames, CONFIG.waveGesture.holdFrames);
 
     if (reg.waveFrames >= CONFIG.waveGesture.holdFrames) {
-        // Capture face and color
-        captureFaceImage(pose, video, idx);
+        // Sample torso color first (it draws the video frame to the canvas as a
+        // side effect), then capture the face from the live video element.
         reg.colorSignature = sampleTorsoColor(pose, video, cx, canvas);
+        captureFaceImage(pose, video, idx);
         reg.poseId = pose.id;
 
         // Calibrate crouch baseline from current shoulder Y
@@ -612,6 +613,7 @@ function captureFaceImage(pose, video, playerIndex) {
 
     const shoulderWidth = (ls && rs) ? Math.abs(rs.x - ls.x) : 80;
     const faceSize = Math.max(40, shoulderWidth * 0.8);
+    // Keypoint coordinates are in video space — use them directly.
     const fx = nose.x - faceSize / 2;
     const fy = nose.y - faceSize * 0.7;
 
@@ -620,16 +622,15 @@ function captureFaceImage(pose, video, playerIndex) {
     tempCanvas.height = 60;
     const tempCtx = tempCanvas.getContext('2d');
 
-    const scaleX = webcamState.canvas.width / video.videoWidth;
-    const scaleY = webcamState.canvas.height / video.videoHeight;
-
+    // Draw from the live video element (not the overlay canvas) so we always
+    // get the actual camera frame regardless of draw order.
     tempCtx.save();
-    tempCtx.scale(-1, 1);
+    tempCtx.scale(-1, 1);          // mirror to match CSS scaleX(-1) on the canvas
     tempCtx.translate(-60, 0);
     tempCtx.drawImage(
-        webcamState.canvas,
-        fx * scaleX, fy * scaleY, faceSize * scaleX, faceSize * scaleY,
-        0, 0, 60, 60
+        video,
+        fx, fy, faceSize, faceSize, // source: video-space coords
+        0, 0, 60, 60                // dest: 60×60 thumbnail
     );
     tempCtx.restore();
 
@@ -700,71 +701,71 @@ function updateRegistrationPlayerCard(playerIndex, faceImage) {
 
 // ── Debug overlay drawing ────────────────────────────────────────────
 
-function drawPoseDebug() {
+// Draw the live video frame as the canvas background.
+// Must be called at the start of every overlay draw so the canvas
+// always shows the camera feed beneath skeleton/debug graphics.
+function _drawVideoBackground() {
     const cx = webcamState.ctx;
     const canvas = webcamState.canvas;
-    cx.clearRect(0, 0, canvas.width, canvas.height);
+    const video = webcamState.video;
+    if (!video || video.readyState < 2) {
+        cx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+    }
+    cx.drawImage(video, 0, 0, canvas.width, canvas.height);
+}
+
+// Draw skeleton dots and connecting lines for one pose.
+function _drawSkeleton(pose, color) {
+    const cx = webcamState.ctx;
+    const SKELETON_PAIRS = [
+        ['left_shoulder', 'right_shoulder'],
+        ['left_shoulder', 'left_elbow'], ['left_elbow', 'left_wrist'],
+        ['right_shoulder', 'right_elbow'], ['right_elbow', 'right_wrist'],
+        ['left_shoulder', 'left_hip'], ['right_shoulder', 'right_hip'],
+        ['left_hip', 'right_hip'],
+    ];
+
+    cx.save();
+    cx.strokeStyle = color;
+    cx.fillStyle = color;
+    cx.lineWidth = 2;
+    cx.globalAlpha = 0.8;
+
+    for (const kp of pose.keypoints) {
+        if (kp.score > 0.3) {
+            cx.beginPath();
+            cx.arc(kp.x, kp.y, 4, 0, Math.PI * 2);
+            cx.fill();
+        }
+    }
+    for (const [a, b] of SKELETON_PAIRS) {
+        const ka = getKeypoint(pose, a);
+        const kb = getKeypoint(pose, b);
+        if (ka && kb && ka.score > 0.3 && kb.score > 0.3) {
+            cx.beginPath();
+            cx.moveTo(ka.x, ka.y);
+            cx.lineTo(kb.x, kb.y);
+            cx.stroke();
+        }
+    }
+    cx.restore();
+}
+
+function drawPoseDebug() {
+    _drawVideoBackground();
 
     const colors = ['#00ffff', '#ff00ff'];
     for (let i = 0; i < gameState.playerCount; i++) {
         const pose = webcamState.playerPoses[i];
-        if (!pose) continue;
-        const color = colors[i];
-
-        cx.save();
-        cx.strokeStyle = color;
-        cx.fillStyle = color;
-        cx.lineWidth = 2;
-        cx.globalAlpha = 0.7;
-
-        for (const kp of pose.keypoints) {
-            if (kp.score > 0.3) {
-                cx.beginPath();
-                cx.arc(kp.x, kp.y, 4, 0, Math.PI * 2);
-                cx.fill();
-            }
-        }
-
-        // Draw skeleton lines (shoulders → hips, etc.)
-        const pairs = [
-            ['left_shoulder', 'right_shoulder'],
-            ['left_shoulder', 'left_elbow'], ['left_elbow', 'left_wrist'],
-            ['right_shoulder', 'right_elbow'], ['right_elbow', 'right_wrist'],
-            ['left_shoulder', 'left_hip'], ['right_shoulder', 'right_hip'],
-            ['left_hip', 'right_hip'],
-        ];
-        for (const [a, b] of pairs) {
-            const ka = getKeypoint(pose, a);
-            const kb = getKeypoint(pose, b);
-            if (ka && kb && ka.score > 0.3 && kb.score > 0.3) {
-                cx.beginPath();
-                cx.moveTo(ka.x, ka.y);
-                cx.lineTo(kb.x, kb.y);
-                cx.stroke();
-            }
-        }
-        cx.restore();
+        if (pose) _drawSkeleton(pose, colors[i]);
     }
 }
 
 function drawRegistrationDebug(sortedPoses) {
-    const cx = webcamState.ctx;
-    const canvas = webcamState.canvas;
-    cx.clearRect(0, 0, canvas.width, canvas.height);
+    _drawVideoBackground();
 
     for (const pose of sortedPoses) {
-        cx.save();
-        cx.strokeStyle = '#ffff00';
-        cx.fillStyle = '#ffff00';
-        cx.lineWidth = 2;
-        cx.globalAlpha = 0.6;
-        for (const kp of pose.keypoints) {
-            if (kp.score > 0.3) {
-                cx.beginPath();
-                cx.arc(kp.x, kp.y, 3, 0, Math.PI * 2);
-                cx.fill();
-            }
-        }
-        cx.restore();
+        _drawSkeleton(pose, '#ffff00');
     }
 }
