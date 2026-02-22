@@ -9,6 +9,7 @@ function startPlayerRegistration(playerCount) {
     webcamState.playerCount      = playerCount;
     webcamState.registrationPhase = 'registering';
     webcamState.currentRegisteringPlayer = 0;
+    webcamState.playerTrackingIds = [null, null];
     webcamState.registeredPlayers.forEach(r => {
         r.ready           = false;
         r.faceImage       = null;
