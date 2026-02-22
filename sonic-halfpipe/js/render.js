@@ -82,10 +82,10 @@ function initScene() {
     const scene = new THREE.Scene();
     scene.fog   = new THREE.Fog(T.theme.fogColor, 1200, 4800);
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 6000);
-    // Sit closer to the player so avatars fill more of the screen.
-    camera.position.set(0, CONFIG.pipe.radius * 0.14, 160);
-    camera.lookAt(0, CONFIG.pipe.radius * 0.08, -700);
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 6000);
+    // Elevated, pulled back — steep slope view (looking ~30° downward along the pipe).
+    camera.position.set(0, CONFIG.pipe.radius * 1.55, 620);
+    camera.lookAt(0, CONFIG.pipe.radius * 0.05, -420);
 
     _ambientLight = new THREE.AmbientLight(T.theme.ambientColor, 1.2);
     scene.add(_ambientLight);
