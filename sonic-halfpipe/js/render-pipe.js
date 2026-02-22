@@ -76,7 +76,10 @@ function buildPipePool() {
     const cfg = CONFIG.pipe;
     gameState.pipeSegments = [];
     for (let i = 0; i < cfg.segmentCount; i++) {
-        const seg = buildPipeSegment(i * cfg.segmentLength);
+        // All segments share the same geometry (zOffset 0 → −segmentLength).
+        // Each segment gets its own position.z so they tile without overlap.
+        const seg = buildPipeSegment(0);
+        seg.position.z = -i * cfg.segmentLength;
         gameState.scene.add(seg);
         gameState.pipeSegments.push(seg);
     }
@@ -87,7 +90,9 @@ function updatePipePool() {
     const spd = gameState.speed;
     for (const seg of gameState.pipeSegments) {
         seg.position.z += spd;
-        if (seg.position.z > cfg.segmentLength * 1.5) {
+        // Wrap each segment individually once its front edge clears the camera.
+        // Using segmentLength as threshold keeps one full segment of look-ahead.
+        if (seg.position.z > cfg.segmentLength) {
             seg.position.z -= cfg.segmentCount * cfg.segmentLength;
         }
     }

@@ -19,6 +19,7 @@ function _buildDefaultPlayerMesh(playerIndex) {
     body.scale.set(0.9, 1.15, 0.9);
     group.add(body);
 
+    // ── Eyes (white + dark pupil) ────────────────────────────────────
     const eyeMat  = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const leftEye = new THREE.Mesh(new THREE.SphereGeometry(6, 8, 8), eyeMat);
     leftEye.position.set(-9, 8, 24);
@@ -35,6 +36,42 @@ function _buildDefaultPlayerMesh(playerIndex) {
     rPupil.position.set(9, 8, 30);
     group.add(rPupil);
 
+    // ── Player-number badge (glowing disc with raised "1" or "2") ────
+    // A bright band around the equator carries the player colour identity.
+    const bandMat = new THREE.MeshBasicMaterial({ color: playerIndex === 0 ? 0x00ffff : 0xff00ff });
+    const band = new THREE.Mesh(new THREE.TorusGeometry(28, 4, 8, 24), bandMat);
+    band.rotation.x = Math.PI / 2;
+    band.position.y = 4;
+    group.add(band);
+
+    // ── Distinctive headgear per player ──────────────────────────────
+    const markMat = new THREE.MeshStandardMaterial({
+        color: c.body, emissive: c.emissive, roughness: 0.2, metalness: 0.6,
+    });
+    if (playerIndex === 0) {
+        // P1 — single tall central spike (antenna)
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(5, 34, 8), markMat);
+        spike.position.set(0, 40, 0);   // sits on top of body (body top ≈ y+28)
+        group.add(spike);
+        // Small glowing tip
+        const tipMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(4, 6, 6), tipMat);
+        tip.position.set(0, 58, 0);
+        group.add(tip);
+    } else {
+        // P2 — two shorter angled horns (devil horns look)
+        const hornGeo = new THREE.ConeGeometry(4, 24, 8);
+        const hornL = new THREE.Mesh(hornGeo, markMat);
+        hornL.rotation.z =  0.35;
+        hornL.position.set(-14, 38, 0);
+        group.add(hornL);
+        const hornR = new THREE.Mesh(hornGeo, markMat);
+        hornR.rotation.z = -0.35;
+        hornR.position.set(14, 38, 0);
+        group.add(hornR);
+    }
+
+    // ── Speed trail ──────────────────────────────────────────────────
     const trailMat = new THREE.MeshBasicMaterial({
         color: c.trail, transparent: true, opacity: 0.3,
     });
@@ -88,9 +125,11 @@ function updatePlayerMeshes() {
 
         const surfaceY = CONFIG.pipe.radius - Math.cos(angle) * CONFIG.pipe.radius;
 
+        // Offset exactly one body-radius inward so the sphere rests on the
+        // pipe surface (body radius = 28 units).
         mesh.position.set(
-            pos.x + nx * (32 + jumpOff),
-            surfaceY + ny * (32 + jumpOff),
+            pos.x + nx * (28 + jumpOff),
+            surfaceY + ny * (28 + jumpOff),
             0
         );
 
