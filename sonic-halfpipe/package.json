@@ -1,0 +1,9 @@
+{
+  "name": "sonic-halfpipe",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sonic Half-Pipe — 3D half-pipe runner built on Three.js",
+  "scripts": {
+    "test": "node tests/run-tests.js"
+  }
+}
