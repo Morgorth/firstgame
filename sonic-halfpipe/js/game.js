@@ -79,7 +79,6 @@ function checkCollisions() {
     for (let pi = 0; pi < gameState.playerCount; pi++) {
         const p = gameState.players[pi];
         if (!p.active) continue;
-        if (p.invincible > 0) { p.invincible--; continue; }
 
         const pos = laneToPosition(p.lane);
         const jumpOff = jumpHeightAt(p.jumpFrame);
@@ -116,34 +115,38 @@ function checkCollisions() {
         }
 
         // ── Obstacle collision ────────────────────────────────────────
-        for (const obs of gameState.obstacles) {
-            if (!obs.active) continue;
-            const opos = laneToPosition(obs.lane);
-            const dx = pos.x - opos.x;
-            const dy = (pos.y - jumpOff) - opos.y;
-            const dz = obs.z - playerZ;
+        if (p.invincible > 0) {
+            p.invincible--;
+        } else {
+            for (const obs of gameState.obstacles) {
+                if (!obs.active) continue;
+                const opos = laneToPosition(obs.lane);
+                const dx = pos.x - opos.x;
+                const dy = (pos.y - jumpOff) - opos.y;
+                const dz = obs.z - playerZ;
 
-            // Use type-specific radius
-            let r;
-            if (obs.type === 'bumper') r = CONFIG.obstacles.bumperRadius;
-            else if (obs.type === 'bomb') r = CONFIG.obstacles.bombRadius;
-            else r = CONFIG.obstacles.barrierWidth / 2;
+                // Use type-specific radius
+                let r;
+                if (obs.type === 'bumper') r = CONFIG.obstacles.bumperRadius;
+                else if (obs.type === 'bomb') r = CONFIG.obstacles.bombRadius;
+                else r = CONFIG.obstacles.barrierWidth / 2;
 
-            // Crouching skips over barriers
-            if (obs.type === 'barrier' && p.crouching) continue;
+                // Crouching skips over barriers
+                if (obs.type === 'barrier' && p.crouching) continue;
 
-            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            const hitRadius = CONFIG.player.hitRadius + r;
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                const hitRadius = CONFIG.player.hitRadius + r;
 
-            if (dist < hitRadius) {
-                audioSystem.playHit();
-                p.invincible = CONFIG.player.invincibleFrames;
-                spawnCollectParticles(opos.x, opos.y, obs.z, '#FF4444');
+                if (dist < hitRadius) {
+                    audioSystem.playHit();
+                    p.invincible = CONFIG.player.invincibleFrames;
+                    spawnCollectParticles(opos.x, opos.y, obs.z, '#FF4444');
 
-                // Lose 10 rings on hit, remove obstacle
-                p.rings = Math.max(0, p.rings - 10);
-                obs.active = false;
-                updateHUD();
+                    // Lose 10 rings on hit, remove obstacle
+                    p.rings = Math.max(0, p.rings - 10);
+                    obs.active = false;
+                    updateHUD();
+                }
             }
         }
     }

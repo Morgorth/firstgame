@@ -32,6 +32,7 @@ function showSetupScreen(playerCount, mode) {
         startPlayerRegistration(playerCount);
     } else {
         // Keyboard – register dummy players and start immediately
+        webcamState.playerCount = playerCount;
         for (let i = 0; i < playerCount; i++) {
             webcamState.registeredPlayers[i].ready = true;
         }

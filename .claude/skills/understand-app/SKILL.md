@@ -1,8 +1,23 @@
 ---
 name: understand-app
-description: Use at the start of any session or when you need to orient yourself in the Wave Assault codebase. Provides file map, globals reference, and task-to-file routing to minimize token usage.
+description: Use at the start of any session or when you need to orient yourself in the Wave Assault or Sonic Half-Pipe codebase. Provides file map, globals reference, and task-to-file routing to minimize token usage.
 allowed-tools: Read, Grep, Glob
-argument-hint: "[area-to-focus: config|state|entities|input|webcam|audio|game|render|ui|main|all]"
+argument-hint: "[game: wave-assault|sonic-halfpipe] [area-to-focus: config|state|entities|input|webcam|audio|game|render|ui|main|all]"
+---
+
+# Repo Structure
+
+This repo contains **two separate games** in sibling directories:
+
+| Directory | Game | Engine |
+|-----------|------|--------|
+| `wave-assault/` | Wave Assault — browser wave shooter, 2D canvas | Canvas 2D |
+| `sonic-halfpipe/` | Sonic Half-Pipe — 3D half-pipe runner, collect rings | Three.js |
+
+Both games share the same webcam / MoveNet pose-detection stack (1–2 players, keyboard or camera control).
+
+**CRITICAL**: Never mix file paths between games. Check which game is being discussed before reading any file.
+
 ---
 
 # Wave Assault — Codebase Guide
@@ -13,57 +28,35 @@ This is a browser-based wave shooter game with four themes (space/unicorn/pacifi
 
 | Area | File | What's inside |
 |------|------|---------------|
-| **Tuning** | `js/config.js` | `CONFIG` (player/bullet/enemy/powerup/wave/superWeapon stats), `SKELETON_CONNECTIONS`, `PLAYER_COLORS` |
-| **State** | `js/state.js` | `canvas`, `ctx`, `PLAY_AREA`, `gameState`, `webcamState`, `keys`, `controlMode`, `gameTheme` |
-| **Entities** | `js/entities.js` | `createPlayer/Bullet/Enemy/Powerup/Particle/Stars()`, `getCrowdPositions()` |
-| **Input** | `js/input.js` | Keyboard `keydown/keyup` → `keys` map |
-| **Camera** | `js/webcam.js` | Webcam init, MoveNet pose detector, wave-gesture detection, player registration, debug overlays, fallback edge detection |
-| **Audio** | `js/audio.js` | `audioSystem` — music, SFX, speech synthesis, tempo control |
-| **Logic** | `js/game.js` | `checkCollision()`, `activateSuperWeapon()`, `checkSuperWeaponThreshold()`, `spawnWave()`, `update()` (movement, shooting, collisions, wave progression), `checkGameOver()` |
-| **UI** | `js/ui.js` | `updateHUD/Wave/CrowdDisplay()`, `selectControlMode/PlayerCount/Theme()`, registration UI, countdown |
-| **Lifecycle** | `js/main.js` | `startGame()`, `gameOver()`, `gameLoop()`, all DOM event bindings, boot |
-| **HTML** | `index.html` | DOM structure only — no logic, no styles |
-| **CSS** | `styles.css` | All styling |
+| **Tuning** | `wave-assault/js/config.js` | `CONFIG` (player/bullet/enemy/powerup/wave/superWeapon stats), `SKELETON_CONNECTIONS`, `PLAYER_COLORS` |
+| **State** | `wave-assault/js/state.js` | `canvas`, `ctx`, `PLAY_AREA`, `gameState`, `webcamState`, `keys`, `controlMode`, `gameTheme` |
+| **Entities** | `wave-assault/js/entities.js` | `createPlayer/Bullet/Enemy/Powerup/Particle/Stars()`, `getCrowdPositions()` |
+| **Input** | `wave-assault/js/input.js` | Keyboard `keydown/keyup` → `keys` map |
+| **Camera** | `wave-assault/js/webcam.js` | Webcam init, MoveNet pose detector, wave-gesture detection, player registration, debug overlays, fallback edge detection |
+| **Audio** | `wave-assault/js/audio.js` | `audioSystem` — music, SFX, speech synthesis, tempo control |
+| **Logic** | `wave-assault/js/game.js` | `checkCollision()`, `activateSuperWeapon()`, `checkSuperWeaponThreshold()`, `spawnWave()`, `update()` (movement, shooting, collisions, wave progression), `checkGameOver()` |
+| **UI** | `wave-assault/js/ui.js` | `updateHUD/Wave/CrowdDisplay()`, `selectControlMode/PlayerCount/Theme()`, registration UI, countdown |
+| **Lifecycle** | `wave-assault/js/main.js` | `startGame()`, `gameOver()`, `gameLoop()`, all DOM event bindings, boot |
+| **HTML** | `wave-assault/index.html` | DOM structure only — no logic, no styles |
+| **CSS** | `wave-assault/styles.css` | All styling |
 
 ### Render sub-modules (render.js is now split — read only the relevant file)
 
 | File | What's inside |
 |------|---------------|
-| `js/render-sprites.js` | Sprite/image cache (`_ensureSprite`, `_getSparkleSprite`, `_getHeartSprite`, `_getStarEmojiSprite`), background gradient cache, `RENDER_THEME` constants table, `getTheme()` helper |
-| `js/render-theme-unicorn.js` | `drawUnicorn()`, `drawWolf()`, `drawUnicornEnemy()` |
-| `js/render-theme-pacificrim.js` | `drawJaeger()`, `drawKaiju()` |
-| `js/render-theme-space.js` | `drawSpaceShip()`, `drawSpaceEnemy()` |
-| `js/render-theme-dragon.js` | `drawDragon()`, `drawBlackKnight()` |
-| `js/render-background.js` | `drawBackground()`, `drawDragonEnvironment()`, `drawPacificRimEnvironment()`, `drawStars()` |
-| `js/render-entities.js` | `drawParticles()`, `drawPlayers()`, `drawBullets()`, `drawEnemies()`, `drawPowerups()` |
-| `js/render-effects.js` | `drawHitFlash()`, `drawSuperWeaponFlash()`, `drawDonationBeams()`, `drawChargeIndicators()` |
-| `js/render.js` | Thin `render()` orchestrator — calls all sub-modules in draw order |
+| `wave-assault/js/render-sprites.js` | Sprite/image cache (`_ensureSprite`, `_getSparkleSprite`, `_getHeartSprite`, `_getStarEmojiSprite`), background gradient cache, `RENDER_THEME` constants table, `getTheme()` helper |
+| `wave-assault/js/render-theme-unicorn.js` | `drawUnicorn()`, `drawWolf()`, `drawUnicornEnemy()` |
+| `wave-assault/js/render-theme-pacificrim.js` | `drawJaeger()`, `drawKaiju()` |
+| `wave-assault/js/render-theme-space.js` | `drawSpaceShip()`, `drawSpaceEnemy()` |
+| `wave-assault/js/render-theme-dragon.js` | `drawDragon()`, `drawBlackKnight()` |
+| `wave-assault/js/render-background.js` | `drawBackground()`, `drawDragonEnvironment()`, `drawPacificRimEnvironment()`, `drawStars()` |
+| `wave-assault/js/render-entities.js` | `drawParticles()`, `drawPlayers()`, `drawBullets()`, `drawEnemies()`, `drawPowerups()` |
+| `wave-assault/js/render-effects.js` | `drawHitFlash()`, `drawSuperWeaponFlash()`, `drawDonationBeams()`, `drawChargeIndicators()` |
+| `wave-assault/js/render.js` | Thin `render()` orchestrator — calls all sub-modules in draw order |
 
 **Script load order**: config → state → entities → input → webcam → audio → game → render-sprites → render-theme-unicorn → render-theme-pacificrim → render-theme-space → render-theme-dragon → render-background → render-entities → render-effects → render → ui → main
 
-## How to efficiently work on a task
-
-### Step 1: Identify which files to read
-
-- **Changing game balance** (enemy speed, health, damage, spawn rates) → `js/config.js` + `js/game.js:spawnWave`
-- **Changing player movement or shooting** → `js/game.js:update`
-- **Changing a player sprite** → the matching `js/render-theme-*.js`
-- **Changing an enemy sprite** → the matching `js/render-theme-*.js`
-- **Changing background / environment visuals** → `js/render-background.js`
-- **Changing particle / explosion effects** → `js/render-entities.js:drawParticles`
-- **Changing screen overlays (hit flash, nuke flash)** → `js/render-effects.js`
-- **Changing fleet donation beam visuals** → `js/render-effects.js:drawDonationBeams`
-- **Changing powerup rendering** → `js/render-entities.js:drawPowerups`
-- **Adding a new theme** → new `js/render-theme-<name>.js` + update `render-sprites.js:RENDER_THEME` + `render-background.js` + `render-entities.js` + `render-effects.js` + `render.js` + `js/ui.js:selectTheme` + `styles.css` + `index.html`
-- **Changing HUD or screens** → `js/ui.js` + `index.html`
-- **Changing camera/pose behavior** → `js/webcam.js`
-- **Adding new entity types** → `js/config.js` + `js/entities.js` + `js/game.js` + matching `js/render-theme-*.js` + `js/render-entities.js`
-- **Changing game flow** (start, restart, game over) → `js/main.js`
-- **Changing styling** → `styles.css`
-- **Super weapon / nuke changes** → `js/game.js` (activation + threshold), `js/state.js` (charges/kills state), `js/render-effects.js` (flash), `js/render-effects.js:drawChargeIndicators` (icon), `js/render-sprites.js:RENDER_THEME` (icon/colour), `js/ui.js` (HUD progress)
-- **Audio/music changes** → `js/audio.js`
-
-### Step 2: Understand the globals
+## Key Wave Assault globals
 
 All files share these globals (no modules):
 - `CONFIG` — immutable game constants
@@ -76,7 +69,7 @@ All files share these globals (no modules):
 - `gameTheme` — `'space'` | `'unicorn'` | `'pacificrim'` | `'dragon'`
 - `keys` — keyboard state map
 
-### Step 3: Key gameState fields
+## Key Wave Assault gameState fields
 
 ```
 gameState.running           // bool
@@ -98,7 +91,7 @@ gameState.activeEffects     // {shield: [p1, p2], spread: [p1, p2]} — remainin
 gameState.playerCount       // 1 or 2
 ```
 
-### Step 4: Key patterns
+## Key Wave Assault patterns
 
 - **Players array**: `gameState.players[0]` (cyan, P1) and `gameState.players[1]` (magenta, P2). Each has `.active`, `.x`, `.y`, `.crowdSize`, `.targetLane`, `.faceImage`.
 - **Legacy compat**: `gameState.player` and `gameState.crowdSize` mirror player 0. Always update both when modifying player 0.
@@ -111,6 +104,120 @@ gameState.playerCount       // 1 or 2
 - **Theme helper**: Every render sub-function receives `T = getTheme()` → `{ isUnicorn, isPacificRim, isDragon, isSpace, theme }` where `theme` is the matching `RENDER_THEME` entry.
 - **Rendering**: Virtual coords scaled to screen via `ctx.scale()`. Use `RENDER_THEME[gameTheme]` for per-theme colours instead of inline ternary chains.
 
+## Wave Assault task-to-file routing
+
+- **Game balance** (speed, health, damage, spawn rates) → `wave-assault/js/config.js` + `wave-assault/js/game.js:spawnWave`
+- **Player movement or shooting** → `wave-assault/js/game.js:update`
+- **Player/enemy sprite** → matching `wave-assault/js/render-theme-*.js`
+- **Background / environment** → `wave-assault/js/render-background.js`
+- **Particle effects** → `wave-assault/js/render-entities.js:drawParticles`
+- **Screen overlays (hit flash, nuke flash)** → `wave-assault/js/render-effects.js`
+- **HUD or screens** → `wave-assault/js/ui.js` + `wave-assault/index.html`
+- **Camera/pose behavior** → `wave-assault/js/webcam.js`
+- **Game flow** (start, restart, game over) → `wave-assault/js/main.js`
+- **Super weapon / nuke** → `wave-assault/js/game.js`, `wave-assault/js/state.js`, `wave-assault/js/render-effects.js`, `wave-assault/js/render-sprites.js:RENDER_THEME`, `wave-assault/js/ui.js`
+- **Audio** → `wave-assault/js/audio.js`
+- **Styling** → `wave-assault/styles.css`
+
+---
+
+# Sonic Half-Pipe — Codebase Guide
+
+A 3D half-pipe runner built on Three.js. The player skates along a neon half-pipe, collecting rings and dodging obstacles. Goal: collect 50 rings. Supports 1–2 players, keyboard or camera control.
+
+## File Map (read ONLY what you need)
+
+| Area | File | What's inside |
+|------|------|---------------|
+| **Tuning** | `sonic-halfpipe/js/config.js` | `CONFIG.pipe`, `CONFIG.player`, `CONFIG.rings`, `CONFIG.obstacles`, `CONFIG.speed`, `CONFIG.camera`, `CONFIG.waveGesture`, `CONFIG.colorTracking` |
+| **State** | `sonic-halfpipe/js/state.js` | `keys`, `controlMode`, `webcamState`, `gameState`, `highScores`, `loadHighScores()`, `saveHighScores()`, `addHighScore()` |
+| **Input** | `sonic-halfpipe/js/input.js` | `keydown/keyup` → `keys` map; `applyKeyboardInput()` (P1: arrows/WASD, P2: IJKL); `triggerJump(playerIndex)`, `triggerCrouch(playerIndex)` |
+| **Camera** | `sonic-halfpipe/js/webcam.js` | Webcam init, MoveNet pose detector, `checkJumpGesture()`, `checkCrouchGesture()`, `poseToLane()`, player registration, color tracking, debug overlays, fallback motion tracking |
+| **Audio** | `sonic-halfpipe/js/audio.js` | `audioSystem` — `playRingCollect()`, `playRingsWin()`, `playHit()`, `playGameOver()`, `playJump()`, `playSpeedUp()`, `playCountdownBeep()`, `playStart()` |
+| **Logic** | `sonic-halfpipe/js/game.js` | `laneToPosition()`, `jumpHeightAt()`, `spawnObstacles()`, `spawnRings()`, `checkCollisions()`, `updatePlayers()`, `updateSpeedAndDistance()`, `scrollWorld()`, `gameTick()`, `startCountdown()`, `triggerWin()`, `triggerGameOver()` |
+| **Render** | `sonic-halfpipe/js/render.js` | Three.js scene init (`initScene()`), pipe geometry (`buildPipePool()`, `updatePipePool()`), player meshes, obstacle meshes, ring meshes, particle meshes, `renderFrame()` |
+| **UI** | `sonic-halfpipe/js/ui.js` | Screen management (`showScreen()`), `showTitleScreen()`, `showSetupScreen()`, `updateHUD()`, `showEndScreen()`, `submitHighScore()`, `renderHighScoreTable()` |
+| **Lifecycle** | `sonic-halfpipe/js/main.js` | `loop()`, `startGame()`, `restartGame()`, button callbacks (`onTitlePlay1/2`, `onTitleCamera1/2`, `onSetupStart`, `onEndRestart/Title/SubmitScore`), `window.load` boot |
+| **HTML** | `sonic-halfpipe/index.html` | DOM structure — titleScreen, setupScreen, gameScreen (HUD + countdown), endScreen, webcamContainer |
+| **CSS** | `sonic-halfpipe/styles.css` | All styling |
+
+**Script load order**: config → state → audio → input → webcam → game → render → ui → main
+
+## Key Sonic Half-Pipe globals
+
+All files share globals (no modules):
+- `CONFIG` — immutable game constants (pipe geometry, player physics, ring/obstacle params, speed curve, camera gesture thresholds)
+- `gameState` — mutable runtime state
+- `webcamState` — camera/pose state
+- `keys` — keyboard state map
+- `controlMode` — `'keyboard'` | `'camera'`
+- `highScores` — persisted array (localStorage)
+
+## Key Sonic Half-Pipe gameState fields
+
+```
+gameState.running           // bool
+gameState.frameCount        // incremented each gameTick
+gameState.speed             // current scroll speed (accelerates to CONFIG.speed.max)
+gameState.distance          // total distance scrolled
+gameState.score             // points (rings × CONFIG.rings.pointsEach)
+gameState.playerCount       // 1 or 2 — set from webcamState.playerCount in startGame()
+gameState.phase             // 'start' | 'countdown' | 'playing' | 'win' | 'gameover'
+gameState.countdownActive   // bool — gameTick returns early when true
+
+gameState.players[]         // 2 entries, index 0 = P1 (cyan), index 1 = P2 (magenta)
+  player.active             // false for unused P2 slot in 1P mode
+  player.lane               // current fractional lane (0…laneCount-1), smoothed
+  player.targetLane         // desired lane set by input
+  player.rings              // rings collected by this player
+  player.jumping            // bool
+  player.jumpFrame          // 0…jumpDuration
+  player.crouching          // bool
+  player.crouchFrame        // 0…crouchDuration
+  player.invincible         // frames remaining of invincibility (obstacle-only; rings still collected)
+  player.mesh               // Three.js Group assigned by render.js
+
+gameState.obstacles[]       // [{type:'bumper'|'bomb'|'barrier', lane, z, active, mesh, hitFrame}]
+gameState.ringItems[]       // [{lane, z, active, mesh, spin}]
+gameState.particles[]       // [{x,y,z, vx,vy,vz, life, decay, color, mesh}]
+
+gameState.scene / camera / renderer  // Three.js objects, assigned by initScene()
+gameState.pipeSegments[]    // recycled pipe mesh pool
+```
+
+## Key Sonic Half-Pipe patterns
+
+- **Lane system**: Fractional 0…(laneCount-1). `laneToPosition(lane)` → `{x, y}` on pipe surface. Player/obstacle `z` increases each frame by `gameState.speed` (world scrolls toward camera).
+- **Jump arc**: Parabolic — `jumpHeightAt(frame)` = `jumpHeight * 4 * t * (1-t)`. Applied as offset along the pipe surface normal in `render.js:updatePlayerMeshes`.
+- **Invincibility scope**: Only blocks *obstacle* collision. Ring collection always active.
+- **Pipe recycling**: `updatePipePool()` moves segments along Z and wraps them back when they pass the camera.
+- **Player count propagation**: `webcamState.playerCount` → `gameState.playerCount` in `startGame()`. For keyboard mode, `showSetupScreen` must set `webcamState.playerCount` before calling `startGame()`.
+- **Controls — P1**: Arrow keys / WASD for lanes; Up/W/Space = jump; Down/S = crouch.
+- **Controls — P2**: J/L for lanes; I = jump; K = crouch.
+- **Camera controls**: Lateral body position → `targetLane` via `poseToLane()`; hands-above-nose → jump; shoulders drop → crouch.
+- **Win condition**: First player to reach `CONFIG.rings.goal` (50) rings → `triggerWin(playerIndex)`.
+- **No build step**: Open `sonic-halfpipe/index.html` directly in a browser. CDN scripts for Three.js and TensorFlow/MoveNet.
+
+## Sonic Half-Pipe task-to-file routing
+
+- **Game balance** (speed, ring goal, obstacle spawn rate, hit radius) → `sonic-halfpipe/js/config.js`
+- **Jump/crouch physics** → `sonic-halfpipe/js/game.js:jumpHeightAt + updatePlayers`
+- **Lane movement smoothing** → `sonic-halfpipe/js/game.js:updatePlayers` (`laneChangeSpeed` in config)
+- **Collision detection** → `sonic-halfpipe/js/game.js:checkCollisions`
+- **Obstacle / ring spawning** → `sonic-halfpipe/js/game.js:spawnObstacles + spawnRings`
+- **Ring mesh / obstacle mesh visuals** → `sonic-halfpipe/js/render.js` (`buildRingMesh`, `buildObstacleMesh`, `updateRingMeshes`, `updateObstacleMeshes`)
+- **Player mesh visuals** → `sonic-halfpipe/js/render.js:buildPlayerMeshes + updatePlayerMeshes`
+- **Pipe geometry** → `sonic-halfpipe/js/render.js:buildPipeSegment + buildPipePool`
+- **Particle effects** → `sonic-halfpipe/js/game.js:spawnCollectParticles` + `sonic-halfpipe/js/render.js:updateParticleMeshes`
+- **HUD / screens** → `sonic-halfpipe/js/ui.js` + `sonic-halfpipe/index.html`
+- **Game flow** (start, restart, end) → `sonic-halfpipe/js/main.js` + `sonic-halfpipe/js/ui.js:showEndScreen`
+- **Keyboard input** → `sonic-halfpipe/js/input.js`
+- **Camera gestures / pose** → `sonic-halfpipe/js/webcam.js` (`checkJumpGesture`, `checkCrouchGesture`, `poseToLane`)
+- **Player registration (camera mode)** → `sonic-halfpipe/js/webcam.js:startPlayerRegistration + handleRegistrationPoseTracking`
+- **Audio** → `sonic-halfpipe/js/audio.js`
+- **High scores** → `sonic-halfpipe/js/state.js` (`loadHighScores`, `saveHighScores`, `addHighScore`) + `sonic-halfpipe/js/ui.js:renderHighScoreTable`
+- **Styling** → `sonic-halfpipe/styles.css`
+
 ## If the user asks to focus on a specific area
 
-Read `$ARGUMENTS` and load only the relevant file(s) listed above. Do NOT read the entire codebase — that wastes tokens.
+Read `$ARGUMENTS` to determine which game and area, then load only the relevant file(s) listed above. Do NOT read the entire codebase — that wastes tokens.

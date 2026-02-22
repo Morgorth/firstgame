@@ -62,7 +62,7 @@ function triggerJump(playerIndex) {
     if (p.jumping) return;
     p.jumping = true;
     p.jumpFrame = 0;
-    audioSystem.playRingCollect(0.3); // small whoosh
+    audioSystem.playJump();
 }
 
 // Trigger a crouch for playerIndex.
