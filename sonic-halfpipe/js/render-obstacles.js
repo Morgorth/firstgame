@@ -51,14 +51,21 @@ function updateObstacleMeshes() {
             obs.mesh = buildObstacleMesh(obs.type);
             gameState.scene.add(obs.mesh);
         }
-        const pos     = laneToPosition(obs.lane);
-        const halfArc = (CONFIG.pipe.arcDegrees / 2) * Math.PI / 180;
-        const t       = obs.lane / (CONFIG.pipe.laneCount - 1);
-        const angle   = -halfArc + t * 2 * halfArc;
+        const pos      = laneToPosition(obs.lane);
+        const halfArc  = (CONFIG.pipe.arcDegrees / 2) * Math.PI / 180;
+        const t        = obs.lane / (CONFIG.pipe.laneCount - 1);
+        const angle    = -halfArc + t * 2 * halfArc;
         const surfaceY = CONFIG.pipe.radius - Math.cos(angle) * CONFIG.pipe.radius;
+        // Inward normal — same convention as render-player.js
+        const nx = -Math.sin(angle);
+        const ny =  Math.cos(angle);
+        // Lift each obstacle type by its own collision radius so it sits on surface
+        const typeOffset = obs.type === 'bumper'  ? CONFIG.obstacles.bumperRadius
+                         : obs.type === 'bomb'    ? CONFIG.obstacles.bombRadius
+                         : CONFIG.obstacles.barrierHeight * 0.5;
         obs.mesh.position.set(
-            pos.x + Math.sin(angle) * -40,
-            surfaceY + Math.cos(angle) * 40,
+            pos.x    + nx * typeOffset,
+            surfaceY + ny * typeOffset,
             obs.z
         );
         obs.mesh.rotation.y += 0.02;

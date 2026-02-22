@@ -28,18 +28,24 @@ function updateRingMeshes() {
             ring.mesh = buildRingMesh();
             gameState.scene.add(ring.mesh);
         }
-        const pos     = laneToPosition(ring.lane);
-        const halfArc = (CONFIG.pipe.arcDegrees / 2) * Math.PI / 180;
-        const t       = ring.lane / (CONFIG.pipe.laneCount - 1);
-        const angle   = -halfArc + t * 2 * halfArc;
+        const pos      = laneToPosition(ring.lane);
+        const halfArc  = (CONFIG.pipe.arcDegrees / 2) * Math.PI / 180;
+        const t        = ring.lane / (CONFIG.pipe.laneCount - 1);
+        const angle    = -halfArc + t * 2 * halfArc;
         const surfaceY = CONFIG.pipe.radius - Math.cos(angle) * CONFIG.pipe.radius;
+        // Inward normal — consistent with render-player.js and render-obstacles.js
+        const nx = -Math.sin(angle);
+        const ny =  Math.cos(angle);
+        // Float rings a ring-radius above surface so they are easy to see and run through
+        const floatOffset = CONFIG.rings.outerRadius + CONFIG.rings.tubeRadius + 8;
         ring.mesh.position.set(
-            pos.x + Math.sin(angle) * -50,
-            surfaceY + Math.cos(angle) * 50,
+            pos.x    + nx * floatOffset,
+            surfaceY + ny * floatOffset,
             ring.z
         );
         ring.spin += CONFIG.rings.spinSpeed;
-        ring.mesh.rotation.y = ring.spin;
-        ring.mesh.rotation.x = Math.PI / 2; // face the player
+        // No x-tilt: torus default orientation lies in XY plane, hole facing +Z
+        // (toward camera), which is the classic Sonic "run through the ring" look.
+        ring.mesh.rotation.set(0, ring.spin, 0);
     }
 }
