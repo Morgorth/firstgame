@@ -71,29 +71,35 @@ You are investigating a bug in a Three.js 3D half-pipe runner. Follow this workf
 | Symptom | Start reading |
 |---------|--------------|
 | Wrong game balance (speed, ring counts, spawn rates) | `sonic-halfpipe/js/config.js` |
-| Player not moving / lane changes not working | `sonic-halfpipe/js/input.js:applyKeyboardInput` + `sonic-halfpipe/js/game.js:updatePlayers` |
-| Jump not working | `sonic-halfpipe/js/input.js:triggerJump` + `sonic-halfpipe/js/game.js:updatePlayers` |
-| Crouch not working | `sonic-halfpipe/js/input.js:triggerCrouch` + `sonic-halfpipe/js/game.js:updatePlayers` |
-| Rings not collected | `sonic-halfpipe/js/game.js:checkCollisions` (ring section) |
-| Obstacle collision not working / player takes no damage | `sonic-halfpipe/js/game.js:checkCollisions` (obstacle section) |
-| Player takes damage while invincible | `sonic-halfpipe/js/game.js:checkCollisions` — invincibility guard must wrap only obstacle loop |
-| Player can't collect rings after being hit | `sonic-halfpipe/js/game.js:checkCollisions` — ring collection must be outside invincibility guard |
-| Visual / mesh not appearing | `sonic-halfpipe/js/render.js` (build/update functions) |
-| Player mesh in wrong position | `sonic-halfpipe/js/render.js:updatePlayerMeshes` + `sonic-halfpipe/js/game.js:laneToPosition` |
-| Obstacle or ring mesh in wrong position | `sonic-halfpipe/js/render.js:updateObstacleMeshes` / `updateRingMeshes` |
-| HUD shows wrong rings / score | `sonic-halfpipe/js/ui.js:updateHUD` + `sonic-halfpipe/index.html` (element IDs) |
-| 2P keyboard mode only shows 1 player | `sonic-halfpipe/js/ui.js:showSetupScreen` — verify `webcamState.playerCount` is set before `startGame()` |
-| Game doesn't start / restart broken | `sonic-halfpipe/js/main.js:startGame` |
-| State not resetting between games | `sonic-halfpipe/js/main.js:startGame` (check all reset fields) + `sonic-halfpipe/js/state.js` |
-| Camera/pose not detected | `sonic-halfpipe/js/webcam.js` |
-| Jump gesture not working (camera mode) | `sonic-halfpipe/js/webcam.js:checkJumpGesture` + `sonic-halfpipe/js/config.js:CONFIG.camera` |
-| Crouch gesture not working (camera mode) | `sonic-halfpipe/js/webcam.js:checkCrouchGesture` + `sonic-halfpipe/js/config.js:CONFIG.camera` |
-| Lane tracking wrong (camera mode) | `sonic-halfpipe/js/webcam.js:poseToLane` |
-| Wrong jump sound | `sonic-halfpipe/js/input.js:triggerJump` — must call `audioSystem.playJump()` not `playRingCollect` |
+| Player not moving / lane changes not working | `sonic-halfpipe/js/input.js` + `sonic-halfpipe/js/game.js` (updatePlayers) |
+| Jump not working | `sonic-halfpipe/js/input.js` (triggerJump) + `sonic-halfpipe/js/game.js` (updatePlayers) |
+| Crouch not working | `sonic-halfpipe/js/input.js` (triggerCrouch) + `sonic-halfpipe/js/game.js` (updatePlayers) |
+| Rings not collected | `sonic-halfpipe/js/game.js` (checkCollisions — ring section) |
+| Obstacle collision not working / player takes no damage | `sonic-halfpipe/js/game.js` (checkCollisions — obstacle section) |
+| Player takes damage while invincible | `sonic-halfpipe/js/game.js` (checkCollisions) — invincibility guard must wrap only obstacle loop |
+| Player can't collect rings after being hit | `sonic-halfpipe/js/game.js` (checkCollisions) — ring collection must be outside invincibility guard |
+| Player mesh not appearing / wrong shape | `sonic-halfpipe/js/render-player.js` |
+| Unicorn player mesh wrong | `sonic-halfpipe/js/render-theme-unicorn.js` |
+| Player mesh in wrong position | `sonic-halfpipe/js/render-player.js` (updatePlayerMeshes) + `sonic-halfpipe/js/game.js` (laneToPosition) |
+| Obstacle mesh not appearing / wrong shape | `sonic-halfpipe/js/render-obstacles.js` |
+| Ring mesh not appearing / wrong shape | `sonic-halfpipe/js/render-rings.js` |
+| Obstacle or ring mesh in wrong position | `sonic-halfpipe/js/render-obstacles.js` (updateObstacleMeshes) / `sonic-halfpipe/js/render-rings.js` (updateRingMeshes) |
+| Pipe not scrolling / recycling | `sonic-halfpipe/js/render-pipe.js` (updatePipePool) |
+| Particles not showing | `sonic-halfpipe/js/render-particles.js` |
+| Wrong theme colours | `sonic-halfpipe/js/render.js` (RENDER_THEME) |
+| HUD shows wrong rings / score | `sonic-halfpipe/js/ui.js` (updateHUD) + `sonic-halfpipe/index.html` (element IDs) |
+| 2P keyboard mode only shows 1 player | `sonic-halfpipe/js/ui.js` (showSetupScreen) — verify `webcamState.playerCount` is set before `startGame()` |
+| Game doesn't start / restart broken | `sonic-halfpipe/js/main.js` (startGame) |
+| State not resetting between games | `sonic-halfpipe/js/main.js` (startGame reset list) + `sonic-halfpipe/js/state.js` |
+| Camera/pose not detected | `sonic-halfpipe/js/webcam-core.js` (initWebcam/initPoseDetector) |
+| Jump gesture not working (camera mode) | `sonic-halfpipe/js/webcam-gestures.js` (checkJumpGesture) + `sonic-halfpipe/js/config.js` (CONFIG.camera) |
+| Crouch gesture not working (camera mode) | `sonic-halfpipe/js/webcam-gestures.js` (checkCrouchGesture) + `sonic-halfpipe/js/config.js` (CONFIG.camera) |
+| Lane tracking wrong (camera mode) | `sonic-halfpipe/js/webcam-gestures.js` (poseToLane) |
+| Player registration not completing | `sonic-halfpipe/js/webcam-registration.js` (handleRegistrationPoseTracking) |
+| Wrong jump sound | `sonic-halfpipe/js/input.js` (triggerJump) — must call `audioSystem.playJump()` not `playRingCollect` |
 | Audio issue | `sonic-halfpipe/js/audio.js` |
-| High scores not saving / loading | `sonic-halfpipe/js/state.js:loadHighScores + saveHighScores` |
-| End screen not showing / win not triggered | `sonic-halfpipe/js/game.js:triggerWin + triggerGameOver` + `sonic-halfpipe/js/ui.js:showEndScreen` |
-| Pipe not scrolling / recycling | `sonic-halfpipe/js/render.js:updatePipePool` |
+| High scores not saving / loading | `sonic-halfpipe/js/state.js` (loadHighScores + saveHighScores) |
+| End screen not showing / win not triggered | `sonic-halfpipe/js/game.js` (triggerWin + triggerGameOver) + `sonic-halfpipe/js/ui.js` (showEndScreen) |
 
 ## Step 2: Trace the data flow
 
@@ -113,8 +119,9 @@ Use `Grep` to find all references to the relevant field or function.
 - **Lane geometry**: `laneToPosition(lane)` uses `y = -cos(angle) * radius + radius`. At center lane (angle=0) y=0; at walls y increases. Normal vector is `{nx: -sin(angle), ny: cos(angle)}`
 - **State not reset**: New fields added to `state.js` but not reset in `startGame()` — stale values persist across games
 - **Off-by-one in player index**: P1 = index 0, P2 = index 1
-- **Pipe segment wrapping**: `seg.position.z > segmentLength * 1.5` triggers recycle; total span must cover `visibleLength`
+- **Pipe segment wrapping** (in `render-pipe.js`): `seg.position.z > segmentLength * 1.5` triggers recycle; total span must cover `visibleLength`
 - **DOM element IDs**: HUD elements (`hudRings`, `hudScore`, `hudSpeed`, `hudP2`, `hudP2Rings`, `ringBarP1Fill`, `ringBarP2Fill`) must match between `ui.js` and `index.html`
+- **Webcam files**: webcam logic is split across webcam-core.js / webcam-color.js / webcam-gestures.js / webcam-registration.js / webcam-pose.js — check the symptom table above to find the right file; never read all five
 
 ## Step 4: Report findings
 

@@ -132,16 +132,26 @@ A 3D half-pipe runner built on Three.js. The player skates along a neon half-pip
 | **Tuning** | `sonic-halfpipe/js/config.js` | `CONFIG.pipe`, `CONFIG.player`, `CONFIG.rings`, `CONFIG.obstacles`, `CONFIG.speed`, `CONFIG.camera`, `CONFIG.waveGesture`, `CONFIG.colorTracking` |
 | **State** | `sonic-halfpipe/js/state.js` | `keys`, `controlMode`, `webcamState`, `gameState`, `highScores`, `loadHighScores()`, `saveHighScores()`, `addHighScore()` |
 | **Input** | `sonic-halfpipe/js/input.js` | `keydown/keyup` → `keys` map; `applyKeyboardInput()` (P1: arrows/WASD, P2: IJKL); `triggerJump(playerIndex)`, `triggerCrouch(playerIndex)` |
-| **Camera** | `sonic-halfpipe/js/webcam.js` | Webcam init, MoveNet pose detector, `checkJumpGesture()`, `checkCrouchGesture()`, `poseToLane()`, player registration, color tracking, debug overlays, fallback motion tracking |
+| **Webcam — lifecycle** | `sonic-halfpipe/js/webcam-core.js` | `initWebcam()`, `initPoseDetector()`, `stopWebcam()`; shared keypoint helpers: `getKeypoint()`, `getPoseCenterX()`, `getWrists()`, `pruneByTime()` |
+| **Webcam — color** | `sonic-halfpipe/js/webcam-color.js` | `sampleTorsoColor()`, `compareColorSignatures()`, `updateColorSignature()` |
+| **Webcam — gestures** | `sonic-halfpipe/js/webcam-gestures.js` | `checkJumpGesture()`, `checkCrouchGesture()`, `poseToLane()`, `handleGameplayPoseTracking()`, `findPoseForPlayer()`, `trackMotion()`, `scoreWristHistory()` |
+| **Webcam — registration** | `sonic-halfpipe/js/webcam-registration.js` | `startPlayerRegistration()`, `handleRegistrationPoseTracking()`, `captureFaceImage()`, `onPlayerRegistered()`; registration UI helpers |
+| **Webcam — tracking loop** | `sonic-halfpipe/js/webcam-pose.js` | `trackPoses()`, `updatePositionMarkers()`, `drawPoseDebug()`, `drawRegistrationDebug()` |
 | **Audio** | `sonic-halfpipe/js/audio.js` | `audioSystem` — `playRingCollect()`, `playRingsWin()`, `playHit()`, `playGameOver()`, `playJump()`, `playSpeedUp()`, `playCountdownBeep()`, `playStart()` |
 | **Logic** | `sonic-halfpipe/js/game.js` | `laneToPosition()`, `jumpHeightAt()`, `spawnObstacles()`, `spawnRings()`, `checkCollisions()`, `updatePlayers()`, `updateSpeedAndDistance()`, `scrollWorld()`, `gameTick()`, `startCountdown()`, `triggerWin()`, `triggerGameOver()` |
-| **Render** | `sonic-halfpipe/js/render.js` | Three.js scene init (`initScene()`), pipe geometry (`buildPipePool()`, `updatePipePool()`), player meshes, obstacle meshes, ring meshes, particle meshes, `renderFrame()` |
+| **Render — orchestrator** | `sonic-halfpipe/js/render.js` | `RENDER_THEME` constants, `getTheme()`, `initScene()`, `buildStarfield()`, `applyThemeToScene()`, `clearSceneItems()`, `renderFrame()` |
+| **Render — pipe** | `sonic-halfpipe/js/render-pipe.js` | `buildPipeSegment()`, `buildPipePool()`, `updatePipePool()` |
+| **Render — unicorn theme** | `sonic-halfpipe/js/render-theme-unicorn.js` | `buildUnicornPlayerMesh()`, `buildUnicornObstacleMesh()`, `buildUnicornRingMesh()` |
+| **Render — player** | `sonic-halfpipe/js/render-player.js` | `_buildDefaultPlayerMesh()`, `buildPlayerMeshes()`, `updatePlayerMeshes()` |
+| **Render — obstacles** | `sonic-halfpipe/js/render-obstacles.js` | `buildObstacleMesh()`, `updateObstacleMeshes()` |
+| **Render — rings** | `sonic-halfpipe/js/render-rings.js` | `buildRingMesh()`, `updateRingMeshes()` |
+| **Render — particles** | `sonic-halfpipe/js/render-particles.js` | `getParticleMesh()`, `updateParticleMeshes()` |
 | **UI** | `sonic-halfpipe/js/ui.js` | Screen management (`showScreen()`), `showTitleScreen()`, `showSetupScreen()`, `updateHUD()`, `showEndScreen()`, `submitHighScore()`, `renderHighScoreTable()` |
 | **Lifecycle** | `sonic-halfpipe/js/main.js` | `loop()`, `startGame()`, `restartGame()`, button callbacks (`onTitlePlay1/2`, `onTitleCamera1/2`, `onSetupStart`, `onEndRestart/Title/SubmitScore`), `window.load` boot |
 | **HTML** | `sonic-halfpipe/index.html` | DOM structure — titleScreen, setupScreen, gameScreen (HUD + countdown), endScreen, webcamContainer |
 | **CSS** | `sonic-halfpipe/styles.css` | All styling |
 
-**Script load order**: config → state → audio → input → webcam → game → render → ui → main
+**Script load order**: config → state → audio → input → webcam-core → webcam-color → webcam-gestures → webcam-registration → webcam-pose → game → render → render-pipe → render-theme-unicorn → render-player → render-obstacles → render-rings → render-particles → ui → main
 
 ## Key Sonic Half-Pipe globals
 
@@ -205,15 +215,21 @@ gameState.pipeSegments[]    // recycled pipe mesh pool
 - **Lane movement smoothing** → `sonic-halfpipe/js/game.js:updatePlayers` (`laneChangeSpeed` in config)
 - **Collision detection** → `sonic-halfpipe/js/game.js:checkCollisions`
 - **Obstacle / ring spawning** → `sonic-halfpipe/js/game.js:spawnObstacles + spawnRings`
-- **Ring mesh / obstacle mesh visuals** → `sonic-halfpipe/js/render.js` (`buildRingMesh`, `buildObstacleMesh`, `updateRingMeshes`, `updateObstacleMeshes`)
-- **Player mesh visuals** → `sonic-halfpipe/js/render.js:buildPlayerMeshes + updatePlayerMeshes`
-- **Pipe geometry** → `sonic-halfpipe/js/render.js:buildPipeSegment + buildPipePool`
-- **Particle effects** → `sonic-halfpipe/js/game.js:spawnCollectParticles` + `sonic-halfpipe/js/render.js:updateParticleMeshes`
+- **Player mesh visuals (default theme)** → `sonic-halfpipe/js/render-player.js`
+- **Player mesh visuals (unicorn theme)** → `sonic-halfpipe/js/render-theme-unicorn.js:buildUnicornPlayerMesh`
+- **Obstacle mesh visuals** → `sonic-halfpipe/js/render-obstacles.js`
+- **Ring mesh visuals** → `sonic-halfpipe/js/render-rings.js`
+- **Pipe geometry / materials** → `sonic-halfpipe/js/render-pipe.js`; colour constants → `sonic-halfpipe/js/render.js:RENDER_THEME`
+- **Particle effects** → `sonic-halfpipe/js/game.js:spawnCollectParticles` + `sonic-halfpipe/js/render-particles.js`
+- **Lighting / scene / camera angle** → `sonic-halfpipe/js/render.js:initScene`
+- **Theme colours** → `sonic-halfpipe/js/render.js:RENDER_THEME`
 - **HUD / screens** → `sonic-halfpipe/js/ui.js` + `sonic-halfpipe/index.html`
 - **Game flow** (start, restart, end) → `sonic-halfpipe/js/main.js` + `sonic-halfpipe/js/ui.js:showEndScreen`
 - **Keyboard input** → `sonic-halfpipe/js/input.js`
-- **Camera gestures / pose** → `sonic-halfpipe/js/webcam.js` (`checkJumpGesture`, `checkCrouchGesture`, `poseToLane`)
-- **Player registration (camera mode)** → `sonic-halfpipe/js/webcam.js:startPlayerRegistration + handleRegistrationPoseTracking`
+- **Jump/crouch gesture logic** → `sonic-halfpipe/js/webcam-gestures.js`
+- **Lane tracking (camera)** → `sonic-halfpipe/js/webcam-gestures.js:poseToLane`
+- **Player registration (camera mode)** → `sonic-halfpipe/js/webcam-registration.js`
+- **Webcam init / lifecycle** → `sonic-halfpipe/js/webcam-core.js`
 - **Audio** → `sonic-halfpipe/js/audio.js`
 - **High scores** → `sonic-halfpipe/js/state.js` (`loadHighScores`, `saveHighScores`, `addHighScore`) + `sonic-halfpipe/js/ui.js:renderHighScoreTable`
 - **Styling** → `sonic-halfpipe/styles.css`

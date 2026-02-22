@@ -174,15 +174,29 @@
 <!-- Three.js -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
 
-<!-- Game modules (order matters: config → state → audio → input → webcam → game → render → ui → main) -->
+<!-- Game modules — load order matters -->
+<!-- Core data -->
 <script src="js/config.js"></script>
 <script src="js/state.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/input.js"></script>
-<script src="js/webcam.js"></script>
+<!-- Webcam sub-modules (each ~2–4 KB) -->
+<script src="js/webcam-core.js"></script>
+<script src="js/webcam-color.js"></script>
+<script src="js/webcam-gestures.js"></script>
+<script src="js/webcam-registration.js"></script>
+<script src="js/webcam-pose.js"></script>
+<!-- Game logic -->
 <script src="js/game.js"></script>
+<!-- Render sub-modules — render.js must come first (defines RENDER_THEME / getTheme) -->
 <script src="js/render.js"></script>
+<script src="js/render-pipe.js"></script>
 <script src="js/render-theme-unicorn.js"></script>
+<script src="js/render-player.js"></script>
+<script src="js/render-obstacles.js"></script>
+<script src="js/render-rings.js"></script>
+<script src="js/render-particles.js"></script>
+<!-- UI and lifecycle -->
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 

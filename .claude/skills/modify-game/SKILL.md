@@ -88,25 +88,31 @@ You are modifying a Three.js 3D half-pipe runner. Follow this workflow strictly.
 | Category | Files to read | Files to edit |
 |----------|--------------|---------------|
 | **Balance/tuning** (speeds, ring goal, spawn interval, hit radii, jump height) | `sonic-halfpipe/js/config.js` | `sonic-halfpipe/js/config.js` |
-| **Player movement / lane smoothing** | `sonic-halfpipe/js/game.js:updatePlayers` | `sonic-halfpipe/js/game.js` |
-| **Jump or crouch physics** | `sonic-halfpipe/js/game.js:jumpHeightAt + updatePlayers` | `sonic-halfpipe/js/game.js` |
-| **Obstacle / ring spawning** | `sonic-halfpipe/js/game.js:spawnObstacles + spawnRings` | `sonic-halfpipe/js/game.js` |
-| **Collision detection** | `sonic-halfpipe/js/game.js:checkCollisions` | `sonic-halfpipe/js/game.js` |
-| **Speed curve** | `sonic-halfpipe/js/game.js:updateSpeedAndDistance`, `sonic-halfpipe/js/config.js` | Both |
-| **Player mesh / appearance** | `sonic-halfpipe/js/render.js:buildPlayerMeshes + updatePlayerMeshes` | `sonic-halfpipe/js/render.js` |
-| **Obstacle mesh / appearance** | `sonic-halfpipe/js/render.js:buildObstacleMesh + updateObstacleMeshes` | `sonic-halfpipe/js/render.js` |
-| **Ring mesh / appearance** | `sonic-halfpipe/js/render.js:buildRingMesh + updateRingMeshes` | `sonic-halfpipe/js/render.js` |
-| **Pipe geometry / materials** | `sonic-halfpipe/js/render.js:buildPipeSegment` | `sonic-halfpipe/js/render.js` |
-| **Particle effects** | `sonic-halfpipe/js/game.js:spawnCollectParticles`, `sonic-halfpipe/js/render.js:updateParticleMeshes` | Both |
-| **Lighting / scene setup** | `sonic-halfpipe/js/render.js:initScene` | `sonic-halfpipe/js/render.js` |
-| **Camera angle** | `sonic-halfpipe/js/render.js:initScene` (camera position + lookAt) | `sonic-halfpipe/js/render.js` |
+| **Player movement / lane smoothing** | `sonic-halfpipe/js/game.js` | `sonic-halfpipe/js/game.js` |
+| **Jump or crouch physics** | `sonic-halfpipe/js/game.js` | `sonic-halfpipe/js/game.js` |
+| **Obstacle / ring spawning** | `sonic-halfpipe/js/game.js` | `sonic-halfpipe/js/game.js` |
+| **Collision detection** | `sonic-halfpipe/js/game.js` | `sonic-halfpipe/js/game.js` |
+| **Speed curve** | `sonic-halfpipe/js/game.js`, `sonic-halfpipe/js/config.js` | Both |
+| **Player mesh — default theme** | `sonic-halfpipe/js/render-player.js` | `sonic-halfpipe/js/render-player.js` |
+| **Player mesh — unicorn theme** | `sonic-halfpipe/js/render-theme-unicorn.js` | `sonic-halfpipe/js/render-theme-unicorn.js` |
+| **Obstacle mesh** | `sonic-halfpipe/js/render-obstacles.js` | `sonic-halfpipe/js/render-obstacles.js` |
+| **Unicorn obstacle mesh** | `sonic-halfpipe/js/render-theme-unicorn.js` | `sonic-halfpipe/js/render-theme-unicorn.js` |
+| **Ring mesh** | `sonic-halfpipe/js/render-rings.js` | `sonic-halfpipe/js/render-rings.js` |
+| **Unicorn ring mesh** | `sonic-halfpipe/js/render-theme-unicorn.js` | `sonic-halfpipe/js/render-theme-unicorn.js` |
+| **Pipe geometry / materials** | `sonic-halfpipe/js/render-pipe.js` | `sonic-halfpipe/js/render-pipe.js` |
+| **Theme colours (pipe/rings/lights)** | `sonic-halfpipe/js/render.js` (RENDER_THEME) | `sonic-halfpipe/js/render.js` |
+| **Particle effects** | `sonic-halfpipe/js/render-particles.js`, `sonic-halfpipe/js/game.js` | Both |
+| **Lighting / scene setup** | `sonic-halfpipe/js/render.js` | `sonic-halfpipe/js/render.js` |
+| **Camera angle** | `sonic-halfpipe/js/render.js` (initScene camera position + lookAt) | `sonic-halfpipe/js/render.js` |
 | **HUD / screens** | `sonic-halfpipe/js/ui.js`, `sonic-halfpipe/index.html` | Both, maybe `sonic-halfpipe/styles.css` |
 | **Keyboard input mapping** | `sonic-halfpipe/js/input.js` | `sonic-halfpipe/js/input.js` |
-| **Camera gesture thresholds** | `sonic-halfpipe/js/config.js` (CONFIG.camera section) | `sonic-halfpipe/js/config.js` |
-| **Camera gesture logic** | `sonic-halfpipe/js/webcam.js:checkJumpGesture + checkCrouchGesture + poseToLane` | `sonic-halfpipe/js/webcam.js` |
-| **Player registration (camera mode)** | `sonic-halfpipe/js/webcam.js:startPlayerRegistration + handleRegistrationPoseTracking` | `sonic-halfpipe/js/webcam.js` |
-| **Game flow** (start, restart, end) | `sonic-halfpipe/js/main.js`, `sonic-halfpipe/js/ui.js:showEndScreen` | Both |
-| **High scores** | `sonic-halfpipe/js/state.js`, `sonic-halfpipe/js/ui.js:renderHighScoreTable` | Both |
+| **Camera gesture thresholds** | `sonic-halfpipe/js/config.js` (CONFIG.camera) | `sonic-halfpipe/js/config.js` |
+| **Jump/crouch gesture logic** | `sonic-halfpipe/js/webcam-gestures.js` | `sonic-halfpipe/js/webcam-gestures.js` |
+| **Lane tracking (camera)** | `sonic-halfpipe/js/webcam-gestures.js` (poseToLane) | `sonic-halfpipe/js/webcam-gestures.js` |
+| **Player registration (camera mode)** | `sonic-halfpipe/js/webcam-registration.js` | `sonic-halfpipe/js/webcam-registration.js` |
+| **Webcam init / lifecycle** | `sonic-halfpipe/js/webcam-core.js` | `sonic-halfpipe/js/webcam-core.js` |
+| **Game flow** (start, restart, end) | `sonic-halfpipe/js/main.js`, `sonic-halfpipe/js/ui.js` | Both |
+| **High scores** | `sonic-halfpipe/js/state.js`, `sonic-halfpipe/js/ui.js` | Both |
 | **Audio** | `sonic-halfpipe/js/audio.js` | `sonic-halfpipe/js/audio.js` |
 | **Styling** | `sonic-halfpipe/styles.css` | `sonic-halfpipe/styles.css` |
 
@@ -118,7 +124,7 @@ Do NOT read the full codebase.
 
 Key rules:
 - All files share globals — no imports/exports needed
-- Script load order: config → state → audio → input → webcam → game → render → ui → main
+- Script load order: config → state → audio → input → webcam-core → webcam-color → webcam-gestures → webcam-registration → webcam-pose → game → render → render-pipe → render-theme-unicorn → render-player → render-obstacles → render-rings → render-particles → ui → main
 - `gameState.players[i]` is the source of truth. P1 = index 0 (cyan), P2 = index 1 (magenta)
 - New CONFIG entries go in `sonic-halfpipe/js/config.js`
 - New state fields go in `sonic-halfpipe/js/state.js` AND must be reset in `sonic-halfpipe/js/main.js:startGame()`
@@ -126,7 +132,8 @@ Key rules:
 - **Invincibility scope**: `player.invincible` only blocks obstacle collision — ring collection must remain active during invincibility
 - **Lane geometry**: All positions computed from `laneToPosition(lane)` in game.js. The pipe surface normal for player offset is `{nx: -sin(angle), ny: cos(angle)}`
 - **Three.js objects**: Meshes assigned to `obs.mesh`, `ring.mesh`, `pt.mesh`, `player.mesh`. Always call `gameState.scene.remove(mesh)` before nulling
-- **Pipe recycling**: `updatePipePool()` wraps segments; segment count × segmentLength must span `visibleLength`
+- **Pipe recycling**: `updatePipePool()` in render-pipe.js wraps segments; segment count × segmentLength must span `visibleLength`
+- **Theme colours**: Add/change colours in `RENDER_THEME` in `render.js`; for new theme shapes add a `render-theme-<name>.js` file
 - **No build step**: CDN scripts only; open `sonic-halfpipe/index.html` directly in browser
 
 ## Step 4: Test considerations
