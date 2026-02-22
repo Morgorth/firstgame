@@ -55,6 +55,7 @@
 
         <!-- Start screen -->
         <div id="startScreen">
+            <a class="btn btn-home-link" href="../index.html">&#8592; HOME</a>
             <h1 class="game-title" id="gameTitle">WAVE ASSAULT</h1>
             <p class="subtitle" id="gameSubtitle">SURVIVE THE ONSLAUGHT</p>
 
@@ -169,7 +170,10 @@
             <div class="final-score">SCORE: <span id="campaignFinalScore">0</span></div>
             <div class="section-label" style="margin-bottom:10px">HIGH SCORES</div>
             <div class="high-scores-container" id="campaignHighScores"></div>
-            <button class="btn" id="campaignRestartBtn">PLAY AGAIN</button>
+            <div class="game-over-btns">
+                <button class="btn" id="campaignRestartBtn">PLAY AGAIN</button>
+                <a class="btn btn-secondary" href="../index.html">HOME MENU</a>
+            </div>
         </div>
 
         <!-- Game over screen -->
@@ -186,7 +190,10 @@
             </div>
             <div class="section-label">HIGH SCORES</div>
             <div class="high-scores-container" id="gameOverHighScores"></div>
-            <button class="btn" id="restartBtn">PLAY AGAIN</button>
+            <div class="game-over-btns">
+                <button class="btn" id="restartBtn">PLAY AGAIN</button>
+                <a class="btn btn-secondary" href="../index.html">HOME MENU</a>
+            </div>
         </div>
     </div>
 
