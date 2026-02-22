@@ -30,24 +30,24 @@ const RENDER_THEME = {
         ambientColor:    0x334466,
     },
     unicorn: {
-        pipeColor:       0x1A0030,
-        pipeEmissive:    0x0F001E,
-        wireColor:       0xFF69B4,
-        wireOpacity:     0.32,
+        pipeColor:       0x220045,   // deep purple pipe
+        pipeEmissive:    0x16002c,
+        wireColor:       0xFF44CC,   // vivid hot-pink neon grid
+        wireOpacity:     0.44,       // more visible rainbow grid
         fogColor:        0x0A0018,
         clearColor:      0x0A0018,
-        neonA:           0xFF69B4,
-        neonB:           0xDA70D6,
-        ringColor:       0xFF69B4,
-        ringEmissive:    0x441133,
+        neonA:           0xFF00CC,   // vivid magenta point light
+        neonB:           0x9900FF,   // vivid violet point light
+        ringColor:       0xFFD700,   // gold rings — pop against pink pipe
+        ringEmissive:    0x554400,
         bumperColor:     0x667788,
         bumperEmissive:  0x223344,
         bombColor:       0x2D5A27,
         bombEmissive:    0x0A1A08,
-        barrierColor:    0x4B0082,
-        barrierEmissive: 0x1A0030,
-        starColor:       0xFFCCEE,
-        ambientColor:    0x442255,
+        barrierColor:    0x6600CC,   // bright purple barrier
+        barrierEmissive: 0x220066,
+        starColor:       0xFFCCEE,   // fallback (vertex colours used instead)
+        ambientColor:    0x551166,   // richer ambient purple
     },
 };
 
@@ -66,6 +66,7 @@ let _neonLightA   = null;
 let _neonLightB   = null;
 let _ambientLight = null;
 let _starfieldMat = null;
+let _starfieldPts = null;   // tracked so it can be rebuilt on theme change
 
 // ── Scene initialisation ─────────────────────────────────────────────
 
@@ -93,10 +94,11 @@ function initScene() {
     dirLight.position.set(300, 600, 300);
     scene.add(dirLight);
 
-    _neonLightA = new THREE.PointLight(T.theme.neonA, 2.5, 800);
+    const neonIntensity = T.isUnicorn ? 3.5 : 2.5;
+    _neonLightA = new THREE.PointLight(T.theme.neonA, neonIntensity, 900);
     _neonLightA.position.set(-200, 50, -600);
     scene.add(_neonLightA);
-    _neonLightB = new THREE.PointLight(T.theme.neonB, 2.5, 800);
+    _neonLightB = new THREE.PointLight(T.theme.neonB, neonIntensity, 900);
     _neonLightB.position.set(200, 50, -600);
     scene.add(_neonLightB);
 
@@ -107,6 +109,8 @@ function initScene() {
     buildPipePool();
     buildPlayerMeshes();
     buildStarfield();
+
+    if (T.isUnicorn) showUnicornBackground();
 
     window.addEventListener('resize', onResize);
 }
@@ -122,8 +126,15 @@ function onResize() {
 // ── Starfield ────────────────────────────────────────────────────────
 
 function buildStarfield() {
+    // Remove existing starfield so it can be rebuilt on theme switch
+    if (_starfieldPts) {
+        gameState.scene.remove(_starfieldPts);
+        _starfieldPts = null;
+        _starfieldMat = null;
+    }
+
     const T     = getTheme();
-    const count = 1800;
+    const count = T.isUnicorn ? 2400 : 1800;
     const geo   = new THREE.BufferGeometry();
     const pos   = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -132,8 +143,41 @@ function buildStarfield() {
         pos[i * 3 + 2] = -Math.random() * 6000;
     }
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    _starfieldMat = new THREE.PointsMaterial({ color: T.theme.starColor, size: 3, sizeAttenuation: true });
-    gameState.scene.add(new THREE.Points(geo, _starfieldMat));
+
+    if (T.isUnicorn) {
+        // Rainbow vertex colours for a magical sparkle field
+        const palette = [
+            [1.00, 0.79, 0.94],  // hot pink
+            [1.00, 0.85, 1.00],  // light violet
+            [0.87, 0.80, 1.00],  // lavender
+            [1.00, 0.87, 0.53],  // gold
+            [1.00, 1.00, 1.00],  // white
+            [0.62, 0.92, 1.00],  // sky blue
+            [0.85, 1.00, 0.75],  // mint
+        ];
+        const cols = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+            const c       = palette[Math.floor(Math.random() * palette.length)];
+            cols[i * 3]   = c[0];
+            cols[i * 3 + 1] = c[1];
+            cols[i * 3 + 2] = c[2];
+        }
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+        _starfieldMat = new THREE.PointsMaterial({
+            vertexColors:    true,
+            size:            3.8,
+            sizeAttenuation: true,
+        });
+    } else {
+        _starfieldMat = new THREE.PointsMaterial({
+            color:           T.theme.starColor,
+            size:            3,
+            sizeAttenuation: true,
+        });
+    }
+
+    _starfieldPts = new THREE.Points(geo, _starfieldMat);
+    gameState.scene.add(_starfieldPts);
 }
 
 // ── Main render frame ────────────────────────────────────────────────
@@ -168,7 +212,21 @@ function applyThemeToScene() {
     if (_neonLightA)   _neonLightA.color.set(T.theme.neonA);
     if (_neonLightB)   _neonLightB.color.set(T.theme.neonB);
     if (_ambientLight) _ambientLight.color.set(T.theme.ambientColor);
-    if (_starfieldMat) _starfieldMat.color.set(T.theme.starColor);
+
+    // Update neon light intensity per theme
+    const neonIntensity = T.isUnicorn ? 3.5 : 2.5;
+    if (_neonLightA) _neonLightA.intensity = neonIntensity;
+    if (_neonLightB) _neonLightB.intensity = neonIntensity;
+
+    // Rebuild starfield (unicorn uses vertex colours, default uses a single colour)
+    buildStarfield();
+
+    // Show / hide the unicorn castle background
+    if (T.isUnicorn) {
+        showUnicornBackground();
+    } else {
+        hideUnicornBackground();
+    }
 
     // Rebuild pipe pool with new colours
     for (const seg of gameState.pipeSegments) {
