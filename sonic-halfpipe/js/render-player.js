@@ -99,9 +99,6 @@ function buildPlayerMeshes() {
             ? buildUnicornPlayerMesh(i)
             : _buildDefaultPlayerMesh(i);
 
-        // Scale up avatars so they remain clearly visible from the elevated camera.
-        group.scale.setScalar(1.5);
-
         gameState.players[i].mesh = group;
         if (i < gameState.playerCount) {
             gameState.scene.add(group);
