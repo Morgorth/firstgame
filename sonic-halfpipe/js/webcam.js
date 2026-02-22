@@ -36,7 +36,7 @@ async function initWebcam() {
         statusEl.textContent = 'Loading AI pose detection...';
         await initPoseDetector();
 
-        statusEl.textContent = 'AI ready! Move LEFT / CENTER / RIGHT.';
+        statusEl.textContent = 'AI ready! Move freely across the pipe.';
         statusEl.style.color = '#00ff00';
         requestAnimationFrame(trackPoses);
         return true;
@@ -132,23 +132,23 @@ async function trackPoses() {
 function updatePositionMarkers() {
     const marker1 = document.getElementById('positionMarker');
     const marker2 = document.getElementById('positionMarkerP2');
-    const numLanes = CONFIG.pipe.laneCount;
+    const maxT = CONFIG.pipe.laneCount - 1; // continuous range 0…maxT
     const containerW = 200;
     const markerW = 20;
 
     if (gameState.running && gameState.playerCount === 2) {
         marker1.style.background = '#00ffff';
         marker1.style.boxShadow = '0 0 10px #00ffff';
-        marker1.style.left = ((gameState.players[0].targetLane + 0.5) / numLanes * containerW - markerW / 2) + 'px';
+        marker1.style.left = (gameState.players[0].targetLane / maxT * containerW - markerW / 2) + 'px';
         marker2.style.display = 'block';
         marker2.style.background = '#ff00ff';
         marker2.style.boxShadow = '0 0 10px #ff00ff';
-        marker2.style.left = ((gameState.players[1].targetLane + 0.5) / numLanes * containerW - markerW / 2) + 'px';
+        marker2.style.left = (gameState.players[1].targetLane / maxT * containerW - markerW / 2) + 'px';
     } else {
-        const lane = gameState.players[0] ? gameState.players[0].targetLane : 2;
+        const lane = gameState.players[0] ? gameState.players[0].targetLane : maxT / 2;
         marker1.style.background = '#00ffff';
         marker1.style.boxShadow = '0 0 10px #00ffff';
-        marker1.style.left = ((lane + 0.5) / numLanes * containerW - markerW / 2) + 'px';
+        marker1.style.left = (lane / maxT * containerW - markerW / 2) + 'px';
         marker2.style.display = 'none';
     }
 }
@@ -388,14 +388,14 @@ function checkCrouchGesture(pose, playerIndex) {
     }
 }
 
-// Map pose X position to a lane (0–4) within that player's screen half.
+// Map pose X position to a continuous pipe position (0…laneCount-1).
+// No dead-zone: the full camera width maps directly to the full pipe arc.
 function poseToLane(pose, playerIndex) {
     const video = webcamState.video;
     if (!video) return CONFIG.player.startLane;
 
     const cx = getPoseCenterX(pose);
     const W = video.videoWidth;
-    const cfg = CONFIG.camera;
 
     let norm; // 0.0 (far left) … 1.0 (far right) within this player's zone
     if (gameState.playerCount === 2) {
@@ -409,10 +409,6 @@ function poseToLane(pose, playerIndex) {
         // Full width for single player
         norm = 1 - Math.min(1, Math.max(0, cx / W));
     }
-
-    // Apply dead-zone around centre to reduce jitter
-    const centre = 0.5;
-    if (Math.abs(norm - centre) < cfg.laneDeadzone) norm = centre;
 
     return norm * (CONFIG.pipe.laneCount - 1);
 }
