@@ -116,8 +116,7 @@ async function trackPoses() {
         // Update position indicators
         updatePositionMarkers();
 
-        if (webcamState.registrationPhase === 'registering' ||
-            webcamState.registrationPhase === 'ready') {
+        if (webcamState.registrationPhase === 'registering') {
             drawRegistrationDebug(sortedPoses);
         } else {
             drawPoseDebug();

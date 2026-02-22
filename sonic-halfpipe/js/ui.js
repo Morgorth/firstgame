@@ -138,14 +138,12 @@ function submitHighScore() {
 // ── High-score table ─────────────────────────────────────────────────
 
 function renderHighScoreTable() {
-    const tbody = document.getElementById('highScoreBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    highScores.slice(0, 10).forEach((hs, i) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${i + 1}</td><td>${hs.name}</td>
-            <td>${hs.score}</td><td>${hs.rings}</td>`;
-        tbody.appendChild(tr);
+    const rows = highScores.slice(0, 10).map((hs, i) =>
+        `<tr><td>${i + 1}</td><td>${hs.name}</td><td>${hs.score}</td><td>${hs.rings}</td></tr>`
+    ).join('');
+    ['highScoreBody', 'highScoreBodyEnd'].forEach(id => {
+        const tbody = document.getElementById(id);
+        if (tbody) tbody.innerHTML = rows;
     });
 }
 

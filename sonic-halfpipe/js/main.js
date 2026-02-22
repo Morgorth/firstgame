@@ -57,12 +57,16 @@ function startGame() {
     showScreen('gameScreen');
     updateHUD();
 
-    // Wire face images to HUD
-    for (let i = 0; i < gameState.playerCount; i++) {
+    // Wire face images to HUD (hide if no face was captured)
+    for (let i = 0; i < 2; i++) {
         const imgEl = document.getElementById(i === 0 ? 'hudFaceP1' : 'hudFaceP2');
-        if (imgEl && gameState.players[i].faceImage) {
+        if (!imgEl) continue;
+        if (gameState.players[i].faceImage) {
             imgEl.src = gameState.players[i].faceImage.src;
             imgEl.style.display = 'block';
+        } else {
+            imgEl.src = '';
+            imgEl.style.display = 'none';
         }
     }
 

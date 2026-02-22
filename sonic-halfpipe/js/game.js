@@ -268,6 +268,7 @@ function gameTick() {
     if (!gameState.running || gameState.countdownActive) return;
 
     gameState.frameCount++;
+    applyKeyboardInput();
     updateSpeedAndDistance();
     scrollWorld();
     spawnObstacles();
