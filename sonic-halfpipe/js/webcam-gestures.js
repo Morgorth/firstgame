@@ -122,61 +122,120 @@ function handleGameplayPoseTracking(sortedPoses, video) {
     const cx     = webcamState.ctx;
     const canvas = webcamState.canvas;
 
-    for (let i = 0; i < gameState.playerCount; i++) {
-        const reg = webcamState.registeredPlayers[i];
-        if (!reg.ready) continue;
-
-        const pose = findPoseForPlayer(sortedPoses, i, video, cx, canvas);
-        webcamState.playerPoses[i] = pose;
-        if (!pose) continue;
-
-        gameState.players[i].targetLane = poseToLane(pose, i);
-
-        checkJumpGesture(pose, i);
-        checkCrouchGesture(pose, i);
-
-        if (reg.colorSignature) {
-            const current = sampleTorsoColor(pose, video, cx, canvas);
-            if (current) {
-                reg.colorSignature = updateColorSignature(
-                    reg.colorSignature, current, CONFIG.colorTracking.updateAlpha
-                );
-            }
+    if (gameState.playerCount === 2) {
+        assignTwoPlayerPoses(sortedPoses, video, cx, canvas);
+    } else {
+        // 1-player: pick first pose
+        const pose = sortedPoses[0] || null;
+        webcamState.playerPoses[0] = pose;
+        if (pose) {
+            if (pose.id !== undefined) webcamState.playerTrackingIds[0] = pose.id;
+            gameState.players[0].targetLane = poseToLane(pose, 0);
+            checkJumpGesture(pose, 0);
+            checkCrouchGesture(pose, 0);
         }
     }
 }
 
-// Return the pose most likely to belong to the given player.
-function findPoseForPlayer(sortedPoses, playerIndex, video, cx, canvas) {
-    if (!sortedPoses.length) return null;
+// Two-player pose assignment using MoveNet tracking IDs for persistence.
+// Falls back to joint colour-swap detection, then position, when IDs don't match.
+// Ensures the same pose is never assigned to both players (mutual exclusion).
+function assignTwoPlayerPoses(sortedPoses, video, cx, canvas) {
+    if (sortedPoses.length === 0) {
+        webcamState.playerPoses = [null, null];
+        return;
+    }
 
-    const reg = webcamState.registeredPlayers[playerIndex];
+    const ids = webcamState.playerTrackingIds;
+    let p0Pose = null, p1Pose = null;
 
-    // Match by MoveNet tracking ID first
-    if (reg.poseId !== null) {
-        for (const p of sortedPoses) {
-            if (p.id === reg.poseId) return p;
+    // Step 1: match by MoveNet tracking ID (persists across frames)
+    if (ids[0] !== null || ids[1] !== null) {
+        for (const pose of sortedPoses) {
+            if (pose.id !== undefined) {
+                if (pose.id === ids[0]) p0Pose = pose;
+                if (pose.id === ids[1]) p1Pose = pose;
+            }
         }
     }
 
-    // Fall back to color signature matching
-    let best = null;
-    let bestScore = CONFIG.colorTracking.matchThreshold;
-    for (const p of sortedPoses) {
-        const sig   = sampleTorsoColor(p, video, cx, canvas);
-        const score = compareColorSignatures(reg.colorSignature, sig);
-        if (score > bestScore) { bestScore = score; best = p; }
-    }
-    if (best) {
-        reg.poseId = best.id;
-        return best;
+    // Step 2: assign unmatched poses using colour-swap detection then position
+    const unmatched = sortedPoses.filter(p => p !== p0Pose && p !== p1Pose);
+
+    if (!p0Pose && !p1Pose && unmatched.length >= 2) {
+        const reg0 = webcamState.registeredPlayers[0];
+        const reg1 = webcamState.registeredPlayers[1];
+
+        // Positional default: P0 registered on left half of camera → leftmost = [0]
+        let candidateP0 = unmatched[0];
+        let candidateP1 = unmatched[unmatched.length - 1];
+
+        if (reg0.colorSignature && reg1.colorSignature && cx && canvas) {
+            cx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const colorA = sampleTorsoColor(candidateP0, video, cx, canvas);
+            const colorB = sampleTorsoColor(candidateP1, video, cx, canvas);
+            if (colorA && colorB) {
+                const normalScore = compareColorSignatures(reg0.colorSignature, colorA)
+                                  + compareColorSignatures(reg1.colorSignature, colorB);
+                const swapScore   = compareColorSignatures(reg0.colorSignature, colorB)
+                                  + compareColorSignatures(reg1.colorSignature, colorA);
+                if (swapScore - normalScore > CONFIG.colorTracking.swapThreshold) {
+                    candidateP0 = unmatched[unmatched.length - 1];
+                    candidateP1 = unmatched[0];
+                }
+            }
+        }
+        p0Pose = candidateP0;
+        p1Pose = candidateP1;
+    } else if (!p0Pose && unmatched.length > 0) {
+        p0Pose = unmatched[0];
+    } else if (!p1Pose && unmatched.length > 0) {
+        p1Pose = unmatched[unmatched.length - 1];
     }
 
-    // Fall back to positional heuristic (left pose → P1, right pose → P2)
-    if (gameState.playerCount === 2) {
-        return playerIndex === 0 ? sortedPoses[0] : sortedPoses[sortedPoses.length - 1];
+    // Single-pose fallback: use position to decide which player
+    if (sortedPoses.length === 1 && !p0Pose && !p1Pose) {
+        const pose = sortedPoses[0];
+        // P0 registered on left half of camera (x < W/2)
+        if (getPoseCenterX(pose) < video.videoWidth / 2) {
+            p0Pose = pose;
+        } else {
+            p1Pose = pose;
+        }
     }
-    return sortedPoses[0];
+
+    // Step 3: refresh tracking IDs from this frame's matches
+    if (p0Pose && p0Pose.id !== undefined) ids[0] = p0Pose.id;
+    if (p1Pose && p1Pose.id !== undefined) ids[1] = p1Pose.id;
+
+    // Step 3b: adaptive colour signature update — only when matched confidently by ID
+    if (gameState.frameCount % CONFIG.colorTracking.adaptiveFrameInterval === 0) {
+        for (let pi = 0; pi < 2; pi++) {
+            const pose = pi === 0 ? p0Pose : p1Pose;
+            const reg  = webcamState.registeredPlayers[pi];
+            if (pose && pose.id !== undefined && pose.id === ids[pi] && reg.colorSignature && cx && canvas) {
+                const currentColor = sampleTorsoColor(pose, video, cx, canvas);
+                if (currentColor) {
+                    reg.colorSignature = updateColorSignature(
+                        reg.colorSignature, currentColor, CONFIG.colorTracking.updateAlpha
+                    );
+                }
+            }
+        }
+    }
+
+    // Step 4: apply lane, jump, and crouch to each player
+    const assignedPoses = [p0Pose, p1Pose];
+    for (let i = 0; i < 2; i++) {
+        const pose   = assignedPoses[i];
+        webcamState.playerPoses[i] = pose || null;
+        if (!pose) continue;
+        const player = gameState.players[i];
+        if (!player || !player.active) continue;
+        player.targetLane = poseToLane(pose, i);
+        checkJumpGesture(pose, i);
+        checkCrouchGesture(pose, i);
+    }
 }
 
 // ── Fallback: pixel motion tracking (no MoveNet) ─────────────────────

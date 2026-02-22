@@ -82,6 +82,8 @@ const CONFIG = {
         maxValue: 0.95,
         minPixels: 20,
         matchThreshold: 0.45,
-        updateAlpha: 0.15,
+        updateAlpha: 0.05,           // conservative EMA alpha (only applied on ID-confirmed frames)
+        swapThreshold: 0.15,         // colour-score margin required to override positional default
+        adaptiveFrameInterval: 10,   // frames between adaptive colour-signature updates
     },
 };
