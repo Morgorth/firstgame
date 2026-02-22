@@ -26,6 +26,11 @@ function startGame() {
     gameState.particles = [];
     gameState.playerCount = webcamState.playerCount || 1;
 
+    // Rebuild player meshes for the current theme and player count.
+    // applyThemeToScene() also rebuilds the pipe pool and lights, so only
+    // call it if the 3D scene is already initialised.
+    if (gameState.scene) buildPlayerMeshes();
+
     // Reset players
     for (let i = 0; i < 2; i++) {
         const p = gameState.players[i];

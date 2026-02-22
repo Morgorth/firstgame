@@ -94,13 +94,25 @@ function showEndScreen(win, winnerIndex) {
 
     if (win) {
         const winnerName = winnerIndex === 0 ? 'PLAYER 1' : 'PLAYER 2';
-        titleEl.textContent = '🏆 YOU WIN! 🏆';
-        titleEl.style.color = '#FFD700';
-        msgEl.textContent = `${winnerName} collected all ${CONFIG.rings.goal} rings!`;
+        if (gameTheme === 'unicorn') {
+            titleEl.textContent = '\u2728 MAGICAL VICTORY! \u2728';
+            titleEl.style.color = '#FF69B4';
+            msgEl.textContent = `${winnerName} collected all ${CONFIG.rings.goal} magic rings — the unicorn soars!`;
+        } else {
+            titleEl.textContent = '\uD83C\uDFC6 YOU WIN! \uD83C\uDFC6';
+            titleEl.style.color = '#FFD700';
+            msgEl.textContent = `${winnerName} collected all ${CONFIG.rings.goal} rings!`;
+        }
     } else {
-        titleEl.textContent = 'GAME OVER';
-        titleEl.style.color = '#FF4444';
-        msgEl.textContent = 'Better luck next time!';
+        if (gameTheme === 'unicorn') {
+            titleEl.textContent = 'YOUR UNICORN STUMBLED\u2026';
+            titleEl.style.color = '#DA70D6';
+            msgEl.textContent = 'The magical academy awaits your return!';
+        } else {
+            titleEl.textContent = 'GAME OVER';
+            titleEl.style.color = '#FF4444';
+            msgEl.textContent = 'Better luck next time!';
+        }
     }
 
     document.getElementById('endScore').textContent = `Score: ${gameState.score}`;
@@ -135,6 +147,33 @@ function renderHighScoreTable() {
             <td>${hs.score}</td><td>${hs.rings}</td>`;
         tbody.appendChild(tr);
     });
+}
+
+// ── Theme selection ───────────────────────────────────────────────────
+
+function selectTheme(theme) {
+    gameTheme = theme;
+
+    // Update button active states
+    document.querySelectorAll('.btn-theme').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+    });
+
+    // Apply to the live 3D scene (pipe colours, lights, player meshes)
+    applyThemeToScene();
+
+    // Update title subtitle for the selected theme
+    const subEl = document.getElementById('titleSub');
+    if (subEl) {
+        if (theme === 'unicorn') {
+            subEl.textContent = 'Unicorn Academy — ride, collect, and gallop to glory!';
+        } else {
+            subEl.textContent = 'Collect 50 rings. Dodge everything.';
+        }
+    }
+
+    // Update the page title
+    document.title = theme === 'unicorn' ? 'Unicorn Academy Half-Pipe' : 'Sonic Half-Pipe';
 }
 
 // ── Webcam overlay toggle ────────────────────────────────────────────
