@@ -40,7 +40,8 @@ function spawnObstacles() {
     // Randomly pick one of three obstacle types
     const types = ['bumper', 'bomb', 'barrier'];
     const type = types[Math.floor(Math.random() * types.length)];
-    const lane = Math.floor(Math.random() * numLanes);
+    // Spawn at any continuous position across the full pipe arc
+    const lane = Math.random() * (numLanes - 1);
 
     gameState.obstacles.push({
         type,
@@ -58,8 +59,8 @@ function spawnRings() {
     _ringSpawnTimer = 0;
 
     const numLanes = CONFIG.pipe.laneCount;
-    // Spawn a short run of 2–4 rings in the same lane
-    const lane = Math.floor(Math.random() * numLanes);
+    // Spawn a short run of 2–4 rings at a continuous position on the pipe arc
+    const lane = Math.random() * (numLanes - 1);
     const count = 2 + Math.floor(Math.random() * 3);
     for (let i = 0; i < count; i++) {
         gameState.ringItems.push({

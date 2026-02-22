@@ -59,8 +59,8 @@ const CONFIG = {
         crouchShoulderDropRatio: 0.10,
         crouchHoldFrames: 3,
         crouchCooldownFrames: 20,
-        // Lane dead-zone (fraction of half-frame width)
-        laneDeadzone: 0.04,
+        // Free movement: full camera width maps continuously to full pipe arc.
+        // No dead-zone; laneChangeSpeed in player config handles smoothing.
     },
 
     // Wave-gesture (reused from Wave Assault for registration trigger)
