@@ -6,6 +6,7 @@ const keys = {};
 
 // ── Control / UI selections ─────────────────────────────────────────
 let controlMode = 'keyboard';   // 'keyboard' | 'camera'
+let gameTheme   = 'default';    // 'default' | 'unicorn'
 
 // ── Webcam / pose-detection state ───────────────────────────────────
 let webcamState = {

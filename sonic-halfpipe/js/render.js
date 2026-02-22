@@ -1,19 +1,84 @@
 // Three.js rendering for Sonic Half-Pipe.
 // Builds the pipe, player meshes, obstacles, rings, and particles.
 
+// ── Per-theme visual constants ────────────────────────────────────────
+//
+// Add a new entry here and a matching render-theme-*.js to add a theme.
+// Fields mirror Wave Assault's RENDER_THEME for consistency.
+const RENDER_THEME = {
+    default: {
+        pipeColor:       0x112244,
+        pipeEmissive:    0x001133,
+        wireColor:       0x0066ff,
+        wireOpacity:     0.25,
+        fogColor:        0x000011,
+        clearColor:      0x000011,
+        neonA:           0x00ffff,   // left neon point light
+        neonB:           0xff00ff,   // right neon point light
+        ringColor:       0xFFD700,
+        ringEmissive:    0x554400,
+        bumperColor:     0xff6600,
+        bumperEmissive:  0x331100,
+        bombColor:       0x222222,
+        bombEmissive:    0x111111,
+        barrierColor:    0xff0044,
+        barrierEmissive: 0x330011,
+        starColor:       0xffffff,
+        ambientColor:    0x334466,
+    },
+    unicorn: {
+        pipeColor:       0x1A0030,
+        pipeEmissive:    0x0F001E,
+        wireColor:       0xFF69B4,   // hot pink lattice
+        wireOpacity:     0.32,
+        fogColor:        0x0A0018,
+        clearColor:      0x0A0018,
+        neonA:           0xFF69B4,   // pink
+        neonB:           0xDA70D6,   // orchid
+        ringColor:       0xFF69B4,   // magic pink rings
+        ringEmissive:    0x441133,
+        bumperColor:     0x667788,   // storm cloud gray
+        bumperEmissive:  0x223344,
+        bombColor:       0x2D5A27,   // bramble green
+        bombEmissive:    0x0A1A08,
+        barrierColor:    0x4B0082,   // dark magic purple
+        barrierEmissive: 0x1A0030,
+        starColor:       0xFFCCEE,   // pink-tinted sparkles
+        ambientColor:    0x442255,
+    },
+};
+
+// Returns the active RENDER_THEME entry plus boolean helpers.
+// Call once per frame and pass the result down.
+function getTheme() {
+    const theme = RENDER_THEME[gameTheme] || RENDER_THEME.default;
+    return {
+        isUnicorn: gameTheme === 'unicorn',
+        isDefault: !RENDER_THEME[gameTheme] || gameTheme === 'default',
+        theme,
+    };
+}
+
+// ── Module-level refs for live theme updates ─────────────────────────
+let _neonLightA   = null;
+let _neonLightB   = null;
+let _ambientLight = null;
+let _starfieldMat = null;
+
 // ── Scene initialisation ─────────────────────────────────────────────
 
 function initScene() {
     const canvas = document.getElementById('gameCanvas');
+    const T = getTheme();
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = false;
-    renderer.setClearColor(0x000011);
+    renderer.setClearColor(T.theme.clearColor);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x000011, 1200, 4800);
+    scene.fog = new THREE.Fog(T.theme.fogColor, 1200, 4800);
 
     // Camera: sits slightly behind and above the player
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 6000);
@@ -21,18 +86,19 @@ function initScene() {
     camera.lookAt(0, CONFIG.pipe.radius * 0.06, -800);
 
     // Ambient + directional light
-    scene.add(new THREE.AmbientLight(0x334466, 1.2));
+    _ambientLight = new THREE.AmbientLight(T.theme.ambientColor, 1.2);
+    scene.add(_ambientLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
     dirLight.position.set(300, 600, 300);
     scene.add(dirLight);
 
-    // Neon point lights that travel with the scene
-    const neonA = new THREE.PointLight(0x00ffff, 2.5, 800);
-    neonA.position.set(-200, 50, -600);
-    scene.add(neonA);
-    const neonB = new THREE.PointLight(0xff00ff, 2.5, 800);
-    neonB.position.set(200, 50, -600);
-    scene.add(neonB);
+    // Neon point lights — stored for live theme updates
+    _neonLightA = new THREE.PointLight(T.theme.neonA, 2.5, 800);
+    _neonLightA.position.set(-200, 50, -600);
+    scene.add(_neonLightA);
+    _neonLightB = new THREE.PointLight(T.theme.neonB, 2.5, 800);
+    _neonLightB.position.set(200, 50, -600);
+    scene.add(_neonLightB);
 
     gameState.scene = scene;
     gameState.camera = camera;
@@ -102,10 +168,11 @@ function buildPipeSegment(zOffset) {
     shape.setIndex(indices);
     shape.computeVertexNormals();
 
-    // Neon grid material
+    // Neon grid material — colours driven by current theme
+    const T = getTheme();
     const mat = new THREE.MeshStandardMaterial({
-        color: 0x112244,
-        emissive: 0x001133,
+        color:    T.theme.pipeColor,
+        emissive: T.theme.pipeEmissive,
         roughness: 0.8,
         metalness: 0.1,
         side: THREE.BackSide,
@@ -113,12 +180,12 @@ function buildPipeSegment(zOffset) {
     });
     const mesh = new THREE.Mesh(shape, mat);
 
-    // Add a wireframe overlay for the retro neon-grid look
+    // Wireframe overlay for the retro neon-grid look
     const wireMat = new THREE.MeshBasicMaterial({
-        color: 0x0066ff,
-        wireframe: true,
+        color:       T.theme.wireColor,
+        wireframe:   true,
         transparent: true,
-        opacity: 0.25,
+        opacity:     T.theme.wireOpacity,
     });
     const wire = new THREE.Mesh(shape.clone(), wireMat);
     const group = new THREE.Group();
@@ -153,69 +220,84 @@ function updatePipePool() {
 // ── Starfield ────────────────────────────────────────────────────────
 
 function buildStarfield() {
+    const T = getTheme();
     const count = 1800;
     const geo = new THREE.BufferGeometry();
     const pos = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-        pos[i * 3] = (Math.random() - 0.5) * 8000;
+        pos[i * 3]     = (Math.random() - 0.5) * 8000;
         pos[i * 3 + 1] = (Math.random() - 0.5) * 4000 + 1000;
         pos[i * 3 + 2] = -Math.random() * 6000;
     }
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 3, sizeAttenuation: true });
-    gameState.scene.add(new THREE.Points(geo, mat));
+    _starfieldMat = new THREE.PointsMaterial({ color: T.theme.starColor, size: 3, sizeAttenuation: true });
+    gameState.scene.add(new THREE.Points(geo, _starfieldMat));
 }
 
 // ── Player meshes ────────────────────────────────────────────────────
 
-const _playerMaterials = [
-    new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x006666, roughness: 0.3 }),
-    new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0x660066, roughness: 0.3 }),
-];
+// Default-theme player mesh builder (the original blob + eyes + trail).
+function _buildDefaultPlayerMesh(playerIndex) {
+    const colors = [
+        { body: 0x00ffff, emissive: 0x006666, trail: 0x00ffff },
+        { body: 0xff00ff, emissive: 0x660066, trail: 0xff00ff },
+    ];
+    const c = colors[playerIndex];
+    const group = new THREE.Group();
 
+    const bodyMat = new THREE.MeshStandardMaterial({
+        color: c.body, emissive: c.emissive, roughness: 0.3,
+    });
+    const body = new THREE.Mesh(new THREE.SphereGeometry(28, 16, 12), bodyMat);
+    body.scale.set(0.9, 1.15, 0.9);
+    group.add(body);
+
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const leftEye = new THREE.Mesh(new THREE.SphereGeometry(6, 8, 8), eyeMat);
+    leftEye.position.set(-9, 8, 24);
+    group.add(leftEye);
+    const rightEye = leftEye.clone();
+    rightEye.position.set(9, 8, 24);
+    group.add(rightEye);
+
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const lPupil = new THREE.Mesh(new THREE.SphereGeometry(3, 6, 6), pupilMat);
+    lPupil.position.set(-9, 8, 30);
+    group.add(lPupil);
+    const rPupil = lPupil.clone();
+    rPupil.position.set(9, 8, 30);
+    group.add(rPupil);
+
+    const trailMat = new THREE.MeshBasicMaterial({
+        color: c.trail, transparent: true, opacity: 0.3,
+    });
+    const trail = new THREE.Mesh(new THREE.ConeGeometry(18, 90, 8), trailMat);
+    trail.rotation.x = Math.PI / 2;
+    trail.position.z = -50;
+    group.add(trail);
+
+    return group;
+}
+
+// Builds (or rebuilds) both player meshes using the current theme.
+// Safely removes any existing meshes from the scene first.
 function buildPlayerMeshes() {
+    const T = getTheme();
+
     for (let i = 0; i < 2; i++) {
-        const group = new THREE.Group();
+        // Remove existing mesh from scene
+        if (gameState.players[i].mesh) {
+            gameState.scene.remove(gameState.players[i].mesh);
+            gameState.players[i].mesh = null;
+        }
 
-        // Body
-        const body = new THREE.Mesh(
-            new THREE.SphereGeometry(28, 16, 12),
-            _playerMaterials[i]
-        );
-        body.scale.set(0.9, 1.15, 0.9);
-        group.add(body);
-
-        // Eyes
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const leftEye = new THREE.Mesh(new THREE.SphereGeometry(6, 8, 8), eyeMat);
-        leftEye.position.set(-9, 8, 24);
-        group.add(leftEye);
-        const rightEye = leftEye.clone();
-        rightEye.position.set(9, 8, 24);
-        group.add(rightEye);
-
-        // Pupils
-        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-        const lPupil = new THREE.Mesh(new THREE.SphereGeometry(3, 6, 6), pupilMat);
-        lPupil.position.set(-9, 8, 30);
-        group.add(lPupil);
-        const rPupil = lPupil.clone();
-        rPupil.position.set(9, 8, 30);
-        group.add(rPupil);
-
-        // Trail
-        const trailMat = new THREE.MeshBasicMaterial({
-            color: i === 0 ? 0x00ffff : 0xff00ff,
-            transparent: true,
-            opacity: 0.3,
-        });
-        const trail = new THREE.Mesh(
-            new THREE.ConeGeometry(18, 90, 8),
-            trailMat
-        );
-        trail.rotation.x = Math.PI / 2;
-        trail.position.z = -50;
-        group.add(trail);
+        // Build theme-appropriate mesh
+        let group;
+        if (T.isUnicorn) {
+            group = buildUnicornPlayerMesh(i);
+        } else {
+            group = _buildDefaultPlayerMesh(i);
+        }
 
         gameState.players[i].mesh = group;
         if (i < gameState.playerCount) {
@@ -226,13 +308,19 @@ function buildPlayerMeshes() {
 
 // ── Obstacle mesh builders ───────────────────────────────────────────
 
-const _obstacleMats = {
-    bumper: new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0x331100, roughness: 0.4 }),
-    bomb: new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0x111111, roughness: 0.7 }),
-    barrier: new THREE.MeshStandardMaterial({ color: 0xff0044, emissive: 0x330011, roughness: 0.4 }),
-};
-
 function buildObstacleMesh(type) {
+    const T = getTheme();
+
+    // Unicorn theme uses fully custom obstacle geometry
+    if (T.isUnicorn) return buildUnicornObstacleMesh(type);
+
+    // Default theme
+    const mats = {
+        bumper:  new THREE.MeshStandardMaterial({ color: T.theme.bumperColor,  emissive: T.theme.bumperEmissive,  roughness: 0.4 }),
+        bomb:    new THREE.MeshStandardMaterial({ color: T.theme.bombColor,    emissive: T.theme.bombEmissive,    roughness: 0.7 }),
+        barrier: new THREE.MeshStandardMaterial({ color: T.theme.barrierColor, emissive: T.theme.barrierEmissive, roughness: 0.4 }),
+    };
+
     let geo;
     if (type === 'bumper') {
         geo = new THREE.SphereGeometry(CONFIG.obstacles.bumperRadius, 16, 12);
@@ -245,7 +333,7 @@ function buildObstacleMesh(type) {
             CONFIG.obstacles.barrierDepth
         );
     }
-    const mesh = new THREE.Mesh(geo, _obstacleMats[type]);
+    const mesh = new THREE.Mesh(geo, mats[type]);
 
     // For bombs add a "fuse" spike
     if (type === 'bomb') {
@@ -261,20 +349,20 @@ function buildObstacleMesh(type) {
 
 // ── Ring mesh builder ────────────────────────────────────────────────
 
-const _ringMat = new THREE.MeshStandardMaterial({
-    color: 0xFFD700,
-    emissive: 0x554400,
-    roughness: 0.2,
-    metalness: 0.8,
-});
-
 function buildRingMesh() {
-    const geo = new THREE.TorusGeometry(
-        CONFIG.rings.outerRadius,
-        CONFIG.rings.tubeRadius,
-        8, 24
-    );
-    return new THREE.Mesh(geo, _ringMat);
+    const T = getTheme();
+
+    // Unicorn theme uses a custom decorated ring
+    if (T.isUnicorn) return buildUnicornRingMesh();
+
+    const mat = new THREE.MeshStandardMaterial({
+        color:    T.theme.ringColor,
+        emissive: T.theme.ringEmissive,
+        roughness: 0.2,
+        metalness: 0.8,
+    });
+    const geo = new THREE.TorusGeometry(CONFIG.rings.outerRadius, CONFIG.rings.tubeRadius, 8, 24);
+    return new THREE.Mesh(geo, mat);
 }
 
 // ── Particle mesh pool ───────────────────────────────────────────────
@@ -409,6 +497,47 @@ function updateParticleMeshes() {
             pt.mesh = null;
         }
     }
+}
+
+// ── Live theme application ───────────────────────────────────────────
+//
+// Called by ui.js:selectTheme() when the player picks a theme on the
+// title screen, and also at the start of each game to guarantee
+// consistency.  Updates all long-lived scene objects without a full
+// Three.js reinitialisation.
+
+function applyThemeToScene() {
+    if (!gameState.scene) return;
+    const T = getTheme();
+
+    // Fog + clear colour
+    if (gameState.scene.fog) {
+        gameState.scene.fog.color.set(T.theme.fogColor);
+    }
+    if (gameState.renderer) {
+        gameState.renderer.setClearColor(T.theme.clearColor);
+    }
+
+    // Neon point lights
+    if (_neonLightA) _neonLightA.color.set(T.theme.neonA);
+    if (_neonLightB) _neonLightB.color.set(T.theme.neonB);
+    if (_ambientLight) _ambientLight.color.set(T.theme.ambientColor);
+
+    // Starfield tint
+    if (_starfieldMat) _starfieldMat.color.set(T.theme.starColor);
+
+    // Rebuild pipe pool with new colours
+    for (const seg of gameState.pipeSegments) {
+        gameState.scene.remove(seg);
+    }
+    gameState.pipeSegments = [];
+    buildPipePool();
+
+    // Rebuild player meshes with new theme shapes
+    buildPlayerMeshes();
+
+    // Apply CSS body class for UI theming
+    document.body.className = gameTheme === 'default' ? '' : 'theme-' + gameTheme;
 }
 
 // ── Dispose on game reset ────────────────────────────────────────────
