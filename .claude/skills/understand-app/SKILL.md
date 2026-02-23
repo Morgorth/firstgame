@@ -141,7 +141,9 @@ A 3D half-pipe runner built on Three.js. The player skates along a neon half-pip
 | **Logic** | `sonic-halfpipe/js/game.js` | `laneToPosition()`, `jumpHeightAt()`, `spawnObstacles()`, `spawnRings()`, `checkCollisions()`, `updatePlayers()`, `updateSpeedAndDistance()`, `scrollWorld()`, `gameTick()`, `startCountdown()`, `triggerWin()`, `triggerGameOver()` |
 | **Render — orchestrator** | `sonic-halfpipe/js/render.js` | `RENDER_THEME` constants, `getTheme()`, `initScene()`, `buildStarfield()`, `applyThemeToScene()`, `clearSceneItems()`, `renderFrame()` |
 | **Render — pipe** | `sonic-halfpipe/js/render-pipe.js` | `buildPipeSegment()`, `buildPipePool()`, `updatePipePool()` |
-| **Render — unicorn theme** | `sonic-halfpipe/js/render-theme-unicorn.js` | `buildUnicornPlayerMesh()`, `buildUnicornObstacleMesh()`, `buildUnicornRingMesh()` |
+| **Render — unicorn player** | `sonic-halfpipe/js/render-theme-unicorn-player.js` | `_makeUnicornMaterials()`, `_addUnicornBody()`, `_addUnicornRider()`, `_addUnicornTrail()`, `buildUnicornPlayerMesh()` |
+| **Render — unicorn obstacles** | `sonic-halfpipe/js/render-theme-unicorn-obstacles.js` | `_buildUnicornBumper()`, `_buildUnicornBomb()`, `_buildUnicornBarrier()`, `buildUnicornObstacleMesh()` |
+| **Render — unicorn rings** | `sonic-halfpipe/js/render-theme-unicorn-rings.js` | `buildUnicornRingMesh()` |
 | **Render — player** | `sonic-halfpipe/js/render-player.js` | `_buildDefaultPlayerMesh()`, `buildPlayerMeshes()`, `updatePlayerMeshes()` |
 | **Render — obstacles** | `sonic-halfpipe/js/render-obstacles.js` | `buildObstacleMesh()`, `updateObstacleMeshes()` |
 | **Render — rings** | `sonic-halfpipe/js/render-rings.js` | `buildRingMesh()`, `updateRingMeshes()` |
@@ -151,7 +153,7 @@ A 3D half-pipe runner built on Three.js. The player skates along a neon half-pip
 | **HTML** | `sonic-halfpipe/index.html` | DOM structure — titleScreen, setupScreen, gameScreen (HUD + countdown), endScreen, webcamContainer |
 | **CSS** | `sonic-halfpipe/styles.css` | All styling |
 
-**Script load order**: config → state → audio → input → webcam-core → webcam-color → webcam-gestures → webcam-registration → webcam-pose → game → render → render-pipe → render-theme-unicorn → render-player → render-obstacles → render-rings → render-particles → ui → main
+**Script load order**: config → state → audio → input → webcam-core → webcam-color → webcam-gestures → webcam-registration → webcam-pose → game → render → render-pipe → render-theme-unicorn-player → render-theme-unicorn-obstacles → render-theme-unicorn-rings → render-background-unicorn → render-player → render-obstacles → render-rings → render-particles → ui → main
 
 ## Key Sonic Half-Pipe globals
 
@@ -216,7 +218,9 @@ gameState.pipeSegments[]    // recycled pipe mesh pool
 - **Collision detection** → `sonic-halfpipe/js/game.js:checkCollisions`
 - **Obstacle / ring spawning** → `sonic-halfpipe/js/game.js:spawnObstacles + spawnRings`
 - **Player mesh visuals (default theme)** → `sonic-halfpipe/js/render-player.js`
-- **Player mesh visuals (unicorn theme)** → `sonic-halfpipe/js/render-theme-unicorn.js:buildUnicornPlayerMesh`
+- **Player mesh visuals (unicorn theme)** → `sonic-halfpipe/js/render-theme-unicorn-player.js:buildUnicornPlayerMesh`
+- **Obstacle mesh visuals (unicorn theme)** → `sonic-halfpipe/js/render-theme-unicorn-obstacles.js:buildUnicornObstacleMesh`
+- **Ring mesh visuals (unicorn theme)** → `sonic-halfpipe/js/render-theme-unicorn-rings.js:buildUnicornRingMesh`
 - **Obstacle mesh visuals** → `sonic-halfpipe/js/render-obstacles.js`
 - **Ring mesh visuals** → `sonic-halfpipe/js/render-rings.js`
 - **Pipe geometry / materials** → `sonic-halfpipe/js/render-pipe.js`; colour constants → `sonic-halfpipe/js/render.js:RENDER_THEME`
