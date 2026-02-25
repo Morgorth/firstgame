@@ -80,6 +80,22 @@ function restartGame() {
     startGame();
 }
 
+// ── Music toggle ─────────────────────────────────────────────────────
+
+function toggleMusic() {
+    const nowEnabled = !audioSystem.isMusicEnabled();
+    audioSystem.setMusicEnabled(nowEnabled);
+    if (nowEnabled && gameState.running && !gameState.countdownActive) {
+        audioSystem.startMusic(gameTheme);
+    }
+    const btn = document.getElementById('musicToggleBtn');
+    if (btn) {
+        btn.textContent = nowEnabled ? '🎵' : '🔇';
+        btn.title = nowEnabled ? 'Mute music' : 'Unmute music';
+        btn.classList.toggle('muted', !nowEnabled);
+    }
+}
+
 // ── Button wiring (called from inline HTML onclick) ──────────────────
 
 function onTitlePlay1() {

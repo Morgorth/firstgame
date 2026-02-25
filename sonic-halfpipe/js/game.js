@@ -251,6 +251,7 @@ function scrollWorld() {
 function triggerWin(playerIndex) {
     gameState.running = false;
     gameState.phase = 'win';
+    audioSystem.stopMusic();
     audioSystem.playRingsWin();
     showEndScreen(true, playerIndex);
 }
@@ -258,6 +259,7 @@ function triggerWin(playerIndex) {
 function triggerGameOver() {
     gameState.running = false;
     gameState.phase = 'gameover';
+    audioSystem.stopMusic();
     audioSystem.playGameOver();
     showEndScreen(false, 0);
 }
@@ -305,6 +307,7 @@ function startCountdown() {
                 el.classList.remove('pulse');
                 gameState.countdownActive = false;
                 audioSystem.playStart();
+                audioSystem.startMusic(gameTheme);
             }, 700);
         }
     };

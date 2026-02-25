@@ -249,6 +249,20 @@ body {
 .hud-score { font-size: 1rem; font-weight: 700; color: #fff; }
 .hud-speed { font-size: 0.72rem; color: #88aaff; letter-spacing: 0.1em; }
 
+.btn-music-toggle {
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 1rem;
+    padding: 2px 7px;
+    cursor: pointer;
+    transition: opacity 0.2s, border-color 0.2s;
+    align-self: center;
+}
+.btn-music-toggle:hover { border-color: rgba(255,255,255,0.55); }
+.btn-music-toggle.muted { opacity: 0.4; }
+
 /* Countdown */
 #countdownEl {
     position: fixed;
@@ -530,6 +544,7 @@ body.theme-unicorn .hud-player.p2 .hud-face { border-color: #DA70D6; box-shadow:
 body.theme-unicorn .hud-rings     { color: #FFD700; }
 body.theme-unicorn .hud-score     { color: #FF69B4; }
 body.theme-unicorn .hud-speed     { color: #DA70D6; }
+body.theme-unicorn .btn-music-toggle { border-color: rgba(255,105,180,0.4); }
 
 /* Ring progress bars — hot pink for P1, orchid for P2 */
 body.theme-unicorn #ringBarP1Fill {
