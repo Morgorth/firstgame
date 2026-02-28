@@ -44,8 +44,10 @@ function updateRingMeshes() {
             ring.z
         );
         ring.spin += CONFIG.rings.spinSpeed;
-        // No x-tilt: torus default orientation lies in XY plane, hole facing +Z
-        // (toward camera), which is the classic Sonic "run through the ring" look.
-        ring.mesh.rotation.set(0, ring.spin, 0);
+        // Spin around Z so the ring always faces the camera (hole pointing along
+        // +Z toward the player), giving the classic Sonic spinning-ring look.
+        // Spinning around Y instead produces a coin-flip effect that makes rings
+        // periodically edge-on and hard to see/collect.
+        ring.mesh.rotation.set(0, 0, ring.spin);
     }
 }

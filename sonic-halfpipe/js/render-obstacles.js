@@ -68,6 +68,9 @@ function updateObstacleMeshes() {
             surfaceY + ny * typeOffset,
             obs.z
         );
-        obs.mesh.rotation.y += 0.02;
+        // Only spin bumpers/bombs (spheres look the same from all angles so
+        // rotation adds visual life).  Barriers are flat walls the player must
+        // duck under — spinning them looks confusing and misleading.
+        if (obs.type !== 'barrier') obs.mesh.rotation.y += 0.02;
     }
 }

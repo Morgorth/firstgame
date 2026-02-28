@@ -105,7 +105,7 @@ function checkCollisions() {
 
                 audioSystem.playRingCollect();
                 spawnCollectParticles(rpos.x, rpos.y, ring.z, '#FFD700');
-                updateHUD();
+                // HUD is refreshed once per frame at the end of gameTick().
 
                 if (p.rings >= CONFIG.rings.goal) {
                     triggerWin(pi);
@@ -145,7 +145,7 @@ function checkCollisions() {
                     // Lose 10 rings on hit, remove obstacle
                     p.rings = Math.max(0, p.rings - 10);
                     obs.active = false;
-                    updateHUD();
+                    // HUD is refreshed once per frame at the end of gameTick().
                 }
             }
         }

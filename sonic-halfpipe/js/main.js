@@ -21,10 +21,16 @@ function startGame() {
     gameState.score = 0;
     gameState.phase = 'playing';
     gameState.countdownActive = false;
+    gameState.playerCount = webcamState.playerCount || 1;
+
+    // Clear previous scene items BEFORE zeroing the arrays so that
+    // clearSceneItems() can still walk the lists and remove meshes from
+    // the Three.js scene.  Doing it after would orphan meshes on restart.
+    if (gameState.scene) clearSceneItems();
+
     gameState.obstacles = [];
     gameState.ringItems = [];
     gameState.particles = [];
-    gameState.playerCount = webcamState.playerCount || 1;
 
     // Rebuild player meshes for the current theme and player count.
     // applyThemeToScene() also rebuilds the pipe pool and lights, so only
@@ -50,9 +56,6 @@ function startGame() {
     // Reset spawn timers
     _nextObstacleFrame = 0;
     _ringSpawnTimer = 0;
-
-    // Clear previous scene items
-    if (gameState.scene) clearSceneItems();
 
     showScreen('gameScreen');
     updateHUD();
