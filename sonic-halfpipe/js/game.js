@@ -143,14 +143,8 @@ function checkCollisions() {
                     spawnCollectParticles(opos.x, opos.y, obs.z, '#FF4444');
 
                     // Lose 10 rings on hit, remove obstacle
-                    p.rings -= 10;
+                    p.rings = Math.max(0, p.rings - 10);
                     obs.active = false;
-                    if (p.rings <= 0) {
-                        p.rings = 0;
-                        updateHUD();
-                        triggerGameOver();
-                        return;
-                    }
                     updateHUD();
                 }
             }
