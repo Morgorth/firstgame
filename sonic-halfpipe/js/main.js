@@ -2,12 +2,20 @@
 
 // ── Game loop ────────────────────────────────────────────────────────
 
-let _rafId = null;
+let _rafId    = null;
+const _TICK_MS = 1000 / 60;   // target: one game tick per ~16.67 ms
+let _lastTick  = 0;
 
-function loop() {
+// Cap physics to 60 fps so the game runs at the same speed on 60 Hz,
+// 120 Hz, and 144 Hz monitors.  renderFrame() is still called every
+// rAF, but gameTick() is skipped when the frame arrived too early.
+function loop(ts) {
+    _rafId = requestAnimationFrame(loop);
+    const elapsed = ts - _lastTick;
+    if (elapsed < _TICK_MS - 1) return;   // too soon — only render
+    _lastTick = ts;
     gameTick();
     renderFrame();
-    _rafId = requestAnimationFrame(loop);
 }
 
 // ── Start / Restart ──────────────────────────────────────────────────
@@ -70,7 +78,7 @@ function startGame() {
         }
     }
 
-    if (!_rafId) loop();
+    if (!_rafId) _rafId = requestAnimationFrame(loop);
 
     startCountdown();
 }
@@ -119,5 +127,5 @@ window.addEventListener('load', () => {
     showTitleScreen();
 
     // Start the render loop immediately so the title can show the 3D pipe
-    loop();
+    _rafId = requestAnimationFrame(loop);
 });
