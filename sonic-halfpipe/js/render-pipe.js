@@ -48,11 +48,13 @@ function buildPipeSegment(zOffset) {
     shape.computeVertexNormals();
 
     const T   = getTheme();
+    const tex = getTextures();
     const mat = new THREE.MeshStandardMaterial({
         color:     T.theme.pipeColor,
         emissive:  T.theme.pipeEmissive,
-        roughness: 0.8,
-        metalness: 0.1,
+        map:       tex.pipe,
+        roughness: 0.55,
+        metalness: 0.2,
         side:      THREE.BackSide,
         wireframe: false,
     });

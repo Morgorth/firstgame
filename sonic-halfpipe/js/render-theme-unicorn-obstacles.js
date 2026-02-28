@@ -5,11 +5,13 @@
 // ── Storm cloud bumper ────────────────────────────────────────────────
 
 function _buildUnicornBumper() {
-    const group = new THREE.Group();
+    const group    = new THREE.Group();
+    const tex      = getTextures();
     const cloudMat = new THREE.MeshStandardMaterial({
         color: 0x778899,
         emissive: 0x223344,
-        roughness: 0.9,
+        map:   tex.bumper,
+        roughness: 0.85,
     });
 
     const core = new THREE.Mesh(
@@ -44,10 +46,12 @@ function _buildUnicornBumper() {
 // ── Bramble / thorn bomb ──────────────────────────────────────────────
 
 function _buildUnicornBomb() {
-    const group = new THREE.Group();
+    const group      = new THREE.Group();
+    const tex        = getTextures();
     const brambleMat = new THREE.MeshStandardMaterial({
         color: 0x2D5A27,
         emissive: 0x0A1A08,
+        map:   tex.bomb,
         roughness: 0.85,
     });
 
@@ -84,10 +88,12 @@ function _buildUnicornBomb() {
 // ── Dark magic barrier ────────────────────────────────────────────────
 
 function _buildUnicornBarrier() {
-    const group = new THREE.Group();
+    const group   = new THREE.Group();
+    const tex     = getTextures();
     const wallMat = new THREE.MeshStandardMaterial({
         color: 0x2E0057,
         emissive: 0x1A0030,
+        map:   tex.barrier,
         roughness: 0.5,
         metalness: 0.3,
     });

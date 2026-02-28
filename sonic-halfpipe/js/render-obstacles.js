@@ -9,10 +9,11 @@ function buildObstacleMesh(type) {
     if (T.isUnicorn) return buildUnicornObstacleMesh(type);
 
     // Default theme
+    const tex  = getTextures();
     const mats = {
-        bumper:  new THREE.MeshStandardMaterial({ color: T.theme.bumperColor,  emissive: T.theme.bumperEmissive,  roughness: 0.4 }),
-        bomb:    new THREE.MeshStandardMaterial({ color: T.theme.bombColor,    emissive: T.theme.bombEmissive,    roughness: 0.7 }),
-        barrier: new THREE.MeshStandardMaterial({ color: T.theme.barrierColor, emissive: T.theme.barrierEmissive, roughness: 0.4 }),
+        bumper:  new THREE.MeshStandardMaterial({ color: T.theme.bumperColor,  emissive: T.theme.bumperEmissive,  map: tex.bumper,  roughness: 0.4 }),
+        bomb:    new THREE.MeshStandardMaterial({ color: T.theme.bombColor,    emissive: T.theme.bombEmissive,    map: tex.bomb,    roughness: 0.7 }),
+        barrier: new THREE.MeshStandardMaterial({ color: T.theme.barrierColor, emissive: T.theme.barrierEmissive, map: tex.barrier, roughness: 0.4 }),
     };
 
     let geo;
