@@ -83,10 +83,10 @@ function initScene() {
     const scene = new THREE.Scene();
     scene.fog   = new THREE.Fog(T.theme.fogColor, 1200, 4800);
 
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 6000);
-    // Elevated, pulled back — steep slope view (looking ~30° downward along the pipe).
-    camera.position.set(0, CONFIG.pipe.radius * 1.55, 620);
-    camera.lookAt(0, CONFIG.pipe.radius * 0.05, -420);
+    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 1, 6000);
+    // Inside-the-bowl perspective — camera sits within the pipe walls, looking forward and slightly down.
+    camera.position.set(0, CONFIG.pipe.radius * 0.55, 580);
+    camera.lookAt(0, -CONFIG.pipe.radius * 0.15, -280);
 
     _ambientLight = new THREE.AmbientLight(T.theme.ambientColor, 1.2);
     scene.add(_ambientLight);
