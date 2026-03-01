@@ -9,7 +9,7 @@
 let _cachedTheme    = null;
 let _cachedTextures = null;
 
-// ── Shared helper ─────────────────────────────────────────────────────
+// ── Shared helpers ────────────────────────────────────────────────────
 
 function _makeCanvas(w, h) {
     const cv = document.createElement('canvas');
@@ -24,6 +24,25 @@ function _toTexture(canvas, repeatX, repeatY) {
     tex.wrapT   = THREE.RepeatWrapping;
     tex.repeat.set(repeatX || 1, repeatY || 1);
     return tex;
+}
+
+// Deterministic integer hash → float [0,1).  Module-scope so it is shared
+// across all texture builders without re-creating a closure each call.
+function _seededRng(n) {
+    n = ((n >>> 16) ^ n) * 0x45d9f3b;
+    n = ((n >>> 16) ^ n) * 0x45d9f3b;
+    return ((n >>> 16) ^ n) / 0xffffffff;
+}
+
+// Draw a glowing dot: radial halo then solid core.
+function _drawGlowDot(c, x, y, haloR, glowColor, dotColor, dotR) {
+    const g = c.createRadialGradient(x, y, 0, x, y, haloR);
+    g.addColorStop(0, glowColor);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g;
+    c.beginPath(); c.arc(x, y, haloR, 0, Math.PI * 2); c.fill();
+    c.fillStyle = dotColor;
+    c.beginPath(); c.arc(x, y, dotR,  0, Math.PI * 2); c.fill();
 }
 
 // ── Default theme ─────────────────────────────────────────────────────
@@ -63,15 +82,7 @@ function _makeDefaultPipeTexture() {
     // Junction dots
     const dots = [[160, 64], [160, 128], [32, 64], [32, 192], [224, 96], [64, 160], [192, 160]];
     dots.forEach(([jx, jy]) => {
-        // Glow halo
-        const glow = c.createRadialGradient(jx, jy, 0, jx, jy, 9);
-        glow.addColorStop(0, 'rgba(0,255,255,0.30)');
-        glow.addColorStop(1, 'rgba(0,255,255,0)');
-        c.fillStyle = glow;
-        c.beginPath(); c.arc(jx, jy, 9, 0, Math.PI * 2); c.fill();
-        // Dot
-        c.fillStyle = '#00ffff';
-        c.beginPath(); c.arc(jx, jy, 2.5, 0, Math.PI * 2); c.fill();
+        _drawGlowDot(c, jx, jy, 9, 'rgba(0,255,255,0.30)', '#00ffff', 2.5);
     });
 
     return _toTexture(cv, 2, 4);
@@ -107,10 +118,11 @@ function _makeDefaultPlayerBodyTexture(playerIndex) {
     const size   = 256;
     const cv     = _makeCanvas(size);
     const c      = cv.getContext('2d');
-    const isP1   = playerIndex === 0;
-    const base   = isP1 ? '#001a26' : '#1a0026';
-    const neon   = isP1 ? 'rgba(0,200,255,0.65)' : 'rgba(255,0,200,0.65)';
-    const dotCol = isP1 ? '#00ffff' : '#ff00ff';
+    const isP1    = playerIndex === 0;
+    const base    = isP1 ? '#001a26' : '#1a0026';
+    const neon    = isP1 ? 'rgba(0,200,255,0.65)' : 'rgba(255,0,200,0.65)';
+    const dotCol  = isP1 ? '#00ffff' : '#ff00ff';
+    const glowCol = isP1 ? 'rgba(0,255,255,0.35)' : 'rgba(255,0,255,0.35)';
 
     c.fillStyle = base;
     c.fillRect(0, 0, size, size);
@@ -132,14 +144,7 @@ function _makeDefaultPlayerBodyTexture(playerIndex) {
     // Junction dots
     const junctions = [[80, 80], [80, 128], [128, 128], [128, 192], [32, 192], [192, 128]];
     junctions.forEach(([dx, dy]) => {
-        const glow = c.createRadialGradient(dx, dy, 0, dx, dy, 8);
-        glow.addColorStop(0, dotCol.replace(')', ',0.35)').replace('rgb', 'rgba'));
-        glow.addColorStop(1, 'rgba(0,0,0,0)');
-        c.fillStyle = glow;
-        c.beginPath(); c.arc(dx, dy, 8, 0, Math.PI * 2); c.fill();
-
-        c.fillStyle = dotCol;
-        c.beginPath(); c.arc(dx, dy, 2.5, 0, Math.PI * 2); c.fill();
+        _drawGlowDot(c, dx, dy, 8, glowCol, dotCol, 2.5);
     });
 
     return _toTexture(cv, 1, 1);
@@ -196,16 +201,14 @@ function _makeUnicornPipeTexture() {
         c.beginPath(); c.moveTo(0, y); c.lineTo(size, y); c.stroke();
     }
 
-    // Sparkle stars (deterministic random so texture is stable)
+    // Sparkle stars (deterministic — _seededRng ensures stable output across calls)
     const sparkCols = ['#FFD700','#FF80FF','#80FFFF','#FFFFFF','#FF99EE'];
-    // Simple seeded pseudo-random via integer hash
-    function rng(n) { n = ((n >>> 16) ^ n) * 0x45d9f3b; n = ((n >>> 16) ^ n) * 0x45d9f3b; return ((n >>> 16) ^ n) / 0xffffffff; }
     for (let i = 0; i < 42; i++) {
-        const x = rng(i * 17 + 1) * size;
-        const y = rng(i * 31 + 2) * size;
-        const r = 1 + rng(i * 53 + 3) * 2;
-        c.fillStyle  = sparkCols[i % sparkCols.length];
-        c.globalAlpha = 0.35 + rng(i * 7 + 4) * 0.55;
+        const x = _seededRng(i * 17 + 1) * size;
+        const y = _seededRng(i * 31 + 2) * size;
+        const r = 1 + _seededRng(i * 53 + 3) * 2;
+        c.fillStyle   = sparkCols[i % sparkCols.length];
+        c.globalAlpha = 0.35 + _seededRng(i * 7 + 4) * 0.55;
         c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
     }
     c.globalAlpha = 1;
@@ -394,11 +397,14 @@ function getTextures() {
     }
 
     if (isUnicorn) {
+        // playerBody0/1 share one texture — per-player distinction comes from
+        // material colour properties in _makeUnicornMaterials(), not the map.
+        const unicornBody = _makeUnicornBodyTexture();
         _cachedTextures = {
             pipe:        _makeUnicornPipeTexture(),
             ring:        _makeUnicornRingTexture(),
-            playerBody0: _makeUnicornBodyTexture(),
-            playerBody1: _makeUnicornBodyTexture(),
+            playerBody0: unicornBody,
+            playerBody1: unicornBody,
             bumper:      _makeCloudTexture(),
             bomb:        _makeBrambleTexture(),
             barrier:     _makeRuneTexture(),
