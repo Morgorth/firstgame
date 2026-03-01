@@ -1,5 +1,14 @@
 // UI management: screen transitions, HUD updates, and high-score table.
 
+// ── Timer formatting ─────────────────────────────────────────────────
+
+function formatTime(seconds) {
+    const m  = Math.floor(seconds / 60);
+    const s  = Math.floor(seconds % 60);
+    const cs = Math.floor((seconds % 1) * 100);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
+}
+
 // ── Screen management ────────────────────────────────────────────────
 
 const SCREENS = ['titleScreen', 'setupScreen', 'gameScreen', 'endScreen'];
@@ -57,6 +66,8 @@ function updateHUD() {
 
     document.getElementById('hudRings').textContent =
         `P1 RINGS: ${p1.rings}/${CONFIG.rings.goal}`;
+    document.getElementById('hudTimer').textContent =
+        `TIME: ${formatTime(gameState.elapsedTime)}`;
     document.getElementById('hudScore').textContent =
         `SCORE: ${gameState.score}`;
     document.getElementById('hudSpeed').textContent =
@@ -115,6 +126,7 @@ function showEndScreen(win, winnerIndex) {
         }
     }
 
+    document.getElementById('endTime').textContent  = `Time: ${formatTime(gameState.elapsedTime)}`;
     document.getElementById('endScore').textContent = `Score: ${gameState.score}`;
     document.getElementById('endRings').textContent =
         `Rings: ${gameState.players[0].rings}` +
@@ -131,7 +143,7 @@ function submitHighScore() {
     const name = document.getElementById('endNameInput').value.trim() || 'PLAYER';
     const rings = Math.max(gameState.players[0].rings,
         gameState.playerCount === 2 ? gameState.players[1].rings : 0);
-    addHighScore(name.toUpperCase(), gameState.score, rings);
+    addHighScore(name.toUpperCase(), gameState.score, rings, gameState.elapsedTime);
     renderHighScoreTable();
 }
 
@@ -139,7 +151,7 @@ function submitHighScore() {
 
 function renderHighScoreTable() {
     const rows = highScores.slice(0, 10).map((hs, i) =>
-        `<tr><td>${i + 1}</td><td>${hs.name}</td><td>${hs.score}</td><td>${hs.rings}</td></tr>`
+        `<tr><td>${i + 1}</td><td>${hs.name}</td><td>${hs.score}</td><td>${hs.rings}</td><td>${hs.time ? formatTime(hs.time) : '--'}</td></tr>`
     ).join('');
     ['highScoreBody', 'highScoreBodyEnd'].forEach(id => {
         const tbody = document.getElementById(id);
