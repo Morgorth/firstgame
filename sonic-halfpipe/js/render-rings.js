@@ -8,9 +8,11 @@ function buildRingMesh() {
     // Unicorn theme uses a custom decorated ring
     if (T.isUnicorn) return buildUnicornRingMesh();
 
+    const tex = getTextures();
     const mat = new THREE.MeshStandardMaterial({
         color:     T.theme.ringColor,
         emissive:  T.theme.ringEmissive,
+        map:       tex.ring,
         roughness: 0.2,
         metalness: 0.8,
     });

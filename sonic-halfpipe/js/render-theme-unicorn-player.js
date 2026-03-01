@@ -5,12 +5,14 @@
 // ── Material palette ──────────────────────────────────────────────────
 
 function _makeUnicornMaterials(isP1) {
+    const tex = getTextures();
     return {
         bodyMat: new THREE.MeshStandardMaterial({
             color:    isP1 ? 0xFFF5FA : 0xF5F0FF,
             emissive: isP1 ? 0x180010 : 0x100018,
-            roughness: 0.35,
-            metalness: 0.08,
+            map:      isP1 ? tex.playerBody0 : tex.playerBody1,
+            roughness: 0.30,
+            metalness: 0.12,
         }),
         maneMat1: new THREE.MeshStandardMaterial({
             color:    isP1 ? 0xFF4DA6 : 0xAA44FF,

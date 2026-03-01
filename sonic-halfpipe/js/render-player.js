@@ -11,9 +11,12 @@ function _buildDefaultPlayerMesh(playerIndex) {
     ];
     const c     = colors[playerIndex];
     const group = new THREE.Group();
+    const tex   = getTextures();
 
     const bodyMat = new THREE.MeshStandardMaterial({
-        color: c.body, emissive: c.emissive, roughness: 0.3,
+        color: c.body, emissive: c.emissive,
+        map: playerIndex === 0 ? tex.playerBody0 : tex.playerBody1,
+        roughness: 0.3,
     });
     const body = new THREE.Mesh(new THREE.SphereGeometry(28, 16, 12), bodyMat);
     body.scale.set(0.9, 1.15, 0.9);

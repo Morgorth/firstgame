@@ -3,12 +3,14 @@
 // Depends on: THREE (global), CONFIG (global via config.js)
 
 function buildUnicornRingMesh() {
-    const group = new THREE.Group();
+    const group  = new THREE.Group();
+    const tex    = getTextures();
 
-    // Main torus in hot pink
+    // Main torus — rainbow-textured
     const ringMat = new THREE.MeshStandardMaterial({
         color: 0xFF69B4,
         emissive: 0x441133,
+        map:   tex.ring,
         roughness: 0.15,
         metalness: 0.5,
     });
