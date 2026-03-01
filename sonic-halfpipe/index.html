@@ -37,7 +37,7 @@
         <h2>High Scores</h2>
         <table class="hs-table">
             <thead>
-                <tr><th>#</th><th>Name</th><th>Score</th><th>Rings</th></tr>
+                <tr><th>#</th><th>Name</th><th>Score</th><th>Rings</th><th>Time</th></tr>
             </thead>
             <tbody id="highScoreBody"></tbody>
         </table>
@@ -102,6 +102,7 @@
 
         <!-- Centre info -->
         <div class="hud-center">
+            <div id="hudTimer" class="hud-timer">TIME: 00:00.00</div>
             <div id="hudScore" class="hud-score">SCORE: 0</div>
             <div id="hudSpeed" class="hud-speed">SPEED: 7</div>
         </div>
@@ -127,6 +128,7 @@
 <div id="endScreen" class="screen hidden">
     <h1 id="endTitle">GAME OVER</h1>
     <p id="endMessage"></p>
+    <p id="endTime">Time: --:--</p>
     <p id="endScore">Score: 0</p>
     <p id="endRings">Rings: 0</p>
 
@@ -139,7 +141,7 @@
         <h2>High Scores</h2>
         <table class="hs-table">
             <thead>
-                <tr><th>#</th><th>Name</th><th>Score</th><th>Rings</th></tr>
+                <tr><th>#</th><th>Name</th><th>Score</th><th>Rings</th><th>Time</th></tr>
             </thead>
             <tbody id="highScoreBodyEnd"></tbody>
         </table>

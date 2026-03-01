@@ -246,6 +246,7 @@ body {
     text-align: center;
     display: flex; flex-direction: column; gap: 0.2rem;
 }
+.hud-timer { font-size: 1.15rem; font-weight: 700; color: #FFD700; letter-spacing: 0.05em; }
 .hud-score { font-size: 1rem; font-weight: 700; color: #fff; }
 .hud-speed { font-size: 0.72rem; color: #88aaff; letter-spacing: 0.1em; }
 
@@ -528,6 +529,7 @@ body.theme-unicorn .hud-player    { border-color: rgba(255,105,180,0.22); }
 body.theme-unicorn .hud-face      { border-color: #FF69B4; box-shadow: 0 0 8px #FF69B466; }
 body.theme-unicorn .hud-player.p2 .hud-face { border-color: #DA70D6; box-shadow: 0 0 8px #DA70D666; }
 body.theme-unicorn .hud-rings     { color: #FFD700; }
+body.theme-unicorn .hud-timer     { color: #FFD700; }
 body.theme-unicorn .hud-score     { color: #FF69B4; }
 body.theme-unicorn .hud-speed     { color: #DA70D6; }
 

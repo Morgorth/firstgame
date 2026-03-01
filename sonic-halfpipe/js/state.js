@@ -124,6 +124,20 @@ let gameState = {
     phase: 'start',             // 'start' | 'countdown' | 'playing' | 'win' | 'gameover'
     countdownActive: false,
 
+    // Race timer (seconds elapsed since GO)
+    elapsedTime: 0,
+
+    // Terrain variation state (camera banking / pitch)
+    terrain: {
+        currentOffsetX:   0,
+        currentOffsetY:   0,
+        currentRoll:      0,
+        targetOffsetX:    0,
+        targetOffsetY:    0,
+        targetRoll:       0,
+        nextEventDistance: 800,
+    },
+
     // Speed-up tracking
     lastSpeedUpRings: [0, 0],   // rings at last speed-up jingle per player
 
@@ -154,8 +168,8 @@ function saveHighScores() {
     } catch (e) { /* storage full */ }
 }
 
-function addHighScore(name, score, rings) {
-    highScores.push({ name, score, rings, date: Date.now() });
+function addHighScore(name, score, rings, time) {
+    highScores.push({ name, score, rings, time: time || 0, date: Date.now() });
     highScores.sort((a, b) => b.score - a.score);
     highScores = highScores.slice(0, 10);
     saveHighScores();

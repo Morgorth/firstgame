@@ -32,6 +32,16 @@ function startGame() {
     gameState.obstacles = [];
     gameState.ringItems = [];
     gameState.particles = [];
+    gameState.elapsedTime = 0;
+    gameState.terrain = {
+        currentOffsetX:    0,
+        currentOffsetY:    0,
+        currentRoll:       0,
+        targetOffsetX:     0,
+        targetOffsetY:     0,
+        targetRoll:        0,
+        nextEventDistance: CONFIG.terrain.firstEventDistance,
+    };
     gameState.playerCount = webcamState.playerCount || 1;
 
     // Rebuild player meshes for the current theme and player count.
@@ -58,6 +68,13 @@ function startGame() {
     // Reset spawn timers
     _nextObstacleFrame = 0;
     _ringSpawnTimer = 0;
+
+    // Reset camera to neutral position
+    if (gameState.camera) {
+        gameState.camera.up.set(0, 1, 0);
+        gameState.camera.position.set(0, CONFIG.pipe.radius * 0.55, 580);
+        gameState.camera.lookAt(0, -CONFIG.pipe.radius * 0.15, -280);
+    }
 
     // Clear previous scene items
     if (gameState.scene) clearSceneItems();

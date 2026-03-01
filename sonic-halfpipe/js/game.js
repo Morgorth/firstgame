@@ -262,18 +262,88 @@ function triggerGameOver() {
     showEndScreen(false, 0);
 }
 
+// ── Terrain variation (camera banking / pitch) ────────────────────────
+
+// Terrain event presets: [targetOffsetX, targetOffsetY, targetRoll]
+const _TERRAIN_EVENTS = [
+    [    0,   0,     0   ],   // flat / straight
+    [ -130,   0,  -0.23  ],   // sharp left turn
+    [  130,   0,   0.23  ],   // sharp right turn
+    [  -80,   0,  -0.14  ],   // gentle left turn
+    [   80,   0,   0.14  ],   // gentle right turn
+    [    0,  65,     0   ],   // steep ascent
+    [    0, -55,     0   ],   // steep descent
+    [  -60,  45,  -0.10  ],   // banked left ascent
+    [   60,  45,   0.10  ],   // banked right ascent
+    [  -60, -40,  -0.10  ],   // banked left descent
+    [   60, -40,   0.10  ],   // banked right descent
+];
+
+function _pickNextTerrainEvent() {
+    const t = gameState.terrain;
+    const cfg = CONFIG.terrain;
+    const e = _TERRAIN_EVENTS[Math.floor(Math.random() * _TERRAIN_EVENTS.length)];
+    t.targetOffsetX = e[0];
+    t.targetOffsetY = e[1];
+    t.targetRoll    = e[2];
+    t.nextEventDistance = gameState.distance
+        + cfg.minEventGap
+        + Math.random() * (cfg.maxEventGap - cfg.minEventGap);
+}
+
+function updateTerrain() {
+    const t   = gameState.terrain;
+    const cfg = CONFIG.terrain;
+    const cam = gameState.camera;
+    if (!cam) return;
+
+    // Trigger a new terrain event when the distance threshold is crossed
+    if (gameState.distance >= t.nextEventDistance) {
+        _pickNextTerrainEvent();
+    }
+
+    // Smoothly interpolate current values toward targets
+    const k = cfg.lerpSpeed;
+    t.currentOffsetX += (t.targetOffsetX - t.currentOffsetX) * k;
+    t.currentOffsetY += (t.targetOffsetY - t.currentOffsetY) * k;
+    t.currentRoll    += (t.targetRoll    - t.currentRoll)    * k;
+
+    // Base camera constants (matching initScene)
+    const baseY    = CONFIG.pipe.radius * 0.55;
+    const baseZ    = 580;
+    const lookY    = -CONFIG.pipe.radius * 0.15;
+
+    // Apply offsets to camera position
+    cam.position.set(
+        t.currentOffsetX,
+        baseY + t.currentOffsetY,
+        baseZ
+    );
+
+    // Tilt the up-vector for banking; then re-point at shifted target
+    const r = t.currentRoll;
+    cam.up.set(Math.sin(r), Math.cos(r), 0);
+    cam.lookAt(
+        t.currentOffsetX * 0.35,
+        lookY + t.currentOffsetY * 0.30,
+        -280
+    );
+}
+
 // ── Main update tick ─────────────────────────────────────────────────
 
 function gameTick() {
     if (!gameState.running || gameState.countdownActive) return;
 
     gameState.frameCount++;
+    gameState.elapsedTime += 1 / 60;
     applyKeyboardInput();
     updateSpeedAndDistance();
     scrollWorld();
     spawnObstacles();
     spawnRings();
     updatePlayers();
+    updateTerrain();
     checkCollisions();
     updateParticles();
     updateHUD();
