@@ -76,13 +76,13 @@ const CONFIG = {
     // Terrain variation — camera banking/pitch events that simulate turns
     // and ascents/descents while the pipe geometry stays straight.
     terrain: {
-        firstEventDistance:  800,   // distance before first event fires
-        minEventGap:         600,   // min distance between events
-        maxEventGap:         900,   // max distance between events
-        lerpSpeed:           0.028, // interpolation speed per frame (lower = smoother)
-        maxBankX:            130,   // peak lateral camera shift (left/right turn)
-        maxBankY:            65,    // peak vertical camera shift (ascent/descent)
-        maxRoll:             0.23,  // peak camera roll in radians (~13°)
+        firstEventDistance:  150,   // distance before first event fires (~1.5s after GO)
+        minEventGap:         400,   // min distance between events
+        maxEventGap:         650,   // max distance between events
+        lerpSpeed:           0.045, // interpolation speed per frame (lower = smoother)
+        maxBankX:            180,   // peak lateral camera shift (left/right turn)
+        maxBankY:            80,    // peak vertical camera shift (ascent/descent)
+        maxRoll:             0.30,  // peak camera roll in radians (~17°)
     },
 
     // Color tracking for player re-identification (same as Wave Assault)

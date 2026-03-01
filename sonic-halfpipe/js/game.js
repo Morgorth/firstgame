@@ -265,18 +265,18 @@ function triggerGameOver() {
 // ── Terrain variation (camera banking / pitch) ────────────────────────
 
 // Terrain event presets: [targetOffsetX, targetOffsetY, targetRoll]
+// No "flat" entry — every event is a meaningful turn, hill, or bank.
 const _TERRAIN_EVENTS = [
-    [    0,   0,     0   ],   // flat / straight
-    [ -130,   0,  -0.23  ],   // sharp left turn
-    [  130,   0,   0.23  ],   // sharp right turn
-    [  -80,   0,  -0.14  ],   // gentle left turn
-    [   80,   0,   0.14  ],   // gentle right turn
-    [    0,  65,     0   ],   // steep ascent
-    [    0, -55,     0   ],   // steep descent
-    [  -60,  45,  -0.10  ],   // banked left ascent
-    [   60,  45,   0.10  ],   // banked right ascent
-    [  -60, -40,  -0.10  ],   // banked left descent
-    [   60, -40,   0.10  ],   // banked right descent
+    [ -180,   0,  -0.30  ],   // sharp left turn
+    [  180,   0,   0.30  ],   // sharp right turn
+    [ -110,   0,  -0.18  ],   // gentle left turn
+    [  110,   0,   0.18  ],   // gentle right turn
+    [    0,  80,     0   ],   // steep ascent
+    [    0, -65,     0   ],   // steep descent
+    [  -80,  55,  -0.14  ],   // banked left ascent
+    [   80,  55,   0.14  ],   // banked right ascent
+    [  -80, -50,  -0.14  ],   // banked left descent
+    [   80, -50,   0.14  ],   // banked right descent
 ];
 
 function _pickNextTerrainEvent() {
@@ -320,12 +320,13 @@ function updateTerrain() {
         baseZ
     );
 
-    // Tilt the up-vector for banking; then re-point at shifted target
+    // Tilt the up-vector for banking; then re-point at shifted target.
+    // A larger lookAt X multiplier makes the pipe appear to curve toward the turn.
     const r = t.currentRoll;
     cam.up.set(Math.sin(r), Math.cos(r), 0);
     cam.lookAt(
-        t.currentOffsetX * 0.35,
-        lookY + t.currentOffsetY * 0.30,
+        t.currentOffsetX * 0.55,
+        lookY + t.currentOffsetY * 0.40,
         -280
     );
 }
@@ -362,19 +363,19 @@ function startCountdown() {
         if (count > 0) {
             el.textContent = count;
             el.classList.add('pulse');
-            audioSystem.playCountdownBeep(false);
+            try { audioSystem.playCountdownBeep(false); } catch (e) { /* audio optional */ }
             setTimeout(() => el.classList.remove('pulse'), 400);
             count--;
             setTimeout(tick, 1000);
         } else {
             el.textContent = 'GO!';
             el.classList.add('pulse');
-            audioSystem.playCountdownBeep(true);
+            try { audioSystem.playCountdownBeep(true); } catch (e) { /* audio optional */ }
             setTimeout(() => {
                 el.classList.add('hidden');
                 el.classList.remove('pulse');
                 gameState.countdownActive = false;
-                audioSystem.playStart();
+                try { audioSystem.playStart(); } catch (e) { /* audio optional */ }
             }, 700);
         }
     };
