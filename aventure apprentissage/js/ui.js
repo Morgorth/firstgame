@@ -135,7 +135,7 @@ const uiSystem = {
     // Explique le défi à voix haute (fire-and-forget), puis lance le micro après
     // un délai fixe — indépendant de onEnd pour fonctionner sur tous les navigateurs
     speechSystem.speak(voiceInstruction, 'fr-FR');
-    setTimeout(() => this.startMic(), 2000);
+    setTimeout(() => this.startMic(), 3000);
   },
 
   _renderDots(max, used) {
@@ -225,7 +225,7 @@ const uiSystem = {
 
     // Relance le micro après délai fixe — pas de dépendance à onEnd
     if (restartMicAfter) {
-      setTimeout(() => { if (challengeSystem.current) this.startMic(); }, 2200);
+      setTimeout(() => { if (challengeSystem.current) this.startMic(); }, 3000);
     }
 
     if (challengeSystem.current) {

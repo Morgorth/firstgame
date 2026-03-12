@@ -100,7 +100,7 @@ const audioSystem = {
       gain.connect(c.destination);
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.setValueAtTime(0.3, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
       osc.start(t);
       osc.stop(t + 0.45);
@@ -156,7 +156,7 @@ function startGame() {
   gameState.player.cosmetics.avatar   = currentProfile.equippedAvatar;
   gameState.player.cosmetics.unicorn  = currentProfile.equippedUnicorn;
 
-  audioSystem.startBackground();
+  setTimeout(() => audioSystem.startBackground(), 300);
   requestAnimationFrame(gameLoop);
 }
 
