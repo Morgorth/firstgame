@@ -1,6 +1,6 @@
 ---
 name: understand-app
-description: Use at the start of any session or when you need to orient yourself in the Wave Assault or Sonic Half-Pipe codebase. Provides file map, globals reference, and task-to-file routing to minimize token usage.
+description: Use at the start of any session or when you need to orient yourself in the Wave Assault, Sonic Half-Pipe, or Licorne RPG codebase. Provides file map, globals reference, and task-to-file routing to minimize token usage.
 allowed-tools: Read, Grep, Glob
 argument-hint: "[game: wave-assault|sonic-halfpipe] [area-to-focus: config|state|entities|input|webcam|audio|game|render|ui|main|all]"
 ---
