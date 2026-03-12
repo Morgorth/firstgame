@@ -334,8 +334,11 @@ window.addEventListener('load', () => {
   // Affiche le menu
   uiSystem.showMenu();
 
-  // Déverrouille AudioContext sur premier clic utilisateur
-  document.addEventListener('click', () => audioSystem._resume(), { once: true });
+  // Déverrouille AudioContext ET speechSynthesis sur premier clic utilisateur
+  document.addEventListener('click', () => {
+    audioSystem._resume();
+    speechSystem._warmUp();
+  }, { once: true });
 
   console.log('[Licorne RPG] Prêt ! 🦄');
 });

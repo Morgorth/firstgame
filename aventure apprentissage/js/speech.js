@@ -27,6 +27,9 @@ const speechSystem = {
       }
       const text = results[0] || '';
       const normalized = this.normalize(text);
+      // Null _onEnd BEFORE calling _onResult to prevent the inevitable onend
+      // event from triggering the "not heard" timeout path after a valid answer
+      this._onEnd = null;
       if (this._onResult) this._onResult(normalized, results.map(r => this.normalize(r)));
     };
 
@@ -217,8 +220,25 @@ const speechSystem = {
 
   // ── Synthèse vocale (TTS) ────────────────────────────────────────
 
+  // Doit être appelé depuis un geste utilisateur pour débloquer speechSynthesis
+  // (même contrainte que AudioContext)
+  _warmUp() {
+    if (!window.speechSynthesis) return;
+    // Force le chargement des voix (requis par Chrome)
+    window.speechSynthesis.getVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+    // Utterance silencieuse pour débloquer le contexte audio de TTS
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
+  },
+
   speak(text, lang, onEnd) {
     if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
+    // Assure que les voix sont chargées (fix Chrome)
+    window.speechSynthesis.getVoices();
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang   = lang || 'fr-FR';
