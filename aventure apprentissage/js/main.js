@@ -77,6 +77,46 @@ const audioSystem = {
     });
   },
 
+  _bgInterval: null,
+
+  startBackground() {
+    const ctx = this._resume();
+    if (!ctx || this._bgInterval) return;
+
+    // Mélodie pentatonique douce en boucle (notes Do pentatonique)
+    const notes = [523, 659, 784, 880, 1047, 880, 784, 659];
+    let step = 0;
+
+    const playNote = () => {
+      const c = this._resume();
+      if (!c) return;
+      const t    = c.currentTime;
+      const freq = notes[step % notes.length];
+      step++;
+
+      const osc  = c.createOscillator();
+      const gain = c.createGain();
+      osc.connect(gain);
+      gain.connect(c.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.start(t);
+      osc.stop(t + 0.45);
+    };
+
+    playNote();
+    this._bgInterval = setInterval(playNote, 500);
+  },
+
+  stopBackground() {
+    if (this._bgInterval) {
+      clearInterval(this._bgInterval);
+      this._bgInterval = null;
+    }
+  },
+
   playStep() {
     const ctx = this._resume();
     if (!ctx) return;
@@ -116,6 +156,7 @@ function startGame() {
   gameState.player.cosmetics.avatar   = currentProfile.equippedAvatar;
   gameState.player.cosmetics.unicorn  = currentProfile.equippedUnicorn;
 
+  audioSystem.startBackground();
   requestAnimationFrame(gameLoop);
 }
 
@@ -276,6 +317,7 @@ function checkExitTrigger() {
 function _completeLevel() {
   gameState.phase = 'levelcomplete';
   gameState.running = false;
+  audioSystem.stopBackground();
 
   // Sauvegarde la progression
   const lvlNum = gameState.currentLevel;
