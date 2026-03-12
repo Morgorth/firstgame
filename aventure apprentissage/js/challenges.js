@@ -83,7 +83,7 @@ const challengeSystem = {
         setTimeout(() => this.end(false), 3000);
       } else {
         const remaining = this.current.maxAttempts - this.current.attempts;
-        uiSystem.showFeedback(false, `Essaie encore ! (${remaining} essai${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''})`);
+        uiSystem.showFeedback(false, `Ce n'est pas ça ! Essaie encore ! (${remaining} essai${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''})`);
         if (this.current.attempts >= 2) {
           uiSystem.showHint(this._getHint());
         }
