@@ -158,6 +158,8 @@ const uiSystem = {
     }
   },
 
+  _noHearCount: 0,
+
   startMic() {
     if (!challengeSystem.current) return;
     // Coupe la voix avant d'écouter (sinon le micro entend la synthèse)
@@ -176,6 +178,7 @@ const uiSystem = {
       (text, alternatives) => {
         // Résultat reçu
         this._micActive = false;
+        this._noHearCount = 0;
         if (mic) mic.classList.add('hidden');
         if (challengeSystem.current) {
           challengeSystem.processAnswer(text, alternatives);
@@ -185,12 +188,19 @@ const uiSystem = {
         // Fin sans résultat (timeout)
         this._micActive = false;
         if (mic) mic.classList.add('hidden');
-        if (challengeSystem.current) {
-          const feedback = document.getElementById('feedbackArea');
-          if (feedback) feedback.textContent = "Je n'ai pas entendu. Essaie encore !";
-          speechSystem.speak("Je n'ai pas entendu. Essaie encore !", 'fr-FR',
-            () => setTimeout(() => this.startMic(), 300)
+        if (!challengeSystem.current) return;
+        this._noHearCount++;
+        const feedback = document.getElementById('feedbackArea');
+        if (this._noHearCount <= 2) {
+          // Rappelle poliment et relance
+          if (feedback) feedback.textContent = "Je n'ai pas entendu. Parle plus fort !";
+          speechSystem.speak("Je n'ai pas entendu. Parle plus fort !", 'fr-FR',
+            () => setTimeout(() => this.startMic(), 500)
           );
+        } else {
+          // Trop de tentatives sans entendre — attend sans relancer le TTS
+          if (feedback) feedback.textContent = "Parle dans le micro quand tu es prêt !";
+          setTimeout(() => { this._noHearCount = 0; this.startMic(); }, 3000);
         }
       }
     );
@@ -198,6 +208,7 @@ const uiSystem = {
 
   hideChallenge() {
     speechSystem.stopListening();
+    speechSystem.cancelSpeak();
     this._micActive = false;
     const mic = document.getElementById('micIndicator');
     if (mic) mic.classList.add('hidden');

@@ -235,22 +235,29 @@ const speechSystem = {
     window.speechSynthesis.speak(u);
   },
 
+  _currentUtterance: null,
+
   speak(text, lang, onEnd) {
     if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
-    // Assure que les voix sont chargées (fix Chrome)
     window.speechSynthesis.getVoices();
+    // Abandon the previous utterance BEFORE cancelling so its onend
+    // does not fire its callback (Chrome fires onend when cancel() is called)
+    this._currentUtterance = null;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
+    this._currentUtterance = u;
     u.lang   = lang || 'fr-FR';
     u.rate   = 0.88;
     u.pitch  = 1.1;
     u.volume = 1;
-    u.onend  = () => { if (onEnd) onEnd(); };
-    u.onerror = () => { if (onEnd) onEnd(); };
+    u.onend  = () => { if (this._currentUtterance === u && onEnd) onEnd(); };
+    u.onerror = () => { if (this._currentUtterance === u && onEnd) onEnd(); };
     window.speechSynthesis.speak(u);
   },
 
   cancelSpeak() {
+    // Abandon current utterance so its onend callback does not fire
+    this._currentUtterance = null;
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   },
 
