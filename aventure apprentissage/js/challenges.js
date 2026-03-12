@@ -72,7 +72,8 @@ const challengeSystem = {
     }
 
     if (success) {
-      this.end(true);
+      uiSystem.showFeedback(true, 'Bravo ! 🌟');
+      setTimeout(() => this.end(true), 1500);
     } else {
       this.current.attempts++;
       if (this.current.attempts >= this.current.maxAttempts) {

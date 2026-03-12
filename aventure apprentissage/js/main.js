@@ -267,13 +267,13 @@ function checkExitTrigger() {
   const ez = CONFIG.EXIT_ZONE;
 
   if (x >= ez.x && x <= ez.x + ez.w && y >= ez.y && y <= ez.y + ez.h) {
-    _completLevel();
+    _completeLevel();
   }
 }
 
 // ── Fin de niveau ─────────────────────────────────────────────────
 
-function _completLevel() {
+function _completeLevel() {
   gameState.phase = 'levelcomplete';
   gameState.running = false;
 

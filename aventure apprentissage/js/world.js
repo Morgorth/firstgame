@@ -131,7 +131,7 @@ const worldSystem = {
     if (!exitUnlocked) {
       ctx.font = 'bold 10px system-ui';
       ctx.fillStyle = '#757575';
-      ctx.fillText(`${gs.roomsDone.length}/5`, ez.x + ez.w / 2, ez.y + ez.h - 4);
+      ctx.fillText(`${gs.roomsDone.length}/${CONFIG.challenge.gateScore}`, ez.x + ez.w / 2, ez.y + ez.h - 4);
     }
   },
 
