@@ -237,39 +237,23 @@ const speechSystem = {
 
   _currentUtterance: null,
 
-  speak(text, lang, onEnd) {
-    if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
+  speak(text, lang) {
+    // TTS is fire-and-forget. Mic start timing is handled by fixed delays in ui.js
+    // so that it never depends on onEnd firing (unreliable across browsers).
+    if (!window.speechSynthesis) return;
     window.speechSynthesis.getVoices();
     this._currentUtterance = null;
     window.speechSynthesis.cancel();
-
-    // Chrome bug: speechSynthesis.speak() right after cancel() silently fails.
-    // A 50ms gap fixes it. We also add a 5s safety timer so onEnd always fires
-    // even when the browser never fires onend/onerror (Safari, blocked contexts).
-    setTimeout(() => {
-      const u = new SpeechSynthesisUtterance(text);
-      this._currentUtterance = u;
-      u.lang   = lang || 'fr-FR';
-      u.rate   = 0.88;
-      u.pitch  = 1.1;
-      u.volume = 1;
-      const voice = this._selectVoice(u.lang);
-      if (voice) u.voice = voice;
-
-      if (onEnd) {
-        let fired = false;
-        const done = () => {
-          if (fired || this._currentUtterance !== u) return;
-          fired = true;
-          onEnd();
-        };
-        u.onend   = done;
-        u.onerror = done;
-        setTimeout(done, 5000); // safety: fire after 5s max no matter what
-      }
-
-      window.speechSynthesis.speak(u);
-    }, 50);
+    const u = new SpeechSynthesisUtterance(text);
+    this._currentUtterance = u;
+    u.lang   = lang || 'fr-FR';
+    u.rate   = 0.88;
+    u.pitch  = 1.1;
+    u.volume = 1;
+    const voice = this._selectVoice(u.lang);
+    if (voice) u.voice = voice;
+    // No onEnd callback — callers use fixed setTimeout delays instead
+    window.speechSynthesis.speak(u);
   },
 
   cancelSpeak() {

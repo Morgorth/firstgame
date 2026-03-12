@@ -132,8 +132,10 @@ const uiSystem = {
 
     this._renderDots(challengeData.maxAttempts, challengeData.attempts);
 
-    // Explique le défi à voix haute, puis active le micro quand la voix s'arrête
-    speechSystem.speak(voiceInstruction, 'fr-FR', () => setTimeout(() => this.startMic(), 400));
+    // Explique le défi à voix haute (fire-and-forget), puis lance le micro après
+    // un délai fixe — indépendant de onEnd pour fonctionner sur tous les navigateurs
+    speechSystem.speak(voiceInstruction, 'fr-FR');
+    setTimeout(() => this.startMic(), 2000);
   },
 
   _renderDots(max, used) {
@@ -208,25 +210,22 @@ const uiSystem = {
     gameState.phase = 'playing';
   },
 
-  // restartMicAfter : si true, relance le micro après que la voix ait fini
   showFeedback(success, message, restartMicAfter = false) {
     const area = document.getElementById('feedbackArea');
     if (!area) return;
     area.className = 'feedback-area ' + (success ? 'success' : 'error');
     area.textContent = (success ? '✅ ' : '💔 ') + message;
 
-    // Arrête l'écoute pendant que la voix parle (évite l'écho micro ↔ haut-parleur)
+    // Arrête l'écoute pendant que la voix parle (évite l'écho)
     speechSystem.stopListening();
     this._setMicState('speaking');
 
     const voice = message.replace(/\([^)]*\)/g, '').replace(/[^\w\sàâçéèêëïîôùûüœæ!?.,']/gi, '').trim();
+    speechSystem.speak(voice, 'fr-FR');
 
+    // Relance le micro après délai fixe — pas de dépendance à onEnd
     if (restartMicAfter) {
-      speechSystem.speak(voice, 'fr-FR', () => {
-        if (challengeSystem.current) this.startMic();
-      });
-    } else {
-      speechSystem.speak(voice, 'fr-FR');
+      setTimeout(() => { if (challengeSystem.current) this.startMic(); }, 2200);
     }
 
     if (challengeSystem.current) {
