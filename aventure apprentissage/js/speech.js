@@ -252,7 +252,9 @@ const speechSystem = {
     u.volume = 1;
     const voice = this._selectVoice(u.lang);
     if (voice) u.voice = voice;
-    // No onEnd callback — callers use fixed setTimeout delays instead
+    // resume() un-sticks Chrome's synthesis engine after idle periods (Chrome bug:
+    // engine silently pauses after ~5-10s of inactivity, queued utterances never play).
+    window.speechSynthesis.resume();
     window.speechSynthesis.speak(u);
   },
 
