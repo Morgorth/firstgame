@@ -32,11 +32,12 @@ const speechSystem = {
         return;
       }
 
-      // Résultat final : vérifie la confiance
+      // Résultat final : vérifie la confiance (seulement si le navigateur la fournit)
       const confidence = result[0].confidence;
       if (this._onInterim) this._onInterim(result[0].transcript, true);
 
-      if (confidence < this.minConfidence) {
+      // confidence === 0 signifie que le navigateur ne supporte pas le score → on accepte
+      if (confidence > 0 && confidence < this.minConfidence) {
         console.log('[STT] Confiance trop faible:', confidence.toFixed(2), result[0].transcript);
         return; // ignore, garde la session ouverte
       }
@@ -241,20 +242,38 @@ const speechSystem = {
     window.speechSynthesis.getVoices();
     this._currentUtterance = null;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    this._currentUtterance = u;
-    u.lang   = lang || 'fr-FR';
-    u.rate   = 0.88;
-    u.pitch  = 1.1;
-    u.volume = 1;
-    const voice = this._selectVoice(u.lang);
-    if (voice) u.voice = voice;
-    u.onend  = () => { if (this._currentUtterance === u && onEnd) onEnd(); };
-    u.onerror = () => { if (this._currentUtterance === u && onEnd) onEnd(); };
-    window.speechSynthesis.speak(u);
+
+    // Chrome bug: speechSynthesis.speak() right after cancel() silently fails.
+    // A 50ms gap fixes it. We also add a 5s safety timer so onEnd always fires
+    // even when the browser never fires onend/onerror (Safari, blocked contexts).
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(text);
+      this._currentUtterance = u;
+      u.lang   = lang || 'fr-FR';
+      u.rate   = 0.88;
+      u.pitch  = 1.1;
+      u.volume = 1;
+      const voice = this._selectVoice(u.lang);
+      if (voice) u.voice = voice;
+
+      if (onEnd) {
+        let fired = false;
+        const done = () => {
+          if (fired || this._currentUtterance !== u) return;
+          fired = true;
+          onEnd();
+        };
+        u.onend   = done;
+        u.onerror = done;
+        setTimeout(done, 5000); // safety: fire after 5s max no matter what
+      }
+
+      window.speechSynthesis.speak(u);
+    }, 50);
   },
 
   cancelSpeak() {
+    // Null before cancel so the safety timer's done() guard fails harmlessly
     this._currentUtterance = null;
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   },
