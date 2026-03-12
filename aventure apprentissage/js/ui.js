@@ -1,35 +1,27 @@
 // ui.js — Gestion des écrans HTML et overlays
 
 const uiSystem = {
-  _micTimeout: null,
   _micActive: false,
+  _noHearCount: 0,
 
   init() {
-    // Boutons du menu
     const btnKeyboard = document.getElementById('btnPlayKeyboard');
     const btnCamera   = document.getElementById('btnPlayCamera');
     if (btnKeyboard) btnKeyboard.addEventListener('click', () => this._onPlayKeyboard());
     if (btnCamera)   btnCamera.addEventListener('click',   () => this._onPlayCamera());
 
-    // Calibration
     const btnSkipCalib = document.getElementById('btnSkipCalib');
     if (btnSkipCalib) btnSkipCalib.addEventListener('click', () => this._skipCalibration());
 
-    // Challenge
     const btnSkip = document.getElementById('btnSkipChallenge');
-    if (btnSkip) btnSkip.addEventListener('click', () => {
-      challengeSystem.skip();
-    });
+    if (btnSkip) btnSkip.addEventListener('click', () => challengeSystem.skip());
 
-    // Level complete
     const btnNext = document.getElementById('btnNextLevel');
     if (btnNext) btnNext.addEventListener('click', () => this._onNextLevel());
 
-    // Game complete
     const btnRestart = document.getElementById('btnRestart');
     if (btnRestart) btnRestart.addEventListener('click', () => this._onRestart());
 
-    // Settings
     const btnSettings = document.getElementById('btnSettings');
     if (btnSettings) btnSettings.addEventListener('click', () => this._showSettings());
   },
@@ -44,13 +36,11 @@ const uiSystem = {
     this._hideScreen('screen-gamecomplete');
     this._hideScreen('screen-calibration');
 
-    // Affiche le niveau actuel
     const disp = document.getElementById('menuLevelDisplay');
     if (disp && currentProgress) {
       disp.textContent = `Niveau actuel : ${currentProgress.currentLevel} / 20`;
     }
 
-    // Pré-remplit le nom
     const nameInput = document.getElementById('playerName');
     if (nameInput && currentProfile) {
       nameInput.value = currentProfile.name !== 'Aventurier' ? currentProfile.name : '';
@@ -79,7 +69,6 @@ const uiSystem = {
       }
     }, 1000);
 
-    // Stocke l'interval pour le skip
     this._calibInterval = interval;
     this._calibOnDone   = onDone;
   },
@@ -96,23 +85,24 @@ const uiSystem = {
     this._showScreen('screen-challenge');
 
     const { type, data } = challengeData;
-    const badge   = document.getElementById('challengeTypeBadge');
-    const content = document.getElementById('challengeContent');
-    const hints   = document.getElementById('hintArea');
-    const feedback= document.getElementById('feedbackArea');
-    const dots    = document.getElementById('attemptsDots');
-    const mic     = document.getElementById('micIndicator');
+    const badge    = document.getElementById('challengeTypeBadge');
+    const content  = document.getElementById('challengeContent');
+    const hints    = document.getElementById('hintArea');
+    const feedback = document.getElementById('feedbackArea');
+    const dots     = document.getElementById('attemptsDots');
+    const mic      = document.getElementById('micIndicator');
+    const transcript = document.getElementById('transcriptArea');
 
-    // Remet à zéro
-    if (hints)    { hints.classList.add('hidden'); hints.textContent = ''; }
-    if (feedback) feedback.textContent = '';
-    if (mic)      mic.classList.add('hidden');
+    // Remet tout à zéro
+    if (hints)      { hints.classList.add('hidden'); hints.textContent = ''; }
+    if (feedback)   { feedback.textContent = ''; feedback.className = 'feedback-area'; }
+    if (mic)        mic.classList.add('hidden');
+    if (transcript) { transcript.textContent = ''; transcript.className = 'transcript-area'; }
+    this._noHearCount = 0;
 
-    // Badge de type
     const badgeMap = { lecture: '📖 Lecture', calcul: '➕ Calcul', anglais: '🇬🇧 Anglais' };
     if (badge) badge.textContent = badgeMap[type] || type;
 
-    // Contenu selon le type
     let voiceInstruction = '';
     if (content) {
       if (type === 'lecture') {
@@ -140,7 +130,6 @@ const uiSystem = {
       }
     }
 
-    // Points de tentative
     this._renderDots(challengeData.maxAttempts, challengeData.attempts);
 
     // Explique le défi à voix haute, puis active le micro quand la voix s'arrête
@@ -158,50 +147,51 @@ const uiSystem = {
     }
   },
 
-  _noHearCount: 0,
-
   startMic() {
     if (!challengeSystem.current) return;
-    // Coupe la voix avant d'écouter (sinon le micro entend la synthèse)
     speechSystem.cancelSpeak();
 
-    const { type } = challengeSystem.current;
+    const { type, grammar } = challengeSystem.current;
     const lang = type === 'anglais' ? 'en-US' : 'fr-FR';
 
     const mic = document.getElementById('micIndicator');
     if (mic) mic.classList.remove('hidden');
-
+    this._setMicState('listening');
     this._micActive = true;
 
     speechSystem.startListening(
       lang,
-      (text, alternatives) => {
-        // Résultat reçu
+      // Réponse reçue
+      (text, alternatives, confidence, rawText) => {
         this._micActive = false;
         this._noHearCount = 0;
-        if (mic) mic.classList.add('hidden');
+        this._setMicState('thinking');
+        this._showTranscript(rawText || text, false);
         if (challengeSystem.current) {
           challengeSystem.processAnswer(text, alternatives);
         }
       },
+      // Timeout de silence — relance discrètement sans cacher le micro
       () => {
-        // Fin sans résultat (timeout)
         this._micActive = false;
-        if (mic) mic.classList.add('hidden');
-        if (!challengeSystem.current) return;
+        if (!challengeSystem.current) {
+          const m = document.getElementById('micIndicator');
+          if (m) m.classList.add('hidden');
+          return;
+        }
         this._noHearCount++;
-        const feedback = document.getElementById('feedbackArea');
         if (this._noHearCount <= 2) {
-          // Rappelle poliment et relance
-          if (feedback) feedback.textContent = "Je n'ai pas entendu. Parle plus fort !";
-          speechSystem.speak("Je n'ai pas entendu. Parle plus fort !", 'fr-FR',
-            () => setTimeout(() => this.startMic(), 500)
-          );
+          this._setMicState('louder');
+          setTimeout(() => this.startMic(), 500);
         } else {
-          // Trop de tentatives sans entendre — attend sans relancer le TTS
-          if (feedback) feedback.textContent = "Parle dans le micro quand tu es prêt !";
+          this._setMicState('wait');
           setTimeout(() => { this._noHearCount = 0; this.startMic(); }, 3000);
         }
+      },
+      grammar || null,
+      // Transcription en direct
+      (interimText, isFinal) => {
+        if (!isFinal) this._showTranscript(interimText, true);
       }
     );
   },
@@ -212,26 +202,35 @@ const uiSystem = {
     this._micActive = false;
     const mic = document.getElementById('micIndicator');
     if (mic) mic.classList.add('hidden');
+    const transcript = document.getElementById('transcriptArea');
+    if (transcript) { transcript.textContent = ''; transcript.className = 'transcript-area'; }
     this._hideScreen('screen-challenge');
     gameState.phase = 'playing';
   },
 
-  showFeedback(success, message) {
+  // restartMicAfter : si true, relance le micro après que la voix ait fini
+  showFeedback(success, message, restartMicAfter = false) {
     const area = document.getElementById('feedbackArea');
     if (!area) return;
     area.className = 'feedback-area ' + (success ? 'success' : 'error');
     area.textContent = (success ? '✅ ' : '💔 ') + message;
 
-    // Voix : supprime les parenthèses et les emojis avant de lire
-    const voice = message.replace(/\([^)]*\)/g, '').replace(/[^\w\sàâçéèêëïîôùûüœæ!?.,']/gi, '').trim();
-    speechSystem.speak(voice, 'fr-FR');
+    // Arrête l'écoute pendant que la voix parle (évite l'écho micro ↔ haut-parleur)
+    speechSystem.stopListening();
+    this._setMicState('speaking');
 
-    // Met à jour les dots
+    const voice = message.replace(/\([^)]*\)/g, '').replace(/[^\w\sàâçéèêëïîôùûüœæ!?.,']/gi, '').trim();
+
+    if (restartMicAfter) {
+      speechSystem.speak(voice, 'fr-FR', () => {
+        if (challengeSystem.current) this.startMic();
+      });
+    } else {
+      speechSystem.speak(voice, 'fr-FR');
+    }
+
     if (challengeSystem.current) {
-      this._renderDots(
-        challengeSystem.current.maxAttempts,
-        challengeSystem.current.attempts
-      );
+      this._renderDots(challengeSystem.current.maxAttempts, challengeSystem.current.attempts);
     }
   },
 
@@ -240,6 +239,31 @@ const uiSystem = {
     if (!area) return;
     area.textContent = '💡 ' + hintText;
     area.classList.remove('hidden');
+  },
+
+  // Met à jour l'icône et le texte du micro selon l'état
+  _setMicState(state) {
+    const icon = document.querySelector('#micIndicator .mic-icon');
+    const text = document.querySelector('#micIndicator .mic-text');
+    if (!icon || !text) return;
+    const states = {
+      listening: { icon: '🎤', text: 'Je t\'écoute...' },
+      speaking:  { icon: '🔊', text: 'J\'explique...' },
+      thinking:  { icon: '💭', text: 'Je réfléchis...' },
+      louder:    { icon: '📢', text: 'Parle plus fort !' },
+      wait:      { icon: '⏳', text: 'Prends ton temps...' },
+    };
+    const s = states[state] || states.listening;
+    icon.textContent = s.icon;
+    text.textContent = s.text;
+  },
+
+  // Affiche ce que le STT a entendu (intérimaire ou final)
+  _showTranscript(text, isInterim) {
+    const area = document.getElementById('transcriptArea');
+    if (!area || !text) return;
+    area.textContent = `"${text}"`;
+    area.className = 'transcript-area' + (isInterim ? ' interim' : ' final');
   },
 
   // ── Level complete ──────────────────────────────────────────────
@@ -282,18 +306,12 @@ const uiSystem = {
 
   _showScreen(id) {
     const el = document.getElementById(id);
-    if (el) {
-      el.classList.remove('hidden');
-      el.classList.add('active');
-    }
+    if (el) { el.classList.remove('hidden'); el.classList.add('active'); }
   },
 
   _hideScreen(id) {
     const el = document.getElementById(id);
-    if (el) {
-      el.classList.remove('active');
-      el.classList.add('hidden');
-    }
+    if (el) { el.classList.remove('active'); el.classList.add('hidden'); }
   },
 
   // ── Callbacks boutons ──────────────────────────────────────────
@@ -336,7 +354,6 @@ const uiSystem = {
   },
 
   _showSettings() {
-    // Simple dialogue de réinitialisation
     if (confirm('Réinitialiser la progression ? (toutes les données seront effacées)')) {
       saveSystem.resetAll();
       currentProfile  = saveSystem.loadProfile();

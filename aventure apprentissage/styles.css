@@ -483,6 +483,27 @@ h2 {
 
 .mic-indicator.hidden { display: none; }
 
+/* Zone de transcription en direct */
+.transcript-area {
+  min-height: 28px;
+  font-size: 16px;
+  font-style: italic;
+  color: #9c27b0;
+  text-align: center;
+  margin: 4px 0 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.transcript-area.interim {
+  opacity: 0.55;
+}
+
+.transcript-area.final {
+  opacity: 1;
+  font-weight: 600;
+}
+
 /* Points de tentatives */
 .attempts-dots {
   display: flex;
