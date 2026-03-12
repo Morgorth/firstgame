@@ -88,6 +88,8 @@ Pour les features webcam/voix : tester avec une vraie caméra/micro dans Chrome.
 
 ## Règles — ne jamais faire
 
+- **Aventure Apprentissage — zones walkables** : ne jamais appliquer de marge interne (`margin > 0`) dans `_isWalkable`. Les zones ROOMS et CORRIDORS se touchent bord à bord ; une marge positive crée des trous de `margin*2` px à chaque jonction, bloquant le joueur devant toutes les salles.
+
 - **Ne jamais mélanger les fichiers entre jeux.** `wave-assault/js/game.js` et `sonic-halfpipe/js/game.js` sont deux fichiers distincts. Toujours confirmer quel jeu est concerné avant de lire ou modifier.
 - **Ne jamais ajouter `import` / `export`.** Tous les jeux utilisent des globaux. Introduire des modules ES6 casse tout.
 - **Ne jamais ajouter un build step** (webpack, vite, esbuild…). Les jeux s'ouvrent directement dans le browser.

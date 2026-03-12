@@ -205,12 +205,8 @@ function movePlayer(dx, dy) {
 }
 
 function _isWalkable(x, y, r, zones) {
-  const margin = 2;
   for (const z of zones) {
-    if (x >= z.x + margin &&
-        x <= z.x + z.w - margin &&
-        y >= z.y + margin &&
-        y <= z.y + z.h - margin) {
+    if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
       return true;
     }
   }
