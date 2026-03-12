@@ -215,6 +215,25 @@ const speechSystem = {
     return null;
   },
 
+  // ── Synthèse vocale (TTS) ────────────────────────────────────────
+
+  speak(text, lang, onEnd) {
+    if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang   = lang || 'fr-FR';
+    u.rate   = 0.88;
+    u.pitch  = 1.1;
+    u.volume = 1;
+    u.onend  = () => { if (onEnd) onEnd(); };
+    u.onerror = () => { if (onEnd) onEnd(); };
+    window.speechSynthesis.speak(u);
+  },
+
+  cancelSpeak() {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  },
+
   // Vérifie si le texte prononcé correspond à une des réponses attendues
   matches(spoken, expectedArray) {
     if (!spoken || !expectedArray) return false;

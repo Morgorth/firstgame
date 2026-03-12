@@ -113,9 +113,9 @@ const uiSystem = {
     if (badge) badge.textContent = badgeMap[type] || type;
 
     // Contenu selon le type
+    let voiceInstruction = '';
     if (content) {
       if (type === 'lecture') {
-        const displayText = data.display.replace(/·/g, '<span class="syllable-dot">·</span>');
         const colored = data.display.split('·').map((s, i) =>
           `<span class="syllable syllable-${i % 3}">${s}</span>`
         ).join('<span class="syllable-dot">·</span>');
@@ -123,25 +123,28 @@ const uiSystem = {
           <div class="challenge-instruction">Lis ce mot !</div>
           <div class="challenge-word lecture-word">${colored}</div>
         `;
+        voiceInstruction = 'Lis ce mot à voix haute !';
       } else if (type === 'calcul') {
         content.innerHTML = `
           <div class="challenge-instruction">Combien font...</div>
           <div class="challenge-word calcul-word">${data.a} + ${data.b} = ?</div>
         `;
+        voiceInstruction = `Combien font ${data.a} plus ${data.b} ?`;
       } else if (type === 'anglais') {
         content.innerHTML = `
           <div class="challenge-instruction">Comment dit-on en anglais ?</div>
           <div class="challenge-emoji">${data.emoji}</div>
           <div class="challenge-word anglais-word">${data.fr}</div>
         `;
+        voiceInstruction = `Comment dit-on ${data.fr} en anglais ?`;
       }
     }
 
     // Points de tentative
     this._renderDots(challengeData.maxAttempts, challengeData.attempts);
 
-    // Active le micro après un délai
-    setTimeout(() => this.startMic(), 800);
+    // Explique le défi à voix haute, puis active le micro quand la voix s'arrête
+    speechSystem.speak(voiceInstruction, 'fr-FR', () => setTimeout(() => this.startMic(), 400));
   },
 
   _renderDots(max, used) {
@@ -157,6 +160,9 @@ const uiSystem = {
 
   startMic() {
     if (!challengeSystem.current) return;
+    // Coupe la voix avant d'écouter (sinon le micro entend la synthèse)
+    speechSystem.cancelSpeak();
+
     const { type } = challengeSystem.current;
     const lang = type === 'anglais' ? 'en-US' : 'fr-FR';
 
@@ -182,7 +188,9 @@ const uiSystem = {
         if (challengeSystem.current) {
           const feedback = document.getElementById('feedbackArea');
           if (feedback) feedback.textContent = "Je n'ai pas entendu. Essaie encore !";
-          setTimeout(() => this.startMic(), 1500);
+          speechSystem.speak("Je n'ai pas entendu. Essaie encore !", 'fr-FR',
+            () => setTimeout(() => this.startMic(), 300)
+          );
         }
       }
     );
@@ -202,6 +210,10 @@ const uiSystem = {
     if (!area) return;
     area.className = 'feedback-area ' + (success ? 'success' : 'error');
     area.textContent = (success ? '✅ ' : '💔 ') + message;
+
+    // Voix : supprime les parenthèses et les emojis avant de lire
+    const voice = message.replace(/\([^)]*\)/g, '').replace(/[^\w\sàâçéèêëïîôùûüœæ!?.,']/gi, '').trim();
+    speechSystem.speak(voice, 'fr-FR');
 
     // Met à jour les dots
     if (challengeSystem.current) {
@@ -244,12 +256,15 @@ const uiSystem = {
     }
 
     audioSystem.playLevelComplete();
+    const lvl = gameState.currentLevel;
+    speechSystem.speak(`Bravo ! Tu as terminé le niveau ${lvl} ! Félicitations !`, 'fr-FR');
   },
 
   showGameComplete() {
     gameState.phase = 'gamecomplete';
     this._showScreen('screen-gamecomplete');
     audioSystem.playLevelComplete();
+    speechSystem.speak("Félicitations ! Tu as terminé tous les vingt niveaux ! Tu es un vrai maître de la licorne !", 'fr-FR');
   },
 
   // ── Helpers ────────────────────────────────────────────────────
