@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🦄 Licorne RPG - Aventure Apprentissage</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Canvas de jeu -->
+  <div id="game-wrap">
+    <canvas id="gameCanvas" width="900" height="620"></canvas>
+  </div>
+
+  <!-- Webcam overlay (petit, coin bas-droite) -->
+  <div id="webcamContainer" class="hidden">
+    <video id="webcamVideo" autoplay muted playsinline></video>
+    <canvas id="webcamCanvas"></canvas>
+    <div id="cameraStatus">Caméra</div>
+  </div>
+
+  <!-- ═══════════════════ ÉCRANS HTML ═══════════════════ -->
+
+  <!-- Bouton HOME persistant (visible pendant le gameplay, caché derrière les overlays) -->
+  <a id="btnHomeIngame" href="../index.html" class="btn-home-ingame">← HOME</a>
+
+  <!-- Menu principal -->
+  <div id="screen-menu" class="screen active">
+    <div class="screen-content menu-content">
+      <a href="../index.html" class="btn-home-link">← HOME</a>
+      <div class="title-block">
+        <div class="title-emoji">🦄</div>
+        <h1>Licorne RPG</h1>
+        <h2>Aventure Apprentissage</h2>
+      </div>
+
+      <div class="name-input-group">
+        <label for="playerName">Ton prénom :</label>
+        <input type="text" id="playerName" placeholder="Aventurier" maxlength="20" autocomplete="off">
+      </div>
+
+      <div class="control-options">
+        <button id="btnPlayKeyboard" class="btn-primary">🎮 Jouer au clavier</button>
+        <button id="btnPlayCamera"   class="btn-secondary">📷 Jouer avec la caméra</button>
+      </div>
+
+      <div class="level-display" id="menuLevelDisplay">Niveau 1 / 20</div>
+
+      <div class="menu-footer">
+        <button id="btnSettings" class="btn-small">⚙️ Réinitialiser</button>
+        <span class="privacy-note">🔒 Tout est 100% local — aucune donnée envoyée</span>
+      </div>
+
+      <div class="controls-hint">
+        <strong>Clavier :</strong> ZQSD ou ↑←↓→ pour se déplacer
+      </div>
+    </div>
+  </div>
+
+  <!-- Calibration caméra -->
+  <div id="screen-calibration" class="screen hidden">
+    <div class="screen-content">
+      <h2>📷 Calibration de la caméra</h2>
+      <div id="calibCountdown" class="big-number">10</div>
+      <p class="calib-instruction">Lève les bras pour tester !</p>
+      <div class="controls-hint gesture-hint">
+        <div>⬆️ <strong>Deux bras levés</strong> = avancer</div>
+        <div>◀️ <strong>Bras gauche</strong> = aller à gauche</div>
+        <div>▶️ <strong>Bras droit</strong> = aller à droite</div>
+        <div>✋ <strong>Bras baissés</strong> = s'arrêter</div>
+      </div>
+      <button id="btnSkipCalib" class="btn-secondary">Continuer →</button>
+    </div>
+  </div>
+
+  <!-- Challenge overlay -->
+  <div id="screen-challenge" class="screen hidden">
+    <div class="challenge-card">
+      <div id="challengeTypeBadge" class="challenge-type-badge">📖 Lecture</div>
+
+      <div id="challengeContent" class="challenge-content">
+        <!-- Rempli dynamiquement par ui.js -->
+      </div>
+
+      <div id="micIndicator" class="mic-indicator hidden">
+        <span class="mic-icon">🎤</span>
+        <span class="mic-text">Je t'écoute...</span>
+      </div>
+
+      <div id="attemptsDots" class="attempts-dots"></div>
+
+      <div id="hintArea" class="hint-area hidden"></div>
+
+      <div id="feedbackArea" class="feedback-area"></div>
+
+      <button id="btnSkipChallenge" class="btn-small skip-btn">Passer ⏭</button>
+    </div>
+  </div>
+
+  <!-- Niveau terminé -->
+  <div id="screen-levelcomplete" class="screen hidden">
+    <div class="screen-content celebrate">
+      <div class="big-emoji bounce">🎉</div>
+      <h2>Niveau terminé !</h2>
+      <div id="levelCompleteScore" class="score-display"></div>
+      <div id="newCosmetics" class="cosmetics-display"></div>
+      <button id="btnNextLevel" class="btn-primary big-btn">Niveau suivant →</button>
+      <a href="../index.html" class="btn-home-link btn-home-link--complete">← Retour au menu principal</a>
+    </div>
+  </div>
+
+  <!-- Jeu terminé -->
+  <div id="screen-gamecomplete" class="screen hidden">
+    <div class="screen-content celebrate">
+      <div class="big-emoji bounce">🏆</div>
+      <h2>Félicitations !</h2>
+      <p class="big-text">Tu as terminé les 20 niveaux !</p>
+      <p class="big-text">Tu es un vrai <strong>Maître de la Licorne</strong> ! 🦄✨</p>
+      <button id="btnRestart" class="btn-primary big-btn">Rejouer depuis le début</button>
+      <a href="../index.html" class="btn-home-link btn-home-link--complete">← Retour au menu principal</a>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ CDN TensorFlow ═══════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.15.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.15.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+
+  <!-- ═══════════════════ Scripts du jeu ═══════════════════ -->
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/webcam-core.js"></script>
+  <script src="js/webcam-gestures.js"></script>
+  <script src="js/rpg.js"></script>
+  <script src="js/challenges.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+</html>
