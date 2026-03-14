@@ -31,6 +31,7 @@ const gameState = {
   challengeActive: false,
   frameCount: 0,
   exitUnlocked: false,
+  floatingXP: [],      // [{text, x, y, frame, maxFrame}] — notifications flottantes
 };
 
 // Profil et progression — seront chargés depuis saveSystem

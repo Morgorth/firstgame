@@ -112,9 +112,25 @@ const challengeSystem = {
       const skillMap = { lecture: 'lecture', calcul: 'calcul', anglais: 'anglais' };
       const skill    = skillMap[type] || 'lecture';
       const xpPoints = (attempts === 0) ? 20 : 10;
+      const oldLevel = currentProfile.stats ? (currentProfile.stats[skill] || 1) : 1;
       rpgSystem.addXP(currentProfile, skill, xpPoints);
+      const newLevel = currentProfile.stats ? (currentProfile.stats[skill] || 1) : 1;
       const newCosmetics = rpgSystem.checkUnlocks(currentProfile);
       saveSystem.saveProfile(currentProfile);
+
+      // Notification flottante XP
+      const xpIcons = { lecture: '📖', calcul: '➕', anglais: '🇬🇧' };
+      const xpIcon  = xpIcons[skill] || '✨';
+      const levelUp = newLevel > oldLevel;
+      gameState.floatingXP.push({
+        text:     levelUp ? `${xpIcon} NIVEAU ${newLevel} !` : `+${xpPoints} XP ${xpIcon}`,
+        x:        gameState.player.x,
+        y:        gameState.player.y - 40,
+        frame:    0,
+        maxFrame: levelUp ? 110 : 80,
+        levelUp,
+      });
+
       if (this._onComplete) this._onComplete(roomId, newCosmetics);
     } else {
       audioSystem.playFail();
