@@ -4,42 +4,41 @@ const CONFIG = {
   canvas: { width: 900, height: 620 },
 
   player: {
-    spawn: { x: 450, y: 560 },
+    spawn: { x: 450, y: 555 },
     radius: 18,
     speed: 3,
     color: '#e040fb',
   },
 
   challenge: {
-    triggerRadius: 35,
+    triggerRadius: 38,
     maxAttempts: 3,
-    gateScore: 5,   // 5/6 salles pour ouvrir la sortie
+    gateScore: 5,   // 5/6 épreuves pour ouvrir le portail
   },
 
-  // Zones walkables du monde
+  // Zones de challenge — positionnées aux bâtiments du château
   ROOMS: [
-    { x: 80,  y: 80,  w: 160, h: 130, cx: 160, cy: 145, id: 0 },
-    { x: 370, y: 80,  w: 160, h: 130, cx: 450, cy: 145, id: 1 },
-    { x: 660, y: 80,  w: 160, h: 130, cx: 740, cy: 145, id: 2 },
-    { x: 80,  y: 340, w: 160, h: 130, cx: 160, cy: 405, id: 3 },
-    { x: 370, y: 340, w: 160, h: 130, cx: 450, cy: 405, id: 4 },
-    { x: 660, y: 340, w: 160, h: 130, cx: 740, cy: 405, id: 5 },
+    // Tour principale du château (entrée grande arche)
+    { x: 400, y: 245, w: 100, h: 60, cx: 450, cy: 278, id: 0 },
+    // Aile gauche — Dôme des mathiques
+    { x: 50,  y: 240, w: 120, h: 55, cx: 115, cy: 270, id: 1 },
+    // Aile droite — Serre des langues (conservatoire)
+    { x: 730, y: 240, w: 120, h: 55, cx: 790, cy: 270, id: 2 },
+    // Pavillon jardin gauche
+    { x: 55,  y: 398, w: 120, h: 55, cx: 120, cy: 432, id: 3 },
+    // Fontaine centrale
+    { x: 395, y: 405, w: 110, h: 55, cx: 450, cy: 438, id: 4 },
+    // Pavillon jardin droit
+    { x: 725, y: 398, w: 120, h: 55, cx: 790, cy: 432, id: 5 },
   ],
 
+  // Un seul grand couloir = mouvement libre partout dans les jardins
   CORRIDORS: [
-    { x: 240, y: 128, w: 130, h: 34 },   // R0→R1
-    { x: 530, y: 128, w: 130, h: 34 },   // R1→R2
-    { x: 240, y: 388, w: 130, h: 34 },   // R3→R4
-    { x: 530, y: 388, w: 130, h: 34 },   // R4→R5
-    { x: 143, y: 210, w: 34,  h: 130 },  // R0→R3
-    { x: 433, y: 210, w: 34,  h: 130 },  // R1→R4
-    { x: 723, y: 210, w: 34,  h: 130 },  // R2→R5
-    { x: 433, y: 470, w: 34,  h: 80  },  // Start corridor
-    { x: 400, y: 540, w: 100, h: 60  },  // Start zone
+    { x: 18, y: 18, w: 864, h: 550 },
   ],
 
-  EXIT_ZONE:     { x: 415, y: 10, w: 70, h: 50 },
-  EXIT_CORRIDOR: { x: 433, y: 30, w: 34, h: 50 },
+  EXIT_ZONE:     { x: 415, y: 170, w: 70, h: 60 },
+  EXIT_CORRIDOR: { x: 415, y: 170, w: 70, h: 60 },
 
   // Thèmes visuels par niveaux
   THEMES: [
