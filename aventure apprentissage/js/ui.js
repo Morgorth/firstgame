@@ -122,11 +122,10 @@ const uiSystem = {
         voiceInstruction = `Combien font ${data.a} plus ${data.b} ?`;
       } else if (type === 'anglais') {
         content.innerHTML = `
-          <div class="challenge-instruction">Comment dit-on en anglais ?</div>
+          <div class="challenge-instruction">Écoute et répète en anglais !</div>
           <div class="challenge-emoji">${data.emoji}</div>
           <div class="challenge-word anglais-word">${data.fr}</div>
         `;
-        voiceInstruction = `Comment dit-on ${data.fr} en anglais ?`;
       }
     }
 
@@ -134,8 +133,15 @@ const uiSystem = {
 
     // Explique le défi à voix haute (fire-and-forget), puis lance le micro après
     // un délai fixe — indépendant de onEnd pour fonctionner sur tous les navigateurs
-    speechSystem.speak(voiceInstruction, 'fr-FR');
-    setTimeout(() => this.startMic(), 3000);
+    if (type === 'anglais') {
+      // 1) Annonce courte en français, puis prononce le mot anglais, puis écoute
+      speechSystem.speak('Écoute et répète !', 'fr-FR');
+      setTimeout(() => speechSystem.speak(data.expected[0], 'en-US'), 1500);
+      setTimeout(() => this.startMic(), 3500);
+    } else {
+      speechSystem.speak(voiceInstruction, 'fr-FR');
+      setTimeout(() => this.startMic(), 3000);
+    }
   },
 
   _renderDots(max, used) {
