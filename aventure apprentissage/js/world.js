@@ -55,7 +55,9 @@ const worldSystem = {
     this._drawExit(ctx, gs);
     // 14. Joueur
     this._drawPlayer(ctx, gs);
-    // 15. HUD
+    // 15. Notifications XP flottantes
+    this._drawFloatingXP(ctx, gs);
+    // 16. HUD
     this._drawHUD(ctx, gs);
   },
 
@@ -1364,73 +1366,489 @@ const worldSystem = {
     ctx.shadowBlur  = 0;
   },
 
-  // ── Joueur ───────────────────────────────────────────────────────
+  // ── Joueur — fille sur licorne ────────────────────────────────────
 
   _drawPlayer(ctx, gs) {
     const { x, y } = gs.player;
-    const r = CONFIG.player.radius;
+    const frame = gs.frameCount;
 
-    // Ombre
+    const profile  = (typeof currentProfile !== 'undefined' && currentProfile) ? currentProfile : null;
+    const unlocked = profile ? (profile.cosmetics || { avatar: [], unicorn: [] }) : { avatar: [], unicorn: [] };
+    const magie    = profile ? rpgSystem.getMagie(profile) : 1;
+
+    const hasSaddle      = unlocked.unicorn.includes('selle_rose');
+    const hasWings       = unlocked.unicorn.includes('ailes');
+    const hasRainbowHorn = unlocked.unicorn.includes('corne_arc');
+    const hasCapeBlue    = unlocked.avatar.includes('cape_bleue');
+    const hasCapeGold    = unlocked.avatar.includes('cape_doree');
+    const hasCrown       = unlocked.avatar.includes('couronne');
+    const hasHat         = unlocked.avatar.includes('chapeau_mage');
+    const hasWand        = unlocked.avatar.includes('baguette');
+    const hasArmor       = unlocked.avatar.includes('armure');
+
+    // Couleurs mane/queue selon corne arc-en-ciel
+    const maneColors = hasRainbowHorn
+      ? ['#FF6B9D', '#FFB347', '#FFD700', '#7EC8E3', '#9B59B6']
+      : ['#FF88CC', '#FF55AA', '#CC3388'];
+    const tailColors = hasRainbowHorn
+      ? ['#FF6B9D', '#FFD700', '#7EC8E3', '#9B59B6']
+      : ['#FF88CC', '#FF55AA', '#AA2266'];
+
     ctx.save();
-    ctx.globalAlpha = 0.22;
-    ctx.beginPath();
-    ctx.ellipse(x, y + r - 4, r * 0.9, r * 0.34, 0, 0, Math.PI * 2);
+
+    // ── OMBRE ──────────────────────────────────────────────────────
+    ctx.globalAlpha = 0.20;
     ctx.fillStyle = '#000';
-    ctx.fill();
-    ctx.restore();
-
-    // Corps
-    const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
-    grad.addColorStop(0, '#f48fb1');
-    grad.addColorStop(1, CONFIG.player.color);
     ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
+    ctx.ellipse(x, y + 22, 22, 5, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#ad1457';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.globalAlpha = 1;
 
-    // Yeux
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.ellipse(x - 5, y - 4, 4, 5, 0, 0, Math.PI * 2);
-    ctx.ellipse(x + 5, y - 4, 4, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#333';
-    ctx.beginPath();
-    ctx.arc(x - 5, y - 4, 2.5, 0, Math.PI * 2);
-    ctx.arc(x + 5, y - 4, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(x - 4, y - 5, 1, 0, Math.PI * 2);
-    ctx.arc(x + 6, y - 5, 1, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Couronne
-    if (gs.player.cosmetics && gs.player.cosmetics.avatar === 'couronne') {
-      ctx.font = '16px system-ui';
-      ctx.textAlign = 'center';
-      ctx.fillText('👑', x, y - r - 2);
+    // ── SCINTILLEMENTS MAGIQUES (magie ≥ 3) ──────────────────────
+    if (magie >= 3) {
+      const numSparks = Math.min(7, Math.floor(magie * 0.8));
+      for (let i = 0; i < numSparks; i++) {
+        const ang = (i / numSparks) * Math.PI * 2 + frame * 0.04;
+        const sr  = 28 + Math.sin(frame * 0.07 + i) * 5;
+        ctx.globalAlpha = 0.22 + 0.35 * Math.sin(frame * 0.09 + i * 1.4);
+        ctx.fillStyle = i % 2 === 0 ? '#FFD700' : '#FF80FF';
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(ang) * sr, y + 4 + Math.sin(ang) * sr * 0.4, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
 
-    // Corne
-    ctx.save();
-    ctx.translate(x, y - r);
+    // ── AILES (si débloquées) ─────────────────────────────────────
+    if (hasWings) {
+      const flap = Math.sin(frame * 0.08) * 6;
+      ctx.globalAlpha = 0.72;
+      ctx.fillStyle = '#FFE8FF';
+      ctx.strokeStyle = '#DDA0DD';
+      ctx.lineWidth = 1;
+      // Aile gauche
+      ctx.beginPath();
+      ctx.moveTo(x - 6, y + 2);
+      ctx.bezierCurveTo(x - 22, y - 4 - flap, x - 32, y + 2 - flap, x - 26, y + 11);
+      ctx.bezierCurveTo(x - 16, y + 8, x - 10, y + 5, x - 6, y + 2);
+      ctx.fill(); ctx.stroke();
+      // Aile droite
+      ctx.beginPath();
+      ctx.moveTo(x + 6, y + 2);
+      ctx.bezierCurveTo(x + 22, y - 4 - flap, x + 32, y + 2 - flap, x + 26, y + 11);
+      ctx.bezierCurveTo(x + 16, y + 8, x + 10, y + 5, x + 6, y + 2);
+      ctx.fill(); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // ── QUEUE ─────────────────────────────────────────────────────
+    for (let i = 0; i < tailColors.length; i++) {
+      const tw = Math.sin(frame * 0.04 + i * 0.7) * 5;
+      ctx.strokeStyle = tailColors[i];
+      ctx.lineWidth   = 2.8 - i * 0.4;
+      ctx.lineCap     = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - 16, y + 4);
+      ctx.bezierCurveTo(x - 26, y + tw, x - 32, y + 9 + tw, x - 26 + i * 2, y + 20);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+
+    // ── CORPS LICORNE ─────────────────────────────────────────────
+    const bodyGrad = ctx.createRadialGradient(x - 4, y + 2, 2, x, y + 6, 22);
+    bodyGrad.addColorStop(0, '#FFFFFF');
+    bodyGrad.addColorStop(0.5, '#F2EEFF');
+    bodyGrad.addColorStop(1, '#E0D0FF');
+    ctx.fillStyle = bodyGrad;
     ctx.beginPath();
-    ctx.moveTo(0, -14);
-    ctx.lineTo(-5, 2);
-    ctx.lineTo(5, 2);
-    ctx.closePath();
-    const hornGrad = ctx.createLinearGradient(0, -14, 0, 2);
-    hornGrad.addColorStop(0, '#fff9c4');
-    hornGrad.addColorStop(1, '#ffd600');
-    ctx.fillStyle = hornGrad;
+    ctx.ellipse(x, y + 5, 21, 12, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = '#C8B0E8';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Étoiles sur le corps (comme dans l'image de référence)
+    ctx.fillStyle = 'rgba(170, 130, 240, 0.55)';
+    for (const [sx, sy] of [[-7, 4], [4, 8], [8, 1]]) {
+      ctx.beginPath();
+      ctx.arc(x + sx, y + sy, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ── SELLE ROSE ────────────────────────────────────────────────
+    if (hasSaddle) {
+      ctx.fillStyle = '#FF88C0';
+      ctx.strokeStyle = '#FF5090';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 9, 5, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#FFFDE0';
+      ctx.beginPath();
+      ctx.ellipse(x, y - 1, 7, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // ── PATTES ────────────────────────────────────────────────────
+    const legBob   = Math.sin(frame * 0.10) * 2;
+    const legColor = '#F0EAFF';
+    const hoofCol  = '#B090D0';
+    for (let i = 0; i < 4; i++) {
+      const lx   = x - 15 + i * 10;
+      const lanim = i % 2 === 0 ? legBob : -legBob;
+      ctx.fillStyle   = legColor;
+      ctx.strokeStyle = '#C8B0E8';
+      ctx.lineWidth   = 1;
+      ctx.fillRect(lx - 2.5, y + 16, 5, 9 + lanim);
+      ctx.strokeRect(lx - 2.5, y + 16, 5, 9 + lanim);
+      ctx.fillStyle = hoofCol;
+      ctx.beginPath();
+      _roundRect(ctx, lx - 3, y + 24 + lanim, 6, 4, 2);
+      ctx.fill();
+    }
+
+    // ── COU + TÊTE LICORNE ────────────────────────────────────────
+    const hx = x + 15;
+    const hy = y - 6;
+
+    // Cou
+    ctx.fillStyle   = '#F0EAFF';
+    ctx.strokeStyle = '#C8B0E8';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(hx - 6, y + 4);
+    ctx.bezierCurveTo(hx - 9, y - 2, hx - 7, hy + 5, hx - 5, hy + 6);
+    ctx.lineTo(hx + 5, hy + 5);
+    ctx.bezierCurveTo(hx + 6, y - 1, hx + 5, y + 2, hx + 4, y + 4);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Tête
+    const headGrad = ctx.createRadialGradient(hx - 2, hy - 2, 1, hx, hy, 10);
+    headGrad.addColorStop(0, '#FFFFFF');
+    headGrad.addColorStop(1, '#EDE0FF');
+    ctx.fillStyle = headGrad;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy, 10, 8, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#C8B0E8';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Naseau
+    ctx.fillStyle = '#E8C0E8';
+    ctx.beginPath();
+    ctx.arc(hx + 8, hy + 1, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Œil de licorne (grand, expressif)
+    ctx.fillStyle = '#7B52AB';
+    ctx.beginPath();
+    ctx.arc(hx + 2, hy - 1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(hx + 3, hy - 1.5, 1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── CORNE ─────────────────────────────────────────────────────
+    ctx.save();
+    ctx.translate(hx + 1, hy - 7);
+    ctx.rotate(0.15);
+    let hornGrad;
+    if (hasRainbowHorn) {
+      hornGrad = ctx.createLinearGradient(0, -16, 0, 4);
+      ['#FF6B9D', '#FFD700', '#7EC8E3', '#9B59B6', '#FF6B9D'].forEach(
+        (c, i, a) => hornGrad.addColorStop(i / (a.length - 1), c)
+      );
+    } else {
+      hornGrad = ctx.createLinearGradient(0, -16, 0, 4);
+      hornGrad.addColorStop(0, '#FFFFFF');
+      hornGrad.addColorStop(1, '#FFD700');
+    }
+    ctx.fillStyle = hornGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, -16);
+    ctx.lineTo(-3.5, 4);
+    ctx.lineTo(3.5, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,200,50,0.55)';
+    ctx.lineWidth   = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(0.5, -14); ctx.lineTo(-1, -6); ctx.lineTo(1.5, 2);
+    ctx.stroke();
     ctx.restore();
+
+    // Halo corne arc-en-ciel
+    if (hasRainbowHorn) {
+      const hGlow = ctx.createRadialGradient(hx + 2, hy - 14, 0, hx + 2, hy - 14, 13);
+      hGlow.addColorStop(0, `rgba(255,200,255,${0.28 + 0.28 * Math.sin(frame * 0.10)})`);
+      hGlow.addColorStop(1, 'rgba(200,150,255,0)');
+      ctx.fillStyle = hGlow;
+      ctx.beginPath();
+      ctx.arc(hx + 2, hy - 14, 13, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ── CRINIÈRE ──────────────────────────────────────────────────
+    ctx.lineCap = 'round';
+    for (let i = 0; i < maneColors.length; i++) {
+      const mw = Math.sin(frame * 0.04 + i * 0.5) * 3;
+      ctx.strokeStyle = maneColors[i];
+      ctx.lineWidth   = 2.4 - i * 0.22;
+      ctx.beginPath();
+      ctx.moveTo(hx - 4 + i * 0.6, hy - 6);
+      ctx.bezierCurveTo(hx - 10 + mw, hy + 2, hx - 13 + mw, y, hx - 10 + i * 0.8, y + 4);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+
+    // ── CAVALIÈRE ─────────────────────────────────────────────────
+    const rx = x - 2;   // centre horizontal de la cavalière
+    const ry = y - 6;   // centre vertical (milieu torse)
+
+    // Cape (derrière, dessinée avant le corps)
+    if (hasCapeBlue || hasCapeGold) {
+      const capeColor  = hasCapeGold ? '#FFD700' : '#5588FF';
+      const capeBorder = hasCapeGold ? '#CC9900' : '#3366CC';
+      const capeWave   = Math.sin(frame * 0.04) * 3;
+      ctx.fillStyle   = capeColor;
+      ctx.strokeStyle = capeBorder;
+      ctx.lineWidth   = 1;
+      ctx.globalAlpha = 0.82;
+      ctx.beginPath();
+      ctx.moveTo(rx - 7, ry - 2);
+      ctx.bezierCurveTo(rx - 13, ry + 8, rx - 15 + capeWave, ry + 16, rx - 8 + capeWave, ry + 22);
+      ctx.bezierCurveTo(rx - 1, ry + 16, rx + 5, ry + 8, rx + 7, ry - 2);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // Jambes (à cheval sur la licorne)
+    ctx.fillStyle = '#7B3BA8';
+    ctx.beginPath();
+    ctx.ellipse(rx - 8, ry + 8, 5, 3.5, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(rx + 9, ry + 8, 5, 3.5, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bottes
+    ctx.fillStyle   = '#7B4010';
+    ctx.strokeStyle = '#5A2D08';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.ellipse(rx - 9, ry + 12, 4, 2.5, 0.3, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(rx + 10, ry + 12, 4, 2.5, -0.3, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Veste / armure
+    const jacketC0 = hasArmor ? '#B0C0E0' : '#A070FF';
+    const jacketC1 = hasArmor ? '#7080B0' : '#8B4CF6';
+    const jacketGrad = ctx.createRadialGradient(rx - 3, ry - 3, 1, rx, ry + 2, 8);
+    jacketGrad.addColorStop(0, jacketC0);
+    jacketGrad.addColorStop(1, jacketC1);
+    ctx.fillStyle   = jacketGrad;
+    ctx.strokeStyle = hasArmor ? '#6080A8' : '#6030C0';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.ellipse(rx, ry + 1, 7, 8, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    if (hasArmor) {
+      ctx.strokeStyle = 'rgba(200,220,255,0.65)';
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.moveTo(rx - 4, ry - 2); ctx.lineTo(rx + 4, ry - 2);
+      ctx.moveTo(rx, ry - 4);     ctx.lineTo(rx, ry + 5);
+      ctx.stroke();
+    }
+
+    // Ceinture dorée
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(rx - 5, ry + 5, 10, 2);
+
+    // Bras
+    ctx.strokeStyle = jacketC1;
+    ctx.lineWidth   = 4.5;
+    ctx.lineCap     = 'round';
+    ctx.beginPath();
+    ctx.moveTo(rx - 5, ry - 1); ctx.lineTo(rx - 11, ry + 5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(rx + 5, ry - 1); ctx.lineTo(rx + 11, ry + 5);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // Mains
+    ctx.fillStyle = '#F4C2A1';
+    ctx.beginPath();
+    ctx.arc(rx - 11, ry + 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(rx + 11, ry + 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Baguette magique
+    if (hasWand) {
+      ctx.strokeStyle = '#8B5E3C';
+      ctx.lineWidth   = 2;
+      ctx.beginPath();
+      ctx.moveTo(rx + 11, ry + 5); ctx.lineTo(rx + 20, ry - 3);
+      ctx.stroke();
+      const glow = 0.5 + 0.5 * Math.sin(frame * 0.12);
+      ctx.fillStyle = `rgba(255,230,50,${glow * 0.55})`;
+      ctx.beginPath();
+      ctx.arc(rx + 20, ry - 3, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(rx + 20, ry - 3, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ── TÊTE DE LA CAVALIÈRE ──────────────────────────────────────
+    ctx.fillStyle   = '#F4C2A1';
+    ctx.strokeStyle = '#D8956A';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.arc(rx, ry - 10, 7.5, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Chevelure (longue, arc-en-ciel — comme dans l'image)
+    const hairC = ['#9B5DE5', '#C77DFF', '#FF6B9D', '#FF9BE5'];
+    ctx.lineCap = 'round';
+    for (let i = 0; i < hairC.length; i++) {
+      const hw = Math.sin(frame * 0.03 + i * 0.5) * 3;
+      ctx.strokeStyle = hairC[i];
+      ctx.lineWidth   = 3 - i * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(rx - 2 + i * 1.5, ry - 17);
+      ctx.bezierCurveTo(rx - 9 + hw, ry - 8, rx - 13 + hw, ry, rx - 14 + hw * 1.5, ry + 12);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+
+    // Dessus de la tête (cheveux violets)
+    ctx.fillStyle   = '#9B5DE5';
+    ctx.strokeStyle = '#7B40C5';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.ellipse(rx + 1, ry - 15, 8, 5, -0.1, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Mèche sur le côté
+    ctx.fillStyle = '#A060F0';
+    ctx.beginPath();
+    ctx.moveTo(rx - 6, ry - 11);
+    ctx.bezierCurveTo(rx - 9, ry - 8, rx - 7, ry - 4, rx - 4, ry - 5);
+    ctx.bezierCurveTo(rx - 3, ry - 8, rx - 4, ry - 12, rx - 6, ry - 11);
+    ctx.fill();
+
+    // Yeux (grands, expressifs)
+    ctx.fillStyle = '#3B2060';
+    ctx.beginPath();
+    ctx.arc(rx - 3, ry - 11, 2, 0, Math.PI * 2);
+    ctx.arc(rx + 3, ry - 11, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(rx - 2.2, ry - 11.7, 0.8, 0, Math.PI * 2);
+    ctx.arc(rx + 3.8, ry - 11.7, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sourire
+    ctx.strokeStyle = '#D06040';
+    ctx.lineWidth   = 1.2;
+    ctx.beginPath();
+    ctx.arc(rx, ry - 7, 2.5, 0.3, Math.PI - 0.3);
+    ctx.stroke();
+
+    // Joues rosées
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle   = '#FF8090';
+    ctx.beginPath();
+    ctx.ellipse(rx - 5, ry - 9, 2.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(rx + 5, ry - 9, 2.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // ── ACCESSOIRES COSMÉTIQUES ───────────────────────────────────
+    if (hasHat) {
+      // Chapeau de mage
+      ctx.fillStyle   = '#4A0080';
+      ctx.strokeStyle = '#7000C0';
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.moveTo(rx, ry - 30);
+      ctx.lineTo(rx - 9, ry - 16);
+      ctx.lineTo(rx + 9, ry - 16);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#6B00B0';
+      ctx.beginPath();
+      ctx.ellipse(rx, ry - 16, 11, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(frame * 0.10);
+      ctx.font        = '8px system-ui';
+      ctx.textAlign   = 'center';
+      ctx.fillStyle   = '#FFD700';
+      ctx.fillText('⭐', rx, ry - 22);
+      ctx.globalAlpha = 1;
+    } else if (hasCrown) {
+      ctx.font      = 'bold 12px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('👑', rx, ry - 19);
+    }
+
+    ctx.restore();
+  },
+
+  // ── Notifications XP flottantes ─────────────────────────────────
+
+  _drawFloatingXP(ctx, gs) {
+    if (!gs.floatingXP || gs.floatingXP.length === 0) return;
+
+    for (let i = gs.floatingXP.length - 1; i >= 0; i--) {
+      const n = gs.floatingXP[i];
+      n.frame++;
+
+      const progress = n.frame / n.maxFrame;
+      // Fondu entrant rapide, fondu sortant sur les 30 derniers %
+      const alpha = progress < 0.7 ? 1 : Math.max(0, 1 - (progress - 0.7) / 0.3);
+      const dy    = n.y - n.frame * 0.55;
+
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.95;
+      ctx.textAlign   = 'center';
+
+      if (n.levelUp) {
+        // Level-up : grand texte doré avec halo
+        ctx.font        = 'bold 20px system-ui';
+        ctx.shadowColor = '#FF00FF';
+        ctx.shadowBlur  = 12;
+        ctx.fillStyle   = '#FFD700';
+        ctx.fillText(n.text, n.x, dy);
+        ctx.shadowBlur  = 0;
+      } else {
+        ctx.font        = 'bold 15px system-ui';
+        ctx.shadowColor = '#8800FF';
+        ctx.shadowBlur  = 7;
+        ctx.fillStyle   = '#FFFFFF';
+        ctx.fillText(n.text, n.x, dy);
+        ctx.shadowBlur  = 0;
+      }
+
+      ctx.restore();
+
+      if (n.frame >= n.maxFrame) gs.floatingXP.splice(i, 1);
+    }
   },
 
   // ── HUD ─────────────────────────────────────────────────────────
@@ -1439,24 +1857,135 @@ const worldSystem = {
     const W = CONFIG.canvas.width;
     const H = CONFIG.canvas.height;
 
-    ctx.fillStyle = 'rgba(15,5,25,0.72)';
-    ctx.fillRect(0, H - 36, W, 36);
+    const profile = (typeof currentProfile !== 'undefined' && currentProfile) ? currentProfile : null;
+    const stats   = profile ? (profile.stats || { lecture: 1, calcul: 1, anglais: 1 }) : { lecture: 1, calcul: 1, anglais: 1 };
+    const xp      = profile ? (profile.xp    || { lecture: 0, calcul: 0, anglais: 0 }) : { lecture: 0, calcul: 0, anglais: 0 };
+    const magie   = profile ? rpgSystem.getMagie(profile) : 1;
+    const name    = profile ? profile.name : 'Aventurier';
 
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px system-ui';
+    // Fond du HUD élargi
+    ctx.fillStyle = 'rgba(12,4,22,0.82)';
+    ctx.fillRect(0, H - 62, W, 62);
+
+    // Liseré supérieur violet
+    ctx.strokeStyle = 'rgba(180,120,255,0.40)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, H - 62); ctx.lineTo(W, H - 62);
+    ctx.stroke();
+
+    // ── Ligne 1 : nom | niveau | épreuves ────────────────────────
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font      = 'bold 13px system-ui';
     ctx.textAlign = 'left';
-    const name = (typeof currentProfile !== 'undefined' && currentProfile) ? currentProfile.name : 'Aventurier';
-    ctx.fillText(`🦄 ${name}`, 12, H - 12);
+    ctx.fillText(`🦄 ${name}`, 12, H - 44);
 
     ctx.textAlign = 'center';
-    ctx.fillText(`Niveau ${gs.currentLevel}/20`, W / 2, H - 12);
+    ctx.fillText(`Niveau ${gs.currentLevel} / 20`, W / 2, H - 44);
 
     ctx.textAlign = 'right';
     if (gs.roomsDone.length < CONFIG.challenge.gateScore) {
-      ctx.fillText(`Épreuves : ${gs.roomsDone.length}/5 🔒`, W - 12, H - 12);
+      ctx.fillStyle = '#FFD0A0';
+      ctx.fillText(`Épreuves : ${gs.roomsDone.length}/5 🔒`, W - 12, H - 44);
     } else {
-      ctx.fillText('Portail magique ouvert ! ✨', W - 12, H - 12);
+      ctx.fillStyle = '#90FF90';
+      ctx.fillText('Portail ouvert ! ✨', W - 12, H - 44);
     }
+
+    // Séparateur
+    ctx.strokeStyle = 'rgba(160,100,255,0.28)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(10, H - 36); ctx.lineTo(W - 10, H - 36);
+    ctx.stroke();
+
+    // ── Ligne 2 : barres de compétences ──────────────────────────
+    const skillDefs = [
+      { key: 'lecture', label: 'Lecture', icon: '📖', color: '#7FBBFF' },
+      { key: 'calcul',  label: 'Calcul',  icon: '➕', color: '#FFB347' },
+      { key: 'anglais', label: 'Anglais', icon: '🌍', color: '#90EE90' },
+    ];
+
+    const zoneW = (W - 110) / 3; // 3 compétences — 110px réservés pour Magie
+    const barH  = 6;
+    const barW  = Math.floor(zoneW * 0.40);
+
+    skillDefs.forEach((sk, i) => {
+      const lvl      = stats[sk.key] || 1;
+      const curXP    = xp[sk.key]    || 0;
+      const needXP   = rpgSystem.xpForLevel(lvl);
+      const progress = Math.min(1, curXP / needXP);
+      const sx       = i * zoneW + 8;
+      const sy       = H - 22;
+
+      // Icône
+      ctx.font      = '12px system-ui';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(sk.icon, sx, sy);
+
+      // Label + niveau
+      ctx.font      = 'bold 10px system-ui';
+      ctx.fillStyle = sk.color;
+      ctx.fillText(`${sk.label}`, sx + 18, sy);
+
+      ctx.font      = '10px system-ui';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(`Niv.${lvl}`, sx + 18, sy + 13);
+
+      // Barre XP
+      const bx = sx + 72;
+      const by = sy - 7;
+      ctx.fillStyle = 'rgba(255,255,255,0.13)';
+      ctx.beginPath();
+      _roundRect(ctx, bx, by, barW, barH, 3);
+      ctx.fill();
+
+      if (progress > 0) {
+        const g = ctx.createLinearGradient(bx, by, bx + barW, by);
+        g.addColorStop(0, sk.color);
+        g.addColorStop(1, '#FFFFFF');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        _roundRect(ctx, bx, by, barW * progress, barH, 3);
+        ctx.fill();
+      }
+
+      // Texte XP compact
+      ctx.font      = '8px system-ui';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${curXP}/${needXP}xp`, bx + barW + 4, sy - 2);
+    });
+
+    // ── Magie ─────────────────────────────────────────────────────
+    const mx = W - 104;
+    const my = H - 22;
+
+    ctx.fillStyle = '#FF88FF';
+    ctx.font      = '12px system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText('✨', mx, my);
+
+    ctx.font      = 'bold 10px system-ui';
+    ctx.fillStyle = '#FFB0FF';
+    ctx.fillText('Magie', mx + 18, my);
+
+    ctx.font      = '10px system-ui';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(`Niv.${magie}`, mx + 18, my + 13);
+
+    // Étoiles animées Magie
+    ctx.fillStyle = '#FFD700';
+    const starCount = Math.min(5, magie);
+    for (let s = 0; s < starCount; s++) {
+      const pulse = 0.55 + 0.45 * Math.sin(gs.frameCount * 0.10 + s * 0.9);
+      ctx.globalAlpha = pulse;
+      ctx.beginPath();
+      ctx.arc(mx + 60 + s * 9, my + 5, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   },
 };
 
