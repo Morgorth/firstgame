@@ -16,14 +16,17 @@ const worldSystem = {
     const ctx = this.ctx;
     if (!ctx) return;
 
+    // darkLevel: 0 = fully dark (start), 1 = fully bright (all challenges won)
+    const darkLevel = Math.min(1, gs.roomsDone.length / CONFIG.ROOMS.length);
+
     ctx.clearRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
 
-    // 1. Ciel
-    this._drawSky(ctx, gs.frameCount);
+    // 1. Ciel (nuit → jour selon darkLevel)
+    this._drawSky(ctx, gs.frameCount, darkLevel);
     // 2. Montagnes
-    this._drawMountains(ctx);
+    this._drawMountains(ctx, darkLevel);
     // 3. Sol / pelouse
-    this._drawGround(ctx);
+    this._drawGround(ctx, darkLevel);
     // 4. Allées de pierre
     this._drawPaths(ctx);
     // 5. Arbres arrière-plan
@@ -39,53 +42,124 @@ const worldSystem = {
     this._drawFrontTrees(ctx, gs.frameCount);
     // 8. Décorations (haies, fleurs, lanternes)
     this._drawDecorations(ctx, gs.frameCount);
-    // 9. Pulse des épreuves non complétées
+    // 9. Overlay sombre (s'estompe au fil des victoires)
+    this._drawDarkOverlay(ctx, darkLevel);
+    // 10. Créatures nocturnes (loups et chauves-souris)
+    this._drawWolves(ctx, gs.frameCount, darkLevel);
+    this._drawBats(ctx, gs.frameCount, darkLevel);
+    // 11. Pulse des épreuves non complétées
     this._drawChallengePulse(ctx, gs);
-    // 10. Marqueurs flottants
+    // 12. Marqueurs flottants (toujours bien visibles)
     this._drawChallengeMarkers(ctx, gs);
-    // 11. Portail de sortie
+    // 13. Portail de sortie
     this._drawExit(ctx, gs);
-    // 12. Joueur
+    // 14. Joueur
     this._drawPlayer(ctx, gs);
-    // 13. HUD
+    // 15. HUD
     this._drawHUD(ctx, gs);
   },
 
   // ── Ciel ────────────────────────────────────────────────────────
 
-  _drawSky(ctx, frame) {
-    const grad = ctx.createLinearGradient(0, 0, 0, 250);
-    grad.addColorStop(0,   '#5BA8E0');
-    grad.addColorStop(0.5, '#90C8F0');
-    grad.addColorStop(1,   '#C8E8FB');
-    ctx.fillStyle = grad;
+  _drawSky(ctx, frame, darkLevel) {
+    // Ciel de nuit
+    const nightGrad = ctx.createLinearGradient(0, 0, 0, 260);
+    nightGrad.addColorStop(0,   '#050010');
+    nightGrad.addColorStop(0.5, '#0D0825');
+    nightGrad.addColorStop(1,   '#1A103A');
+    ctx.fillStyle = nightGrad;
     ctx.fillRect(0, 0, 900, 260);
 
-    // Nuages animés
-    const cx1 = ((frame * 0.15) % 1050) - 120;
-    const cx2 = ((frame * 0.09) % 1050) + 180;
-    const cx3 = ((frame * 0.12) % 1050) + 520;
-    this._drawCloud(ctx, cx1, 35, 130, 48);
-    this._drawCloud(ctx, cx2, 65, 95, 38);
-    this._drawCloud(ctx, cx3, 28, 110, 44);
-    this._drawCloud(ctx, ((frame * 0.07) % 1050) + 680, 75, 85, 32);
-
-    // Oiseaux
-    ctx.strokeStyle = '#3A7AB8';
-    ctx.lineWidth = 1.5;
-    const bOff = (frame * 0.45) % 950;
-    for (let i = 0; i < 5; i++) {
-      const bx = (bOff + i * 70) % 940;
-      const by = 40 + i * 10 + Math.sin(frame * 0.05 + i) * 5;
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.quadraticCurveTo(bx + 7, by - 5, bx + 14, by);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(bx + 14, by);
-      ctx.quadraticCurveTo(bx + 21, by - 5, bx + 28, by);
-      ctx.stroke();
+    // Étoiles (visibles quand sombre)
+    if (darkLevel < 0.95) {
+      this._drawStars(ctx, frame, 1 - darkLevel);
     }
+
+    // Lune (visible quand sombre)
+    if (darkLevel < 0.8) {
+      const moonAlpha = Math.min(1, (1 - darkLevel) * 1.5);
+      ctx.save();
+      ctx.globalAlpha = moonAlpha;
+      // Halo de lune
+      const moonGlow = ctx.createRadialGradient(780, 55, 0, 780, 55, 55);
+      moonGlow.addColorStop(0, 'rgba(255,255,200,0.25)');
+      moonGlow.addColorStop(1, 'rgba(255,255,200,0)');
+      ctx.fillStyle = moonGlow;
+      ctx.beginPath();
+      ctx.arc(780, 55, 55, 0, Math.PI * 2);
+      ctx.fill();
+      // Corps de la lune
+      ctx.fillStyle = '#F8F4CC';
+      ctx.beginPath();
+      ctx.arc(780, 55, 22, 0, Math.PI * 2);
+      ctx.fill();
+      // Ombre (forme de croissant)
+      ctx.fillStyle = '#0D0825';
+      ctx.beginPath();
+      ctx.arc(791, 49, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Ciel de jour superposé (s'intensifie avec darkLevel)
+    if (darkLevel > 0) {
+      ctx.save();
+      ctx.globalAlpha = darkLevel;
+      const dayGrad = ctx.createLinearGradient(0, 0, 0, 260);
+      dayGrad.addColorStop(0,   '#5BA8E0');
+      dayGrad.addColorStop(0.5, '#90C8F0');
+      dayGrad.addColorStop(1,   '#C8E8FB');
+      ctx.fillStyle = dayGrad;
+      ctx.fillRect(0, 0, 900, 260);
+
+      // Nuages animés (visibles seulement de jour)
+      const cx1 = ((frame * 0.15) % 1050) - 120;
+      const cx2 = ((frame * 0.09) % 1050) + 180;
+      const cx3 = ((frame * 0.12) % 1050) + 520;
+      this._drawCloud(ctx, cx1, 35, 130, 48);
+      this._drawCloud(ctx, cx2, 65, 95, 38);
+      this._drawCloud(ctx, cx3, 28, 110, 44);
+      this._drawCloud(ctx, ((frame * 0.07) % 1050) + 680, 75, 85, 32);
+      ctx.restore();
+    }
+
+    // Oiseaux de jour (seulement quand assez clair)
+    if (darkLevel > 0.3) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (darkLevel - 0.3) * 1.4);
+      ctx.strokeStyle = '#3A7AB8';
+      ctx.lineWidth = 1.5;
+      const bOff = (frame * 0.45) % 950;
+      for (let i = 0; i < 5; i++) {
+        const bx = (bOff + i * 70) % 940;
+        const by = 40 + i * 10 + Math.sin(frame * 0.05 + i) * 5;
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo(bx + 7, by - 5, bx + 14, by);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(bx + 14, by);
+        ctx.quadraticCurveTo(bx + 21, by - 5, bx + 28, by);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  },
+
+  _drawStars(ctx, frame, intensity) {
+    ctx.save();
+    const rng = _seededRNG(42);
+    for (let i = 0; i < 60; i++) {
+      const sx = rng() * 900;
+      const sy = rng() * 200;
+      const twinkle = 0.4 + 0.6 * Math.sin(frame * 0.04 + i * 1.3);
+      ctx.globalAlpha = intensity * twinkle * 0.9;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(sx, sy, rng() * 1.5 + 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   },
 
   _drawCloud(ctx, x, y, w, h) {
@@ -105,9 +179,10 @@ const worldSystem = {
 
   // ── Montagnes ───────────────────────────────────────────────────
 
-  _drawMountains(ctx) {
-    // Rangée arrière (bleu-gris clair)
-    ctx.fillStyle = '#8BAFC5';
+  _drawMountains(ctx, darkLevel) {
+    const t = darkLevel;
+    // Rangée arrière : interpolation nuit (gris très sombre) → jour (bleu-gris)
+    ctx.fillStyle = _lerpColorRGB([22, 18, 40], [139, 175, 197], t);
     ctx.beginPath();
     ctx.moveTo(0, 210);
     ctx.lineTo(100, 130); ctx.lineTo(230, 165); ctx.lineTo(370, 105);
@@ -116,8 +191,8 @@ const worldSystem = {
     ctx.closePath();
     ctx.fill();
 
-    // Rangée avant (plus foncée)
-    ctx.fillStyle = '#6A98AF';
+    // Rangée avant
+    ctx.fillStyle = _lerpColorRGB([14, 10, 28], [106, 152, 175], t);
     ctx.beginPath();
     ctx.moveTo(0, 240);
     ctx.lineTo(75, 178); ctx.lineTo(175, 205); ctx.lineTo(310, 155);
@@ -127,8 +202,8 @@ const worldSystem = {
     ctx.closePath();
     ctx.fill();
 
-    // Neige sur les pics
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    // Neige sur les pics (visible même la nuit, légèrement)
+    ctx.fillStyle = `rgba(255,255,255,${0.3 + 0.35 * t})`;
     for (const [px, py] of [[100,130],[370,105],[610,92],[815,162]]) {
       ctx.beginPath();
       ctx.moveTo(px, py);
@@ -141,15 +216,16 @@ const worldSystem = {
 
   // ── Sol ─────────────────────────────────────────────────────────
 
-  _drawGround(ctx) {
+  _drawGround(ctx, darkLevel) {
+    const t = darkLevel;
     const grad = ctx.createLinearGradient(0, 248, 0, 585);
-    grad.addColorStop(0,   '#48A03C');
-    grad.addColorStop(0.35,'#58B248');
-    grad.addColorStop(1,   '#66C054');
+    grad.addColorStop(0,    _lerpColorRGB([8, 18, 8],   [72, 160, 60],  t));
+    grad.addColorStop(0.35, _lerpColorRGB([12, 24, 10], [88, 178, 72],  t));
+    grad.addColorStop(1,    _lerpColorRGB([16, 28, 12], [102, 192, 84], t));
     ctx.fillStyle = grad;
     ctx.fillRect(0, 248, 900, 337);
 
-    // Légères collines (reflet plus clair)
+    // Légères collines
     ctx.fillStyle = 'rgba(255,255,255,0.06)';
     ctx.beginPath();
     ctx.ellipse(160, 262, 190, 38, 0, 0, Math.PI * 2);
@@ -950,18 +1026,205 @@ const worldSystem = {
     ctx.fill();
   },
 
+  // ── Overlay sombre ──────────────────────────────────────────────
+
+  _drawDarkOverlay(ctx, darkLevel) {
+    if (darkLevel >= 1) return;
+    ctx.save();
+    ctx.globalAlpha = (1 - darkLevel) * 0.58;
+    ctx.fillStyle = '#040010';
+    ctx.fillRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
+    ctx.restore();
+  },
+
+  // ── Loups ────────────────────────────────────────────────────────
+
+  _drawWolves(ctx, frame, darkLevel) {
+    if (darkLevel >= 1) return;
+    const alpha = Math.min(1, (1 - darkLevel) * 1.4);
+    // Positions des loups dans les jardins
+    const wolves = [
+      { x: 88,  y: 490, flip: false },
+      { x: 812, y: 490, flip: true  },
+      { x: 240, y: 458, flip: false },
+      { x: 660, y: 458, flip: true  },
+    ];
+    // Disparaît progressivement (1 loup par épreuve résolue, en partant des coins)
+    const visibleCount = wolves.length - Math.min(wolves.length, Math.floor(darkLevel * wolves.length * 1.3));
+    for (let i = 0; i < visibleCount; i++) {
+      const w = wolves[i];
+      const breathe = Math.sin(frame * 0.03 + i * 1.5) * 1.5;
+      ctx.save();
+      ctx.globalAlpha = alpha * (i < visibleCount - 1 ? 1 : Math.max(0.15, (1 - darkLevel * 1.5)));
+      if (w.flip) {
+        ctx.translate(w.x * 2, 0);
+        ctx.scale(-1, 1);
+      }
+      this._drawWolf(ctx, w.x, w.y + breathe, frame);
+      ctx.restore();
+    }
+  },
+
+  _drawWolf(ctx, x, y, frame) {
+    // Corps du loup (silhouette sombre)
+    const bodyColor = '#1A1230';
+    const eyeGlow   = '#FF4400';
+
+    // Corps
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 22, 13, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tête
+    ctx.beginPath();
+    ctx.ellipse(x + 20, y - 7, 12, 10, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Museau pointu
+    ctx.beginPath();
+    ctx.moveTo(x + 30, y - 5);
+    ctx.lineTo(x + 38, y - 2);
+    ctx.lineTo(x + 30, y + 1);
+    ctx.closePath();
+    ctx.fill();
+
+    // Oreilles dressées
+    ctx.beginPath();
+    ctx.moveTo(x + 14, y - 15);
+    ctx.lineTo(x + 10, y - 26);
+    ctx.lineTo(x + 20, y - 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 22, y - 16);
+    ctx.lineTo(x + 26, y - 27);
+    ctx.lineTo(x + 30, y - 17);
+    ctx.closePath();
+    ctx.fill();
+
+    // Pattes
+    for (let i = 0; i < 4; i++) {
+      const legX = x - 14 + i * 10;
+      const legWave = i % 2 === 0 ? Math.sin(frame * 0.08 + i) * 2 : 0;
+      ctx.fillRect(legX, y + 10, 5, 14 + legWave);
+    }
+
+    // Queue relevée
+    ctx.strokeStyle = bodyColor;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(x - 20, y - 2);
+    ctx.bezierCurveTo(x - 34, y - 8, x - 38, y - 20, x - 30, y - 28);
+    ctx.stroke();
+
+    // Yeux rougeoyants
+    const eyeA = 0.7 + 0.3 * Math.sin(frame * 0.07);
+    ctx.fillStyle = eyeGlow;
+    ctx.globalAlpha *= eyeA;
+    ctx.beginPath();
+    ctx.arc(x + 27, y - 9, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Halo
+    const eg = ctx.createRadialGradient(x + 27, y - 9, 0, x + 27, y - 9, 8);
+    eg.addColorStop(0, `rgba(255,80,0,0.5)`);
+    eg.addColorStop(1, 'rgba(255,80,0,0)');
+    ctx.fillStyle = eg;
+    ctx.beginPath();
+    ctx.arc(x + 27, y - 9, 8, 0, Math.PI * 2);
+    ctx.fill();
+  },
+
+  // ── Chauves-souris ───────────────────────────────────────────────
+
+  _drawBats(ctx, frame, darkLevel) {
+    if (darkLevel >= 0.85) return;
+    const alpha = Math.min(1, (1 - darkLevel) * 1.8);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    const batCount = Math.max(1, Math.round((1 - darkLevel) * 5));
+    for (let i = 0; i < batCount; i++) {
+      const speed = 0.4 + i * 0.12;
+      const bx = ((frame * speed + i * 185) % 1020) - 60;
+      const by = 30 + i * 30 + Math.sin(frame * 0.07 + i * 1.7) * 18;
+      const wingPhase = Math.sin(frame * 0.22 + i * 0.9);
+      this._drawBat(ctx, bx, by, wingPhase);
+    }
+    ctx.restore();
+  },
+
+  _drawBat(ctx, x, y, wingPhase) {
+    const w = 22 + wingPhase * 6;
+    ctx.fillStyle = '#110820';
+    ctx.strokeStyle = '#221040';
+    ctx.lineWidth = 1;
+
+    // Aile gauche
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x - w * 0.4, y - 8 - wingPhase * 6, x - w, y - 4 + wingPhase * 5, x - w, y + 5);
+    ctx.bezierCurveTo(x - w * 0.7, y + 8, x - w * 0.3, y + 5, x, y);
+    ctx.fill();
+
+    // Aile droite
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x + w * 0.4, y - 8 - wingPhase * 6, x + w, y - 4 + wingPhase * 5, x + w, y + 5);
+    ctx.bezierCurveTo(x + w * 0.7, y + 8, x + w * 0.3, y + 5, x, y);
+    ctx.fill();
+
+    // Corps
+    ctx.fillStyle = '#1A1030';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 1, 5, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tête + oreilles
+    ctx.beginPath();
+    ctx.arc(x, y - 5, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Oreilles
+    ctx.beginPath();
+    ctx.moveTo(x - 3, y - 8);
+    ctx.lineTo(x - 5, y - 14);
+    ctx.lineTo(x - 1, y - 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y - 8);
+    ctx.lineTo(x + 5, y - 14);
+    ctx.lineTo(x + 1, y - 9);
+    ctx.closePath();
+    ctx.fill();
+
+    // Petits yeux rouges
+    ctx.fillStyle = '#CC2200';
+    ctx.beginPath();
+    ctx.arc(x - 2, y - 5, 1, 0, Math.PI * 2);
+    ctx.arc(x + 2, y - 5, 1, 0, Math.PI * 2);
+    ctx.fill();
+  },
+
   // ── Pulse épreuves ───────────────────────────────────────────────
 
   _drawChallengePulse(ctx, gs) {
+    const darkLevel = Math.min(1, gs.roomsDone.length / CONFIG.ROOMS.length);
     for (let i = 0; i < CONFIG.ROOMS.length; i++) {
       if (gs.roomsDone.includes(i)) continue;
       const room  = CONFIG.ROOMS[i];
       const pulse = 0.5 + 0.5 * Math.sin(gs.frameCount * 0.06 + i);
       ctx.save();
-      ctx.globalAlpha = 0.28 * pulse;
+      // Plus lumineux quand sombre pour rester visible
+      const baseAlpha = 0.35 + (1 - darkLevel) * 0.3;
+      ctx.globalAlpha = baseAlpha * pulse;
+      const pGrad = ctx.createRadialGradient(room.cx, room.cy, 4, room.cx, room.cy, 36 + pulse * 14);
+      pGrad.addColorStop(0, '#FF80FF');
+      pGrad.addColorStop(0.5, '#E040FB');
+      pGrad.addColorStop(1, 'rgba(180,0,220,0)');
+      ctx.fillStyle = pGrad;
       ctx.beginPath();
-      ctx.arc(room.cx, room.cy, 22 + pulse * 14, 0, Math.PI * 2);
-      ctx.fillStyle = '#E040FB';
+      ctx.arc(room.cx, room.cy, 36 + pulse * 14, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -976,27 +1239,84 @@ const worldSystem = {
     for (let i = 0; i < CONFIG.ROOMS.length; i++) {
       const room   = CONFIG.ROOMS[i];
       const isDone = gs.roomsDone.includes(i);
-      const floatY = room.cy - 42 + Math.sin(gs.frameCount * 0.05 + i * 1.1) * 5;
+      const floatY = room.cy - 48 + Math.sin(gs.frameCount * 0.05 + i * 1.1) * 5;
+      const emoji  = CONFIG.ROOM_NAMES[i].split(' ')[0];
+      const label  = buildingLabels[i];
 
+      ctx.save();
       ctx.textAlign = 'center';
-      ctx.font = '20px system-ui';
 
       if (isDone) {
-        ctx.globalAlpha = 0.85;
-        ctx.fillText('✅', room.cx, floatY);
+        // Badge vert "complété"
+        ctx.globalAlpha = 0.92;
+        const bw = 68, bh = 36, bx = room.cx - bw / 2, by = floatY - 22;
+        ctx.fillStyle = 'rgba(10, 60, 20, 0.88)';
+        ctx.strokeStyle = '#50EE80';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        _roundRect(ctx, bx, by, bw, bh, 10);
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = '18px system-ui';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('✅', room.cx, floatY - 3);
+        ctx.font = 'bold 10px system-ui';
+        ctx.fillStyle = '#80FF90';
+        ctx.fillText(label, room.cx, floatY + 12);
       } else {
-        ctx.globalAlpha = 1;
-        ctx.fillText(CONFIG.ROOM_NAMES[i].split(' ')[0], room.cx, floatY);
-      }
-      ctx.globalAlpha = 1;
+        // Badge orange/rouge bien visible "à faire"
+        const pulse = 0.85 + 0.15 * Math.sin(gs.frameCount * 0.09 + i);
+        const bw = 76, bh = 42, bx = room.cx - bw / 2, by = floatY - 24;
 
-      // Étiquette du bâtiment
-      ctx.font = 'bold 10px system-ui';
-      ctx.fillStyle = isDone ? '#80D880' : '#FFFFFF';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
-      ctx.shadowBlur  = 5;
-      ctx.fillText(buildingLabels[i], room.cx, floatY + 16);
-      ctx.shadowBlur  = 0;
+        // Ombre portée
+        ctx.globalAlpha = 0.5 * pulse;
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.beginPath();
+        _roundRect(ctx, bx + 3, by + 3, bw, bh, 11);
+        ctx.fill();
+
+        // Fond du badge
+        ctx.globalAlpha = 0.95 * pulse;
+        const bgGrad = ctx.createLinearGradient(bx, by, bx, by + bh);
+        bgGrad.addColorStop(0, '#3D0060');
+        bgGrad.addColorStop(1, '#1A0030');
+        ctx.fillStyle = bgGrad;
+        ctx.strokeStyle = '#FF40FF';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        _roundRect(ctx, bx, by, bw, bh, 11);
+        ctx.fill();
+        ctx.stroke();
+
+        // Emoji épreuve
+        ctx.globalAlpha = 1;
+        ctx.font = '20px system-ui';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowColor = '#FF00FF';
+        ctx.shadowBlur  = 8;
+        ctx.fillText(emoji, room.cx, floatY - 2);
+        ctx.shadowBlur  = 0;
+
+        // Nom du bâtiment
+        ctx.font = 'bold 11px system-ui';
+        ctx.fillStyle = '#FFD0FF';
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur  = 4;
+        ctx.fillText(label, room.cx, floatY + 14);
+        ctx.shadowBlur  = 0;
+
+        // Petite flèche pointant vers le centre du bâtiment
+        ctx.globalAlpha = 0.7 * pulse;
+        ctx.fillStyle = '#FF80FF';
+        ctx.beginPath();
+        ctx.moveTo(room.cx - 6, floatY + 20);
+        ctx.lineTo(room.cx + 6, floatY + 20);
+        ctx.lineTo(room.cx,     floatY + 28);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.restore();
     }
   },
 
@@ -1153,6 +1473,14 @@ function _roundRect(ctx, x, y, w, h, r) {
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+// Interpolation linéaire entre deux couleurs RGB (tableaux [r,g,b])
+function _lerpColorRGB(c1, c2, t) {
+  const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
+  const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
+  const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
+  return `rgb(${r},${g},${b})`;
 }
 
 function _lighten(hex, amount) {
