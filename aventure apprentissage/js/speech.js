@@ -3,7 +3,7 @@
 const speechSystem = {
   recognition: null,
   listening: false,
-  minConfidence: 0.4,      // Seuil de confiance minimum (0-1)
+  minConfidence: 0.55,     // Seuil de confiance minimum (0-1)
   lang: 'fr-FR',
   _onResult: null,
   _onEnd: null,
@@ -46,6 +46,12 @@ const speechSystem = {
       for (let i = 0; i < result.length; i++) texts.push(result[i].transcript);
       const text       = texts[0] || '';
       const normalized = this.normalize(text);
+
+      // Ignore transcriptions trop courtes — probablement du bruit ambiant
+      if (normalized.length < 2) {
+        console.log('[STT] Transcription trop courte, ignorée:', JSON.stringify(text));
+        return;
+      }
 
       if (this._onResult) this._onResult(normalized, texts.map(r => this.normalize(r)), confidence, text);
     };
@@ -202,10 +208,15 @@ const speechSystem = {
       const normExp = this.normalize(exp);
       if (normSpoken === normExp) return true;
       if (normSpoken.includes(normExp)) return true;
-      if (normExp.includes(normSpoken)) return true;
+      // Only accept "expected contains spoken" if spoken is substantial — prevents
+      // a noise syllable ("ma") from matching a full word ("maman").
+      if (normSpoken.length >= 2 && normSpoken.length >= Math.ceil(normExp.length * 0.65) && normExp.includes(normSpoken)) return true;
       // Fuzzy : tolérance 1 pour mots courts (≤4 chars), 2 pour mots longs
-      const maxDist = normExp.length <= 4 ? 1 : 2;
-      if (this.levenshtein(normSpoken, normExp) <= maxDist) return true;
+      // Require spoken to be at least as long as expected to avoid noise false-positives.
+      if (normSpoken.length >= normExp.length - 1) {
+        const maxDist = normExp.length <= 4 ? 1 : 2;
+        if (this.levenshtein(normSpoken, normExp) <= maxDist) return true;
+      }
     }
     return false;
   },

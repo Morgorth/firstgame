@@ -36,15 +36,20 @@ const challengeSystem = {
     let success = false;
 
     if (type === 'calcul') {
-      const spoken = parseInt(speechSystem.normalize(spokenText).replace(/\s/g, ''), 10);
-      const num    = isNaN(spoken) ? speechSystem.wordToNumber(spokenText) : spoken;
-      if (num === data.answer) {
+      // Use the LAST number in the transcript — kids count aloud to reach the answer,
+      // so "un deux trois quatre cinq" should give 5, not 1 or 12345.
+      const _lastNum = (text) => {
+        const norm = speechSystem.normalize(text);
+        const all  = norm.match(/\d+/g);
+        return all ? parseInt(all[all.length - 1], 10) : NaN;
+      };
+      const num = _lastNum(spokenText);
+      if (!isNaN(num) && num === data.answer) {
         success = true;
       } else if (allAlternatives) {
         for (const alt of allAlternatives) {
-          const n  = speechSystem.wordToNumber(alt);
-          const ni = parseInt(speechSystem.normalize(alt).replace(/\s/g, ''), 10);
-          if (n === data.answer || ni === data.answer) { success = true; break; }
+          const ni = _lastNum(alt);
+          if (!isNaN(ni) && ni === data.answer) { success = true; break; }
         }
       }
     } else if (type === 'lecture') {
