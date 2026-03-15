@@ -41,9 +41,9 @@ const speechSystem = {
       const text       = texts[0] || '';
       const normalized = this.normalize(text);
 
-      // Ignore transcriptions trop courtes — probablement du bruit ambiant
-      if (normalized.length < 2) {
-        console.log('[STT] Transcription trop courte, ignorée:', JSON.stringify(text));
+      // Ignore transcriptions vides — probablement du bruit ambiant
+      if (normalized.length === 0) {
+        console.log('[STT] Transcription vide, ignorée:', JSON.stringify(text));
         return;
       }
 
