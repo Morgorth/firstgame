@@ -107,11 +107,15 @@ const uiSystem = {
     if (content) {
       if (type === 'lecture') {
         const colored = data.display.split('·').map((s, i) =>
+          `<span class="syllable syllable-${i % 3}">${s}</span>`
+        ).join('<span class="syllable-dot">·</span>');
+        const coloredUpper = data.display.split('·').map((s, i) =>
           `<span class="syllable syllable-${i % 3}">${s.toUpperCase()}</span>`
         ).join('<span class="syllable-dot">·</span>');
         content.innerHTML = `
           <div class="challenge-instruction">Lis ce mot !</div>
           <div class="challenge-word lecture-word">${colored}</div>
+          <div class="challenge-word lecture-word">${coloredUpper}</div>
         `;
         voiceInstruction = 'Lis ce mot à voix haute !';
       } else if (type === 'calcul') {
