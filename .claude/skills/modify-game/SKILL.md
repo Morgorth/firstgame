@@ -1,13 +1,13 @@
 ---
 name: modify-game
-description: Use when making any code change to the Wave Assault or Sonic Half-Pipe game. Routes you to the exact files needed for any modification type. Use this before editing game code.
+description: Use when making any code change to the Wave Assault, Sonic Half-Pipe, or Licorne RPG game. Routes you to the exact files needed for any modification type. Use this before editing game code.
 allowed-tools: Read, Edit, Write, Grep, Glob, Bash
-argument-hint: "<game: wave-assault|sonic-halfpipe> <what-to-change>"
+argument-hint: "<game: wave-assault|sonic-halfpipe|licorne-rpg> <what-to-change>"
 ---
 
 # Modify a Game
 
-This repo contains two games: `wave-assault/` and `sonic-halfpipe/`. Read `$ARGUMENTS` to identify which game, then follow the matching section below.
+This repo contains three games: `wave-assault/`, `sonic-halfpipe/`, and `aventure apprentissage/`. Read `$ARGUMENTS` to identify which game, then follow the matching section below.
 
 **CRITICAL**: Never mix file paths between games.
 
@@ -143,3 +143,66 @@ Key rules:
 - Test jump (Up/W/Space) clears barriers in the air; crouch (Down/S) slides under barriers
 - Test ring collection during invincibility (after taking a hit)
 - Test camera mode if webcam gesture logic was changed
+
+---
+
+# Modify Licorne RPG
+
+You are modifying a Canvas 2D educational RPG. Follow this workflow strictly.
+
+## Step 1: Classify the change
+
+| Category | Files to read | Files to edit |
+|----------|--------------|---------------|
+| **Challenge balance** (trigger radius, gate score) | `aventure apprentissage/js/config.js` | `aventure apprentissage/js/config.js` |
+| **Math difficulty per level** | `aventure apprentissage/js/config.js:generateCalcul` | `aventure apprentissage/js/config.js` |
+| **Word/phrase pools** (lecture or English vocab) | `aventure apprentissage/js/config.js` | `aventure apprentissage/js/config.js` |
+| **Room positions / castle layout** | `aventure apprentissage/js/config.js:CONFIG.ROOMS + CORRIDORS` | `aventure apprentissage/js/config.js` |
+| **Exit zone** | `aventure apprentissage/js/config.js:CONFIG.EXIT_ZONE` | `aventure apprentissage/js/config.js` |
+| **Level themes (colors)** | `aventure apprentissage/js/config.js:CONFIG.THEMES` | `aventure apprentissage/js/config.js` |
+| **Player movement / collision** | `aventure apprentissage/js/main.js:movePlayer + _isWalkable` | `aventure apprentissage/js/main.js` |
+| **Room triggers** | `aventure apprentissage/js/main.js:checkRoomTriggers` | `aventure apprentissage/js/main.js` |
+| **Level progression / exit** | `aventure apprentissage/js/main.js:checkExitTrigger + _completeLevel` | `aventure apprentissage/js/main.js` |
+| **Challenge logic** (start, answer evaluation, hints) | `aventure apprentissage/js/challenges.js` | `aventure apprentissage/js/challenges.js` |
+| **Speech recognition / TTS** | `aventure apprentissage/js/speech.js` | `aventure apprentissage/js/speech.js` |
+| **XP, leveling, cosmetics** | `aventure apprentissage/js/rpg.js` | `aventure apprentissage/js/rpg.js` |
+| **Save / load** | `aventure apprentissage/js/save.js` | `aventure apprentissage/js/save.js` |
+| **World rendering** (map, player sprite, HUD) | `aventure apprentissage/js/world.js` | `aventure apprentissage/js/world.js` |
+| **Challenge overlay UI** | `aventure apprentissage/js/ui.js`, `aventure apprentissage/index.html` | Both, maybe `aventure apprentissage/styles.css` |
+| **Menu / level-complete screens** | `aventure apprentissage/js/ui.js`, `aventure apprentissage/index.html` | Both |
+| **Keyboard input** | `aventure apprentissage/js/input.js` | `aventure apprentissage/js/input.js` |
+| **Camera gestures** | `aventure apprentissage/js/webcam-gestures.js` | `aventure apprentissage/js/webcam-gestures.js` |
+| **Webcam init** | `aventure apprentissage/js/webcam-core.js` | `aventure apprentissage/js/webcam-core.js` |
+| **Audio** | `aventure apprentissage/js/main.js` (audioSystem at top) | `aventure apprentissage/js/main.js` |
+| **Game boot / loop** | `aventure apprentissage/js/main.js` | `aventure apprentissage/js/main.js` |
+| **Styling** | `aventure apprentissage/styles.css` | `aventure apprentissage/styles.css` |
+| **New challenge type** | `aventure apprentissage/js/config.js`, `aventure apprentissage/js/challenges.js`, `aventure apprentissage/js/ui.js` | All three |
+| **New game mechanic** | `aventure apprentissage/js/state.js` (add state), `aventure apprentissage/js/main.js` (add logic) | Both |
+
+## Step 2: Read ONLY the files from the table above
+
+Do NOT read the full codebase.
+
+## Step 3: Make the change
+
+Key rules:
+- All files share globals — no imports/exports needed
+- Script load order: config → state → save → speech → input → webcam-core → webcam-gestures → rpg → challenges → world → ui → main
+- **CRITICAL — walkable zones**: `_isWalkable` in `main.js` uses margin=0. NEVER add a positive margin — it creates gaps at room/corridor junctions and blocks the player
+- New CONFIG entries go in `aventure apprentissage/js/config.js`
+- New state fields go in `aventure apprentissage/js/state.js` AND must be reset in `main.js:_resetLevelState()` or `startGame()`
+- Challenge types: `'lecture'` (fr reading/speech), `'calcul'` (fr math), `'anglais'` (en-US speech)
+- `challengeSystem.processAnswer()` receives normalized spoken text + alternatives array
+- `speechSystem.startListening(lang, onResult, onEnd, grammar, onInterim)` — use `'fr-FR'` for lecture/calcul, `'en-US'` for anglais
+- `rpgSystem.addXP(currentProfile, skill, points)` — then call `saveSystem.saveProfile(currentProfile)`
+- `gameState.floatingXP[]` is read by `worldSystem.render()` for animated feedback
+- `currentProfile` and `currentProgress` are module-level `let` vars in `state.js`, loaded by `saveSystem` at boot
+
+## Step 4: Test considerations
+
+- Open `aventure apprentissage/index.html` in **Chrome** (Speech API + MoveNet require Chrome)
+- Enter a player name, choose keyboard mode, and confirm the map renders
+- Walk into a room — challenge overlay must appear and mic must start (check browser mic permission)
+- Complete 5 rooms — confirm exit portal appears and walking into it advances the level
+- Check browser console — 0 JS errors on load
+- Test camera mode if webcam gesture code was changed

@@ -1,13 +1,13 @@
 ---
 name: debug-issue
-description: Use when investigating a bug or unexpected behavior in Wave Assault or Sonic Half-Pipe. Traces the issue through the codebase systematically.
+description: Use when investigating a bug or unexpected behavior in Wave Assault, Sonic Half-Pipe, or Licorne RPG. Traces the issue through the codebase systematically.
 allowed-tools: Read, Grep, Glob
-argument-hint: "<game: wave-assault|sonic-halfpipe> <bug-description>"
+argument-hint: "<game: wave-assault|sonic-halfpipe|licorne-rpg> <bug-description>"
 ---
 
 # Debug a Game Issue
 
-This repo contains two games: `wave-assault/` and `sonic-halfpipe/`. Read `$ARGUMENTS` to identify which game, then follow the matching section below.
+This repo contains three games: `wave-assault/`, `sonic-halfpipe/`, and `aventure apprentissage/`. Read `$ARGUMENTS` to identify which game, then follow the matching section below.
 
 **CRITICAL**: Never mix file paths between games.
 
@@ -122,6 +122,68 @@ Use `Grep` to find all references to the relevant field or function.
 - **Pipe segment wrapping** (in `render-pipe.js`): `seg.position.z > segmentLength * 1.5` triggers recycle; total span must cover `visibleLength`
 - **DOM element IDs**: HUD elements (`hudRings`, `hudScore`, `hudSpeed`, `hudP2`, `hudP2Rings`, `ringBarP1Fill`, `ringBarP2Fill`) must match between `ui.js` and `index.html`
 - **Webcam files**: webcam logic is split across webcam-core.js / webcam-color.js / webcam-gestures.js / webcam-registration.js / webcam-pose.js — check the symptom table above to find the right file; never read all five
+
+## Step 4: Report findings
+
+Summarize:
+1. **Root cause**: What's wrong and where
+2. **Affected code**: File, function, line number
+3. **Fix**: What needs to change
+
+---
+
+# Debug a Licorne RPG Issue
+
+You are investigating a bug in a Canvas 2D educational RPG with voice challenges. Follow this workflow to find the root cause efficiently.
+
+## Step 1: Classify the symptom
+
+| Symptom | Start reading |
+|---------|--------------|
+| Player can't move / gets stuck at room junctions | `aventure apprentissage/js/main.js:_isWalkable` — check margin is 0; check ROOMS+CORRIDORS zones cover the junction |
+| Player walks through walls | `aventure apprentissage/js/main.js:_isWalkable + movePlayer` |
+| Room challenge not triggering | `aventure apprentissage/js/main.js:checkRoomTriggers` — check `triggerRadius` and `recentlyExitedRooms` |
+| Challenge triggers repeatedly / immediately re-triggers | `aventure apprentissage/js/main.js:recentlyExitedRooms` cooldown logic |
+| Exit portal not appearing | `aventure apprentissage/js/main.js:_markRoomDone + checkRoomTriggers` — `exitUnlocked` only true when `roomsDone.length >= gateScore` |
+| Exit portal not walkable | `aventure apprentissage/js/main.js:movePlayer` — `EXIT_ZONE + EXIT_CORRIDOR` must be added to `walkable` when `exitUnlocked` |
+| Level not advancing after exit | `aventure apprentissage/js/main.js:checkExitTrigger + _completeLevel` |
+| Challenge overlay not showing | `aventure apprentissage/js/ui.js:showChallenge` + `aventure apprentissage/index.html` (#screen-challenge element) |
+| Mic not starting / speech not recognized | `aventure apprentissage/js/speech.js:startListening` — check browser permissions; check `speechSystem.available` |
+| Answer never accepted (always wrong) | `aventure apprentissage/js/speech.js:matches + normalize` — check normalization; check language code (`'fr-FR'` vs `'en-US'`) |
+| Calcul answer wrong | `aventure apprentissage/js/challenges.js:processAnswer` (calcul branch) + `speechSystem._replaceSpokenNumbers` |
+| XP not awarded / stat not leveling up | `aventure apprentissage/js/rpg.js:addXP` + `aventure apprentissage/js/challenges.js:end` |
+| Cosmetics not unlocking | `aventure apprentissage/js/rpg.js:checkUnlocks` — check unlock thresholds vs profile stats |
+| Progress not saving / lost on reload | `aventure apprentissage/js/save.js:saveProgress + loadProgress` — check localStorage keys (`licornerpg_progress`) |
+| Profile not saving | `aventure apprentissage/js/save.js:saveProfile + loadProfile` — check `licornerpg_profile` key |
+| Map not rendering | `aventure apprentissage/js/world.js:render` + `aventure apprentissage/js/state.js` (canvas/ctx init) |
+| Wrong theme colors | `aventure apprentissage/js/config.js:CONFIG.THEMES[levelNum]` |
+| Floating XP notifications not showing | `aventure apprentissage/js/world.js:render` (floatingXP drawing) + `gameState.floatingXP` |
+| Camera mode not moving player | `aventure apprentissage/js/webcam-gestures.js` → `webcamState.webcamInput.{dx,dy}` + `aventure apprentissage/js/main.js:gameLoop` |
+| Game doesn't start / restart broken | `aventure apprentissage/js/main.js:startGame + _resetLevelState` |
+| State not resetting between levels | `aventure apprentissage/js/main.js:_resetLevelState` |
+| Audio not playing | `aventure apprentissage/js/main.js:audioSystem` — check AudioContext state (may need user click to unlock) |
+| Screen not switching (menu/game/challenge) | `aventure apprentissage/js/ui.js` + `aventure apprentissage/index.html` (`.screen.active` class toggling) |
+
+## Step 2: Trace the data flow
+
+For the identified area:
+1. **Where is the value initialized?** (`aventure apprentissage/js/state.js`, or `main.js:_resetLevelState`)
+2. **Where is it modified?** (game loop in `main.js`, challenge in `challenges.js`, RPG in `rpg.js`)
+3. **Where is it read/displayed?** (`worldSystem.render()` for canvas, `uiSystem` for HTML overlays)
+
+Use `Grep` to find all references to the relevant field or function.
+
+## Step 3: Check common Licorne RPG pitfalls
+
+- **Walkable zone margin**: `_isWalkable` must use `margin = 0`. Any positive margin creates gaps of `margin*2` px at room/corridor junctions — blocks the player in front of every room
+- **recentlyExitedRooms cooldown**: After a challenge ends, the room is added to `recentlyExitedRooms`. It's only removed once the player moves far enough away (`> radius * 1.5`). If the player can't re-enter a room, check this list
+- **challengeActive guard**: `checkRoomTriggers` and `checkExitTrigger` both return early if `challengeActive` is true. If triggers don't fire, verify `challengeActive` was reset to false in `challengeSystem.end()`
+- **Speech language mismatch**: Lecture/Calcul use `'fr-FR'`; Anglais uses `'en-US'`. Passing the wrong language to `startListening()` causes near-zero recognition rate
+- **Number normalization**: `speechSystem.normalize()` calls `_replaceSpokenNumbers()` which converts French number words to digits. If calcul answers are never accepted, trace through this function
+- **Profile / progress not loaded**: `currentProfile` and `currentProgress` are `let` vars in `state.js`. They are assigned in `window.load` and `startGame()`. If null at challenge time, `rpgSystem.addXP` will silently no-op
+- **exitUnlocked flag**: Set only when `gameState.roomsDone.length >= CONFIG.challenge.gateScore` (5). Check `_markRoomDone` is called in the `onComplete` callback inside `checkRoomTriggers`
+- **AudioContext unlock**: `audioSystem._resume()` is called on first user click. Audio may be silent if no click has occurred yet (autoplay policy)
+- **Screen visibility**: Screens use CSS `.screen.active` — only one should be active at a time. If overlay is stuck, check `uiSystem.hideChallenge()` is called after `challengeSystem.end()`
 
 ## Step 4: Report findings
 
