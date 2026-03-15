@@ -122,11 +122,12 @@ function startGame() {
 function _resetLevelState() {
   // Récupère les salles déjà faites ce niveau depuis la progression
   const lvlData = currentProgress.levels[gameState.currentLevel];
-  gameState.roomsDone    = lvlData ? [...(lvlData.roomsDone || [])] : [];
-  gameState.exitUnlocked = gameState.roomsDone.length >= CONFIG.challenge.gateScore;
-  gameState.player.x     = CONFIG.player.spawn.x;
-  gameState.player.y     = CONFIG.player.spawn.y;
-  gameState.challengeActive = false;
+  gameState.roomsDone           = lvlData ? [...(lvlData.roomsDone || [])] : [];
+  gameState.recentlyExitedRooms = [];
+  gameState.exitUnlocked        = gameState.roomsDone.length >= CONFIG.challenge.gateScore;
+  gameState.player.x            = CONFIG.player.spawn.x;
+  gameState.player.y            = CONFIG.player.spawn.y;
+  gameState.challengeActive     = false;
 }
 
 // ── Game loop ─────────────────────────────────────────────────────
@@ -219,8 +220,15 @@ function checkRoomTriggers() {
   const { x, y } = gameState.player;
   const radius   = CONFIG.challenge.triggerRadius;
 
+  // Retire les salles du cooldown dès que le joueur s'en est éloigné
+  gameState.recentlyExitedRooms = gameState.recentlyExitedRooms.filter(roomId => {
+    const room = CONFIG.ROOMS[roomId];
+    return Math.hypot(x - room.cx, y - room.cy) < radius * 1.5;
+  });
+
   for (let i = 0; i < CONFIG.ROOMS.length; i++) {
-    if (gameState.roomsDone.includes(i)) continue;
+    // Ignore les salles en cooldown (le joueur vient d'en sortir)
+    if (gameState.recentlyExitedRooms.includes(i)) continue;
 
     const room = CONFIG.ROOMS[i];
     const dist = Math.hypot(x - room.cx, y - room.cy);
@@ -231,18 +239,18 @@ function checkRoomTriggers() {
       challengeSystem.start(
         i,
         gameState.currentLevel,
-        // onComplete
+        // onComplete — marque la salle (pour la sortie) mais elle reste rejouable
         (roomId, newCosmetics) => {
           _markRoomDone(roomId);
           _saveLevelProgress();
+          gameState.recentlyExitedRooms.push(roomId);
           if (gameState.phase !== 'levelcomplete') {
             gameState.phase = 'playing';
           }
         },
-        // onFail (après 3 tentatives → mode aide, compte quand même)
+        // onFail (skip) — retour à la map sans marquer la salle
         (roomId) => {
-          _markRoomDone(roomId);
-          _saveLevelProgress();
+          gameState.recentlyExitedRooms.push(roomId);
           if (gameState.phase !== 'levelcomplete') {
             gameState.phase = 'playing';
           }
