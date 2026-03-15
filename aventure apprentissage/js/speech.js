@@ -36,20 +36,14 @@ const speechSystem = {
       const confidence = result[0].confidence;
       if (this._onInterim) this._onInterim(result[0].transcript, true);
 
-      // confidence === 0 signifie que le navigateur ne supporte pas le score → on accepte
-      if (confidence > 0 && confidence < this.minConfidence) {
-        console.log('[STT] Confiance trop faible:', confidence.toFixed(2), result[0].transcript);
-        return; // ignore, garde la session ouverte
-      }
-
       const texts = [];
       for (let i = 0; i < result.length; i++) texts.push(result[i].transcript);
       const text       = texts[0] || '';
       const normalized = this.normalize(text);
 
-      // Ignore transcriptions trop courtes — probablement du bruit ambiant
-      if (normalized.length < 2) {
-        console.log('[STT] Transcription trop courte, ignorée:', JSON.stringify(text));
+      // Ignore transcriptions vides — probablement du bruit ambiant
+      if (normalized.length === 0) {
+        console.log('[STT] Transcription vide, ignorée:', JSON.stringify(text));
         return;
       }
 
