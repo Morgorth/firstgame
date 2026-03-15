@@ -36,12 +36,6 @@ const speechSystem = {
       const confidence = result[0].confidence;
       if (this._onInterim) this._onInterim(result[0].transcript, true);
 
-      // confidence === 0 signifie que le navigateur ne supporte pas le score → on accepte
-      if (confidence > 0 && confidence < this.minConfidence) {
-        console.log('[STT] Confiance trop faible:', confidence.toFixed(2), result[0].transcript);
-        return; // ignore, garde la session ouverte
-      }
-
       const texts = [];
       for (let i = 0; i < result.length; i++) texts.push(result[i].transcript);
       const text       = texts[0] || '';
