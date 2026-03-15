@@ -2,19 +2,20 @@
 name: understand-app
 description: Use at the start of any session or when you need to orient yourself in the Wave Assault, Sonic Half-Pipe, or Licorne RPG codebase. Provides file map, globals reference, and task-to-file routing to minimize token usage.
 allowed-tools: Read, Grep, Glob
-argument-hint: "[game: wave-assault|sonic-halfpipe] [area-to-focus: config|state|entities|input|webcam|audio|game|render|ui|main|all]"
+argument-hint: "[game: wave-assault|sonic-halfpipe|licorne-rpg] [area-to-focus: config|state|entities|input|webcam|audio|game|render|ui|main|all]"
 ---
 
 # Repo Structure
 
-This repo contains **two separate games** in sibling directories:
+This repo contains **three separate games** in sibling directories:
 
 | Directory | Game | Engine |
 |-----------|------|--------|
 | `wave-assault/` | Wave Assault — browser wave shooter, 2D canvas | Canvas 2D |
 | `sonic-halfpipe/` | Sonic Half-Pipe — 3D half-pipe runner, collect rings | Three.js |
+| `aventure apprentissage/` | Licorne RPG — educational RPG for 6-year-olds | Canvas 2D |
 
-Both games share the same webcam / MoveNet pose-detection stack (1–2 players, keyboard or camera control).
+All games share the same webcam / MoveNet pose-detection stack. Licorne RPG also uses the Web Speech API (fr-FR / en-US) for voice challenges.
 
 **CRITICAL**: Never mix file paths between games. Check which game is being discussed before reading any file.
 
@@ -241,3 +242,97 @@ gameState.pipeSegments[]    // recycled pipe mesh pool
 ## If the user asks to focus on a specific area
 
 Read `$ARGUMENTS` to determine which game and area, then load only the relevant file(s) listed above. Do NOT read the entire codebase — that wastes tokens.
+
+---
+
+# Licorne RPG — Codebase Guide
+
+An educational RPG for 6-year-old children. The unicorn player explores a castle, enters 6 challenge rooms (Lecture, Calcul, Anglais), and must complete 5/6 to unlock the exit to the next level. 20 levels total. Supports keyboard or camera control, with voice answers via Web Speech API.
+
+## File Map (read ONLY what you need)
+
+| Area | File | What's inside |
+|------|------|---------------|
+| **Tuning + Data** | `aventure apprentissage/js/config.js` | `CONFIG` (canvas, player, challenge radii, ROOMS, CORRIDORS, EXIT_ZONE, THEMES, ROOM_NAMES), `LECTURE_SYLLABES`, `LECTURE_MOTS`, `LECTURE_PHRASES`, `ANGLAIS_DATA`, `generateCalcul()`, `LEVELS` |
+| **State** | `aventure apprentissage/js/state.js` | `controlMode`, `webcamState`, `gameState`, `currentProfile`, `currentProgress` |
+| **Save** | `aventure apprentissage/js/save.js` | `saveSystem` — `loadProfile()`, `saveProfile()`, `loadProgress()`, `saveProgress()`, `resetAll()` |
+| **Speech** | `aventure apprentissage/js/speech.js` | `speechSystem` — `startListening()`, `stopListening()`, `speak()`, `normalize()`, `matches()`, `levenshtein()`, `wordToNumber()` |
+| **Input** | `aventure apprentissage/js/input.js` | `inputSystem` — `init()`, `getKeyboardInput()` → `{dx, dy}`; keys: ZQSD or arrows |
+| **Webcam lifecycle** | `aventure apprentissage/js/webcam-core.js` | `initWebcam()`, `initPoseDetector()`, `stopWebcam()` |
+| **Webcam gestures** | `aventure apprentissage/js/webcam-gestures.js` | Movement gestures → `webcamState.webcamInput.{dx,dy}`: two arms up = forward, left arm = left, right arm = right, arms down = stop |
+| **RPG system** | `aventure apprentissage/js/rpg.js` | `rpgSystem` — XP/level-up for stats (lecture, calcul, anglais), magie derived stat, cosmetic unlocks (`AVATAR_ITEMS`, `UNICORN_ITEMS`) |
+| **Challenges** | `aventure apprentissage/js/challenges.js` | `challengeSystem` — `start()`, `processAnswer()`, `end()`, `skip()`; drives STT via speechSystem |
+| **World / Render** | `aventure apprentissage/js/world.js` | `worldSystem` — `init()`, `render()`: draws castle tilemap, rooms, player, floating XP, HUD |
+| **UI** | `aventure apprentissage/js/ui.js` | `uiSystem` — `init()`, `showMenu()`, `showChallenge()`, `hideChallenge()`, `showFeedback()`, `showHint()`, `showLevelComplete()`, `showGameComplete()` |
+| **Lifecycle + Audio** | `aventure apprentissage/js/main.js` | `audioSystem` (playSuccess/Fail/LevelComplete/Step), `startGame()`, `gameLoop()`, `movePlayer()`, `_isWalkable()`, `checkRoomTriggers()`, `checkExitTrigger()`, `_completeLevel()`, `nextLevel()`, `window.load` boot |
+| **HTML** | `aventure apprentissage/index.html` | DOM: screen-menu, screen-calibration, screen-challenge, screen-levelcomplete, screen-gamecomplete, webcamContainer |
+| **CSS** | `aventure apprentissage/styles.css` | All styling |
+
+**Script load order**: config → state → save → speech → input → webcam-core → webcam-gestures → rpg → challenges → world → ui → main
+
+## Key Licorne RPG globals
+
+All files share globals (no modules):
+- `CONFIG` — immutable constants (player size/speed, room positions, challenge radius, level themes)
+- `LEVELS` — array of 20 level descriptors (`levelNum`, `challengeTypes[]`)
+- `LECTURE_SYLLABES`, `LECTURE_MOTS`, `LECTURE_PHRASES`, `ANGLAIS_DATA` — challenge word/phrase pools
+- `gameState` — mutable runtime state (see fields below)
+- `webcamState` — camera/pose state (`.active`, `.webcamInput.{dx,dy}`, `.latestPose`)
+- `controlMode` — `'keyboard'` | `'camera'`
+- `currentProfile` — loaded from localStorage; tracks player name, stats, cosmetics, XP
+- `currentProgress` — loaded from localStorage; tracks `currentLevel`, `levels[n].{completed,roomsDone,score}`
+
+## Key Licorne RPG gameState fields
+
+```
+gameState.running           // bool
+gameState.phase             // 'menu' | 'calibration' | 'playing' | 'challenge' | 'levelcomplete' | 'gamecomplete'
+gameState.frameCount        // incremented each loop
+gameState.player            // {x, y, dx, dy, cosmetics:{avatar, unicorn}}
+gameState.currentLevel      // 1–20
+gameState.roomsDone[]       // indices of rooms completed this level (unlocks exit when length >= gateScore)
+gameState.recentlyExitedRooms[] // anti-retrigger cooldown after leaving a room
+gameState.challengeActive   // bool — movement and triggers disabled while true
+gameState.exitUnlocked      // bool — set when roomsDone.length >= CONFIG.challenge.gateScore (5)
+gameState.floatingXP[]      // [{text, x, y, frame, maxFrame, levelUp}] — animated notifications
+```
+
+## Key Licorne RPG patterns
+
+- **6 rooms per level**: Rooms 0,3 = Lecture; 1,4 = Calcul; 2,5 = Anglais (see `CONFIG.ROOM_NAMES`, `LEVELS[n].challengeTypes`)
+- **Exit gate**: 5/6 rooms must be completed → `exitUnlocked = true` → portal becomes walkable
+- **Walkable zones**: `_isWalkable(x, y, r, zones)` in `main.js` — zones are ROOMS + CORRIDORS + EXIT (when unlocked). **CRITICAL: margin MUST be 0** — a positive margin creates gaps at zone junctions
+- **Challenge flow**: Player enters trigger radius → `challengeSystem.start()` → STT via `speechSystem.startListening()` → `challengeSystem.processAnswer()` → `end(true/false)` → XP awarded → `uiSystem.hideChallenge()`
+- **Speech recognition**: `speechSystem.matches()` uses exact + substring + Levenshtein fuzzy matching. `normalize()` strips accents, lowercases, converts French number words to digits
+- **Language switching**: Lecture/Calcul challenges use `'fr-FR'`, Anglais challenges use `'en-US'`
+- **XP / leveling**: `rpgSystem.addXP(profile, skill, points)` — 20 XP for first attempt, 10 XP if retried. `rpgSystem.getMagie()` = average of the 3 stats. Cosmetics unlock at stat thresholds via `checkUnlocks()`
+- **Persistence**: `saveSystem` uses two localStorage keys: `licornerpg_profile` and `licornerpg_progress`
+- **Themes**: `CONFIG.THEMES[levelNum]` → `{bg, room, corridor, wall, name}`. Prairie (1-5), Forêt (6-10), Montagne (11-15), Château (16-20)
+- **Camera gestures**: Two wrists above shoulders → forward (dy=-1); left wrist up only → left (dx=-1); right wrist up only → right (dx=1); both down → stop
+- **Audio**: `audioSystem` lives in `main.js` (not a separate file); `playSuccess()`, `playFail()`, `playLevelComplete()`, `playStep()`
+- **No modules, no build step**: Open `aventure apprentissage/index.html` directly in Chrome
+
+## Licorne RPG task-to-file routing
+
+- **Challenge balance** (trigger radius, gate score, max attempts) → `aventure apprentissage/js/config.js:CONFIG.challenge`
+- **Word/phrase pools** (lecture syllabes, words, phrases; English vocab) → `aventure apprentissage/js/config.js` (LECTURE_SYLLABES / LECTURE_MOTS / LECTURE_PHRASES / ANGLAIS_DATA)
+- **Math difficulty per level** → `aventure apprentissage/js/config.js:generateCalcul`
+- **Room positions / castle layout** → `aventure apprentissage/js/config.js:CONFIG.ROOMS + CONFIG.CORRIDORS`
+- **Exit zone position** → `aventure apprentissage/js/config.js:CONFIG.EXIT_ZONE + EXIT_CORRIDOR`
+- **Level themes (colors)** → `aventure apprentissage/js/config.js:CONFIG.THEMES`
+- **Player movement / collision** → `aventure apprentissage/js/main.js:movePlayer + _isWalkable`
+- **Room enter/exit triggers** → `aventure apprentissage/js/main.js:checkRoomTriggers`
+- **Exit trigger / level completion** → `aventure apprentissage/js/main.js:checkExitTrigger + _completeLevel`
+- **Challenge logic (start, answer, end)** → `aventure apprentissage/js/challenges.js:challengeSystem`
+- **Speech recognition / TTS** → `aventure apprentissage/js/speech.js:speechSystem`
+- **XP, leveling, cosmetics unlock** → `aventure apprentissage/js/rpg.js:rpgSystem`
+- **Save / load** → `aventure apprentissage/js/save.js:saveSystem`
+- **World rendering (map, player, HUD)** → `aventure apprentissage/js/world.js:worldSystem`
+- **Challenge overlay UI** → `aventure apprentissage/js/ui.js:uiSystem` + `aventure apprentissage/index.html`
+- **Menu / level-complete screens** → `aventure apprentissage/js/ui.js:uiSystem` + `aventure apprentissage/index.html`
+- **Keyboard input** → `aventure apprentissage/js/input.js:inputSystem`
+- **Camera gestures** → `aventure apprentissage/js/webcam-gestures.js`
+- **Webcam init** → `aventure apprentissage/js/webcam-core.js`
+- **Audio** → `aventure apprentissage/js/main.js:audioSystem`
+- **Game boot / game loop** → `aventure apprentissage/js/main.js`
+- **Styling** → `aventure apprentissage/styles.css`

@@ -1,13 +1,13 @@
 ---
 name: plan-feature
-description: Use when planning a new feature or significant change to Wave Assault or Sonic Half-Pipe. Produces a structured implementation plan with exact file/function targets before any code is written.
+description: Use when planning a new feature or significant change to Wave Assault, Sonic Half-Pipe, or Licorne RPG. Produces a structured implementation plan with exact file/function targets before any code is written.
 allowed-tools: Read, Grep, Glob
-argument-hint: "<game: wave-assault|sonic-halfpipe> <feature-description>"
+argument-hint: "<game: wave-assault|sonic-halfpipe|licorne-rpg> <feature-description>"
 ---
 
 # Plan a Game Feature
 
-This repo contains two games: `wave-assault/` and `sonic-halfpipe/`. Read `$ARGUMENTS` to identify which game, then follow the matching section below.
+This repo contains three games: `wave-assault/`, `sonic-halfpipe/`, and `aventure apprentissage/`. Read `$ARGUMENTS` to identify which game, then follow the matching section below.
 
 **CRITICAL**: Never mix file paths between games.
 
@@ -143,3 +143,69 @@ Numbered checklist of how to manually test the feature works correctly.
 - Flag if HUD elements need to be added to `sonic-halfpipe/index.html`
 - Flag if new Three.js meshes need to be removed from the scene on reset (`clearSceneItems()` in render.js)
 - Script load order: config → state → audio → input → webcam-core → webcam-color → webcam-gestures → webcam-registration → webcam-pose → game → render → render-pipe → render-theme-unicorn → render-player → render-obstacles → render-rings → render-particles → ui → main
+
+---
+
+# Plan a Licorne RPG Feature
+
+You are planning a change to a Canvas 2D educational RPG. Produce a detailed implementation plan WITHOUT writing any code yet.
+
+## Step 1: Understand the request
+
+Read `$ARGUMENTS` and identify:
+- What gameplay or educational behaviour changes
+- What new state is needed (level, profile, or session data)
+- What new UI screens or overlays are needed
+- Whether it affects challenge types (lecture / calcul / anglais) or all
+- Whether it affects the RPG progression system (XP, cosmetics, stats)
+- Whether it requires speech input/output changes
+
+## Step 2: Read relevant code
+
+Use the file routing table to read ONLY the files you need:
+
+| Area | File |
+|------|------|
+| Tuning constants + challenge data | `aventure apprentissage/js/config.js` |
+| Game state shape | `aventure apprentissage/js/state.js` |
+| Save / load | `aventure apprentissage/js/save.js` |
+| Speech recognition + TTS | `aventure apprentissage/js/speech.js` |
+| Challenge logic | `aventure apprentissage/js/challenges.js` |
+| RPG / XP / cosmetics | `aventure apprentissage/js/rpg.js` |
+| World rendering | `aventure apprentissage/js/world.js` |
+| UI screens / overlays | `aventure apprentissage/js/ui.js` + `aventure apprentissage/index.html` |
+| Game lifecycle + movement | `aventure apprentissage/js/main.js` |
+| Keyboard input | `aventure apprentissage/js/input.js` |
+| Camera gestures | `aventure apprentissage/js/webcam-gestures.js` |
+| Styling | `aventure apprentissage/styles.css` |
+
+## Step 3: Write the plan
+
+Output a structured plan with these sections:
+
+### Context
+1-2 sentences on what exists today and what needs to change.
+
+### Changes
+For each file that needs modification, list:
+- **File**: path
+- **Function/section**: which function or block
+- **What changes**: specific description of the edit
+- **New state** (if any): field name, type, initial value, where it resets
+
+### Files Modified
+Summary table: `| File | Changes |`
+
+### Verification
+Numbered checklist of how to manually test the feature works correctly.
+
+## Rules
+- Do NOT write code — only describe changes
+- Be specific about function names and data flow
+- Call out if walkable zone changes risk creating gaps (margin must stay 0 in `_isWalkable`)
+- Flag if new state needs to be reset in `main.js:_resetLevelState()` or `startGame()`
+- Flag if challenge type routing in `challenges.js:_buildChallengeData` needs updating
+- Flag if new UI HTML elements need to be added to `aventure apprentissage/index.html`
+- Flag if the speech language needs to change (`'fr-FR'` vs `'en-US'`)
+- Flag if `rpgSystem.addXP` or `checkUnlocks` needs updating for new skill/stat types
+- Script load order: config → state → save → speech → input → webcam-core → webcam-gestures → rpg → challenges → world → ui → main
