@@ -96,7 +96,7 @@ const uiSystem = {
     // Remet tout à zéro
     if (hints)      { hints.classList.add('hidden'); hints.textContent = ''; }
     if (feedback)   { feedback.textContent = ''; feedback.className = 'feedback-area'; }
-    if (mic)        mic.classList.add('hidden');
+    if (mic)        { mic.classList.remove('hidden'); this._setMicState('off'); }
     if (transcript) { transcript.textContent = ''; transcript.className = 'transcript-area'; }
     this._noHearCount = 0;
 
@@ -139,11 +139,15 @@ const uiSystem = {
     // un délai fixe — indépendant de onEnd pour fonctionner sur tous les navigateurs
     if (type === 'anglais') {
       // 1) Annonce courte en français, puis prononce le mot anglais, puis écoute
+      this._setMicState('speaking');
       speechSystem.speak('Écoute et répète !', 'fr-FR');
       setTimeout(() => speechSystem.speak(data.expected[0], 'en-US'), 1500);
+      setTimeout(() => { if (challengeSystem.current) this._setMicState('ready'); }, 3000);
       setTimeout(() => this.startMic(), 3500);
     } else {
+      this._setMicState('speaking');
       speechSystem.speak(voiceInstruction, 'fr-FR');
+      setTimeout(() => { if (challengeSystem.current) this._setMicState('ready'); }, 2500);
       setTimeout(() => this.startMic(), 3000);
     }
   },
@@ -170,6 +174,12 @@ const uiSystem = {
     if (mic) mic.classList.remove('hidden');
     this._setMicState('listening');
     this._micActive = true;
+    // Pop animation so the child clearly sees the mic turned on
+    if (mic) {
+      mic.classList.remove('mic-activate');
+      void mic.offsetWidth; // reflow
+      mic.classList.add('mic-activate');
+    }
 
     speechSystem.startListening(
       lang,
@@ -228,7 +238,10 @@ const uiSystem = {
 
     // Arrête l'écoute pendant que la voix parle (évite l'écho)
     speechSystem.stopListening();
-    this._setMicState('speaking');
+    // For wrong answers, briefly show "off" so the child sees the mic shut off,
+    // then switch to "speaking" when TTS starts.
+    this._setMicState(success ? 'speaking' : 'off');
+    if (!success) setTimeout(() => this._setMicState('speaking'), 400);
 
     const voice = message.replace(/\([^)]*\)/g, '').replace(/[^\w\sàâçéèêëïîôùûüœæ!?.,']/gi, '').trim();
     speechSystem.speak(voice, 'fr-FR');
@@ -252,19 +265,27 @@ const uiSystem = {
 
   // Met à jour l'icône et le texte du micro selon l'état
   _setMicState(state) {
+    const mic  = document.getElementById('micIndicator');
     const icon = document.querySelector('#micIndicator .mic-icon');
     const text = document.querySelector('#micIndicator .mic-text');
     if (!icon || !text) return;
     const states = {
-      listening: { icon: '🎤', text: 'Je t\'écoute...' },
+      off:       { icon: '🎤', text: 'Micro éteint' },
+      ready:     { icon: '🎤', text: 'Prépare-toi...' },
+      listening: { icon: '🎤', text: 'Parle !' },
       speaking:  { icon: '🔊', text: 'J\'explique...' },
       thinking:  { icon: '💭', text: 'Je réfléchis...' },
       louder:    { icon: '📢', text: 'Parle plus fort !' },
       wait:      { icon: '⏳', text: 'Prends ton temps...' },
     };
-    const s = states[state] || states.listening;
+    const s = states[state] || states.off;
     icon.textContent = s.icon;
     text.textContent = s.text;
+    // Swap CSS state class on the indicator element
+    if (mic) {
+      mic.classList.remove('state-off', 'state-ready', 'state-listening', 'state-speaking', 'state-thinking', 'state-louder', 'state-wait');
+      mic.classList.add('state-' + state);
+    }
   },
 
   // Affiche ce que le STT a entendu (intérimaire ou final)

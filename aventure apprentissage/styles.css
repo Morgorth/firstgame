@@ -460,20 +460,70 @@ h2 {
   gap: 10px;
   margin: 16px 0;
   padding: 10px 24px;
-  background: rgba(224, 64, 251, 0.1);
   border-radius: 30px;
-  border: 2px solid rgba(224,64,251,0.3);
+  border: 2px solid rgba(158, 158, 158, 0.35);
+  background: rgba(158, 158, 158, 0.1);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+/* Green = mic is on, speak now */
+.mic-indicator.state-listening {
+  background: rgba(56, 176, 0, 0.13);
+  border-color: rgba(56, 176, 0, 0.55);
+}
+
+/* Gray = mic is off (speaking, thinking, waiting, etc.) */
+.mic-indicator.state-off,
+.mic-indicator.state-speaking,
+.mic-indicator.state-thinking,
+.mic-indicator.state-ready,
+.mic-indicator.state-louder,
+.mic-indicator.state-wait {
+  background: rgba(158, 158, 158, 0.1);
+  border-color: rgba(158, 158, 158, 0.35);
 }
 
 .mic-icon {
   font-size: 28px;
+}
+
+/* Pulse only when listening */
+.mic-indicator.state-listening .mic-icon {
   animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+/* Pop animation when mic turns on */
+.mic-indicator.mic-activate {
+  animation: mic-activate 0.35s ease;
+}
+
+@keyframes mic-activate {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 
 .mic-text {
   font-size: 18px;
   font-weight: 600;
   color: var(--color-primary);
+  transition: color 0.3s;
+}
+
+.mic-indicator.state-listening .mic-text {
+  color: #2e7d32;
+}
+
+.mic-indicator.state-off .mic-text,
+.mic-indicator.state-speaking .mic-text,
+.mic-indicator.state-thinking .mic-text,
+.mic-indicator.state-ready .mic-text,
+.mic-indicator.state-wait .mic-text {
+  color: #757575;
+}
+
+.mic-indicator.state-louder .mic-text {
+  color: #e65100;
 }
 
 @keyframes mic-pulse {
