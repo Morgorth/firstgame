@@ -74,22 +74,10 @@ const challengeSystem = {
       setTimeout(() => this.end(true), 1500);
     } else {
       this.current.attempts++;
-      if (this.current.attempts >= this.current.maxAttempts) {
-        // Mode aide : restartMicAfter=false, le challenge se ferme
-        uiSystem.showFeedback(false, "Pas de problème ! Voici la réponse 💡", false);
+      // Essais illimités — relance toujours le micro
+      uiSystem.showFeedback(false, "Ce n'est pas ça ! Essaie encore !", true);
+      if (this.current.attempts >= 2) {
         uiSystem.showHint(this._getHint());
-        setTimeout(() => this.end(false), 3000);
-      } else {
-        const remaining = this.current.maxAttempts - this.current.attempts;
-        // restartMicAfter=true : showFeedback relance le micro après la voix
-        uiSystem.showFeedback(
-          false,
-          `Ce n'est pas ça ! Essaie encore ! (${remaining} essai${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''})`,
-          true
-        );
-        if (this.current.attempts >= 2) {
-          uiSystem.showHint(this._getHint());
-        }
       }
     }
   },

@@ -27,7 +27,8 @@ const gameState = {
     cosmetics: { avatar: null, unicorn: null },
   },
   currentLevel: 1,
-  roomsDone: [],       // indices de salles complétées ce niveau
+  roomsDone: [],           // indices de salles complétées ce niveau (pour débloquer la sortie)
+  recentlyExitedRooms: [], // salles dont le challenge vient de se terminer (cooldown anti-retrigger)
   challengeActive: false,
   frameCount: 0,
   exitUnlocked: false,
