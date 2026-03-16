@@ -310,6 +310,24 @@ const speechSystem = {
     window.speechSynthesis.speak(u);
   },
 
+  // Slow, clear pronunciation for teaching kids (especially English words)
+  speakSlow(text, lang) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.getVoices();
+    this._currentUtterance = null;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    this._currentUtterance = u;
+    u.lang   = lang || 'en-US';
+    u.rate   = 0.55;   // Very slow for kids to hear each syllable
+    u.pitch  = 1.05;
+    u.volume = 1;
+    const voice = this._selectVoice(u.lang);
+    if (voice) u.voice = voice;
+    window.speechSynthesis.resume();
+    window.speechSynthesis.speak(u);
+  },
+
   cancelSpeak() {
     // Null before cancel so the safety timer's done() guard fails harmlessly
     this._currentUtterance = null;
