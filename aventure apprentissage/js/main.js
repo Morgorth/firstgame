@@ -527,6 +527,20 @@ function nextLevel() {
   showWorldMap();
 }
 
+// ── Resize : snap le canvas dans le viewport ─────────────────────
+
+function resizeGameWrap() {
+  var wrap = document.getElementById('game-wrap');
+  if (!wrap) return;
+  var pad = 10; // px de marge autour du canvas
+  var vw  = window.innerWidth  - pad * 2;
+  var vh  = window.innerHeight - pad * 2;
+  var cw  = CONFIG.canvas.width;  // 900
+  var ch  = CONFIG.canvas.height; // 620
+  var s   = Math.min(vw / cw, vh / ch, 1); // ne jamais upscaler
+  wrap.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+}
+
 // ── Init au chargement ────────────────────────────────────────────
 
 window.addEventListener('load', () => {
@@ -539,6 +553,10 @@ window.addEventListener('load', () => {
   worldSystem.init();
   speechSystem.init();
   uiSystem.init();
+
+  // Snap canvas au viewport dès le démarrage et à chaque resize
+  resizeGameWrap();
+  window.addEventListener('resize', resizeGameWrap);
 
   // World map keyboard navigation
   document.addEventListener('keydown', handleWorldMapInput);

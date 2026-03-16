@@ -687,17 +687,11 @@ h2 {
 /* ── Utilitaires ─────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 
-/* ── Responsive — tablette ───────────────────────────────────────── */
-@media (max-width: 960px) {
-  #game-wrap {
-    transform: translate(-50%, -50%) scale(0.85);
-  }
-}
+/* ── Responsive — tablette / petits écrans ───────────────────────── */
+/* Le scale du #game-wrap est géré dynamiquement par resizeGameWrap()
+   dans main.js pour s'adapter à la largeur ET la hauteur du viewport. */
 
 @media (max-width: 780px) {
-  #game-wrap {
-    transform: translate(-50%, -50%) scale(0.65);
-  }
   .challenge-word { font-size: 40px; }
   .calcul-word    { font-size: 48px; }
   .challenge-emoji{ font-size: 56px; }
