@@ -20,7 +20,7 @@ const speechSystem = {
     this.recognition = new SpeechRecognition();
     this.recognition.continuous    = true;   // Reste ouvert — plus de flash on/off
     this.recognition.interimResults = true;  // Résultats live pour la transcription
-    this.recognition.maxAlternatives = 3;
+    this.recognition.maxAlternatives = 6;
 
     this.recognition.onresult = (event) => {
       const idx    = event.results.length - 1;
@@ -170,6 +170,15 @@ const speechSystem = {
       [/\bdis\b/g, '10'],[/\bdi\b/g, '10'],                         // dix
       [/\bde\b/g, '2'],[/\bdieu\b/g, '2'],                          // deux
       [/\bcat\b/g, '4'],[/\bcarte\b/g, '4'],                        // quatre (partial)
+      // Child high-pitch voice misrecognitions — STT trained on adult voices
+      // confuses these more often with higher fundamental frequencies
+      [/\bsuis\b/g, '6'],[/\bsix\b/g, '6'],                        // six (child pitch)
+      [/\bvins?\b/g, '20'],[/\bvain\b/g, '20'],                    // vingt
+      [/\bsang\b/g, '5'],[/\bsens\b/g, '5'],                       // cinq
+      [/\bweet\b/g, '8'],[/\bwheat\b/g, '8'],                      // huit (en→fr confusion)
+      [/\boeuf\b/g, '9'],[/\bnoeud\b/g, '9'],                      // neuf
+      [/\bcar\b/g, '4'],                                             // quatre
+      [/\btoi\b/g, '3'],[/\btoit\b/g, '3'],                         // trois
     ];
     let t = text;
     for (const [regex, replacement] of map) t = t.replace(regex, replacement);
@@ -212,11 +221,11 @@ const speechSystem = {
       if (normSpoken === normExp) return true;
       // 2. Spoken contains expected as substring
       if (normSpoken.includes(normExp)) return true;
-      // 3. Expected contains spoken (if spoken is substantial)
-      if (normSpoken.length >= 2 && normSpoken.length >= Math.ceil(normExp.length * 0.65) && normExp.includes(normSpoken)) return true;
-      // 4. Full-string Levenshtein
-      if (normSpoken.length >= normExp.length - 1) {
-        const maxDist = normExp.length <= 4 ? 1 : 2;
+      // 3. Expected contains spoken (if spoken is substantial — lenient for child voices)
+      if (normSpoken.length >= 2 && normSpoken.length >= Math.ceil(normExp.length * 0.5) && normExp.includes(normSpoken)) return true;
+      // 4. Full-string Levenshtein (generous for child voices — STT is less accurate)
+      if (normSpoken.length >= normExp.length - 2) {
+        const maxDist = normExp.length <= 3 ? 1 : normExp.length <= 6 ? 2 : 3;
         if (this.levenshtein(normSpoken, normExp) <= maxDist) return true;
       }
       // 5. Word-level fuzzy: check if all expected words appear among spoken words
@@ -242,9 +251,9 @@ const speechSystem = {
         const sw = spokenWords[i];
         // Exact word match
         if (sw === ew) { used[i] = true; found = true; break; }
-        // Fuzzy word match — tolerance based on expected word length
-        const maxDist = ew.length <= 3 ? 1 : 2;
-        if (sw.length >= ew.length - 1 && this.levenshtein(sw, ew) <= maxDist) {
+        // Fuzzy word match — generous tolerance for child voices
+        const maxDist = ew.length <= 3 ? 1 : ew.length <= 6 ? 2 : 3;
+        if (sw.length >= ew.length - 2 && this.levenshtein(sw, ew) <= maxDist) {
           used[i] = true; found = true; break;
         }
       }
