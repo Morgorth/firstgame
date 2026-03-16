@@ -108,15 +108,45 @@ function startGame() {
   if (!currentProgress) currentProgress = saveSystem.loadProgress();
 
   gameState.currentLevel = currentProgress.currentLevel || 1;
-  _resetLevelState();
-  gameState.phase   = 'playing';
-  gameState.running = true;
 
   // Applique les cosmétiques du profil au joueur
   gameState.player.cosmetics.avatar   = currentProfile.equippedAvatar;
   gameState.player.cosmetics.unicorn  = currentProfile.equippedUnicorn;
 
+  // Go to world map instead of directly playing
+  showWorldMap();
+}
+
+function showWorldMap() {
+  gameState.phase   = 'worldmap';
+  gameState.running = true;
+
+  // Set initial selected world based on current level
+  const curLvl = currentProgress.currentLevel || 1;
+  for (let wi = 0; wi < CONFIG.WORLDS.length; wi++) {
+    if (CONFIG.WORLDS[wi].levels.includes(curLvl)) {
+      gameState.worldMap.selectedWorld = wi;
+      break;
+    }
+  }
+  gameState.worldMap.selectedLevel = -1;
+  gameState.worldMap.animFrame = 0;
+
   requestAnimationFrame(gameLoop);
+}
+
+function startLevel(levelNum) {
+  gameState.currentLevel = levelNum;
+  // Figure out which world this level belongs to
+  for (let wi = 0; wi < CONFIG.WORLDS.length; wi++) {
+    if (CONFIG.WORLDS[wi].levels.includes(levelNum)) {
+      gameState.currentWorld = wi;
+      break;
+    }
+  }
+  _resetLevelState();
+  gameState.phase   = 'playing';
+  gameState.running = true;
 }
 
 function _resetLevelState() {
@@ -134,6 +164,13 @@ function _resetLevelState() {
 
 function gameLoop() {
   gameState.frameCount++;
+
+  // World map phase — render map and handle navigation
+  if (gameState.phase === 'worldmap') {
+    worldSystem.render(gameState);
+    requestAnimationFrame(gameLoop);
+    return;
+  }
 
   if (gameState.phase !== 'playing') {
     requestAnimationFrame(gameLoop);
@@ -166,6 +203,82 @@ function gameLoop() {
   worldSystem.render(gameState);
 
   requestAnimationFrame(gameLoop);
+}
+
+// ── World map keyboard navigation ────────────────────────────────
+
+var _worldMapKeyThrottle = 0;
+
+function handleWorldMapInput(e) {
+  if (gameState.phase !== 'worldmap') return;
+  // Prevent default for navigation keys in world map
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' '].includes(e.key)) {
+    e.preventDefault();
+  }
+  const now = Date.now();
+  if (now - _worldMapKeyThrottle < 180) return;
+  _worldMapKeyThrottle = now;
+
+  const wm = gameState.worldMap;
+  const key = e.key;
+
+  if (wm.selectedLevel === -1) {
+    // Navigating between worlds
+    if (key === 'ArrowRight' || key === 'd' || key === 'D') {
+      if (wm.selectedWorld < CONFIG.WORLDS.length - 1) {
+        wm.selectedWorld++;
+        audioSystem.playStep();
+      }
+    } else if (key === 'ArrowLeft' || key === 'q' || key === 'Q' || key === 'a' || key === 'A') {
+      if (wm.selectedWorld > 0) {
+        wm.selectedWorld--;
+        audioSystem.playStep();
+      }
+    } else if (key === 'ArrowUp' || key === 'z' || key === 'Z' || key === 'w' || key === 'W') {
+      // Enter level selection for this world
+      if (worldSystem._isWorldUnlocked(wm.selectedWorld)) {
+        wm.selectedLevel = 0;
+        audioSystem.playStep();
+      }
+    } else if (key === 'Enter' || key === ' ') {
+      // Quick-enter: select world and first available level
+      if (worldSystem._isWorldUnlocked(wm.selectedWorld)) {
+        wm.selectedLevel = 0;
+        audioSystem.playStep();
+      }
+    } else if (key === 'Escape') {
+      // Back to menu
+      gameState.running = false;
+      uiSystem.showMenu();
+    }
+  } else {
+    // Navigating levels within a world
+    const world = CONFIG.WORLDS[wm.selectedWorld];
+    if (key === 'ArrowRight' || key === 'd' || key === 'D') {
+      if (wm.selectedLevel < world.levels.length - 1) {
+        wm.selectedLevel++;
+        audioSystem.playStep();
+      }
+    } else if (key === 'ArrowLeft' || key === 'q' || key === 'Q' || key === 'a' || key === 'A') {
+      if (wm.selectedLevel > 0) {
+        wm.selectedLevel--;
+        audioSystem.playStep();
+      }
+    } else if (key === 'ArrowDown' || key === 's' || key === 'S') {
+      // Back to world selection
+      wm.selectedLevel = -1;
+      audioSystem.playStep();
+    } else if (key === 'Escape') {
+      wm.selectedLevel = -1;
+      audioSystem.playStep();
+    } else if (key === 'Enter' || key === ' ') {
+      const levelNum = world.levels[wm.selectedLevel];
+      if (worldSystem._isLevelUnlocked(levelNum)) {
+        startLevel(levelNum);
+        audioSystem.playSuccess();
+      }
+    }
+  }
 }
 
 // ── Mouvement avec collision ──────────────────────────────────────
@@ -320,10 +433,8 @@ function _saveLevelProgress() {
 function nextLevel() {
   gameState.currentLevel++;
   if (gameState.currentLevel > 20) gameState.currentLevel = 20;
-  _resetLevelState();
-  gameState.phase   = 'playing';
-  gameState.running = true;
-  requestAnimationFrame(gameLoop);
+  // Return to world map to choose next level
+  showWorldMap();
 }
 
 // ── Init au chargement ────────────────────────────────────────────
@@ -338,6 +449,9 @@ window.addEventListener('load', () => {
   worldSystem.init();
   speechSystem.init();
   uiSystem.init();
+
+  // World map keyboard navigation
+  document.addEventListener('keydown', handleWorldMapInput);
 
   // Affiche le menu
   uiSystem.showMenu();

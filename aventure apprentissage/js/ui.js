@@ -19,6 +19,11 @@ const uiSystem = {
     const btnNext = document.getElementById('btnNextLevel');
     if (btnNext) btnNext.addEventListener('click', () => this._onNextLevel());
 
+    const btnBackMap = document.getElementById('btnBackToMap');
+    if (btnBackMap) btnBackMap.addEventListener('click', () => this._onBackToMap());
+    const btnBackMap2 = document.getElementById('btnBackToMap2');
+    if (btnBackMap2) btnBackMap2.addEventListener('click', () => this._onBackToMap());
+
     const btnRestart = document.getElementById('btnRestart');
     if (btnRestart) btnRestart.addEventListener('click', () => this._onRestart());
 
@@ -38,7 +43,9 @@ const uiSystem = {
 
     const disp = document.getElementById('menuLevelDisplay');
     if (disp && currentProgress) {
-      disp.textContent = `Niveau actuel : ${currentProgress.currentLevel} / 20`;
+      const worldIdx = Math.floor(((currentProgress.currentLevel || 1) - 1) / 5);
+      const worldName = CONFIG.WORLDS[Math.min(worldIdx, 3)].name;
+      disp.textContent = `Monde : ${worldName} — Niveau ${currentProgress.currentLevel} / 20`;
     }
 
     const nameInput = document.getElementById('playerName');
@@ -304,9 +311,11 @@ const uiSystem = {
 
     const scoreEl = document.getElementById('levelCompleteScore');
     if (scoreEl) {
+      const worldIdx = Math.floor((gameState.currentLevel - 1) / 5);
+      const worldName = CONFIG.WORLDS[Math.min(worldIdx, 3)].name;
       scoreEl.innerHTML = `
         <p>Tu as réussi <strong>${roomsDone.length}/6</strong> salles !</p>
-        <p>Niveau <strong>${gameState.currentLevel}</strong> terminé ! 🎉</p>
+        <p>Niveau <strong>${gameState.currentLevel}</strong> de <strong>${worldName}</strong> terminé ! 🎉</p>
       `;
     }
 
@@ -373,6 +382,12 @@ const uiSystem = {
   _onNextLevel() {
     this._hideScreen('screen-levelcomplete');
     nextLevel();
+  },
+
+  _onBackToMap() {
+    this._hideScreen('screen-levelcomplete');
+    this._hideScreen('screen-gamecomplete');
+    showWorldMap();
   },
 
   _onRestart() {

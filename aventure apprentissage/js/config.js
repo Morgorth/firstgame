@@ -40,27 +40,27 @@ const CONFIG = {
   EXIT_ZONE:     { x: 415, y: 170, w: 70, h: 60 },
   EXIT_CORRIDOR: { x: 415, y: 170, w: 70, h: 60 },
 
-  // Thèmes visuels par niveaux
+  // Thèmes visuels par niveaux (legacy — kept for reference)
   THEMES: [
     null,
-    // 1-5 : prairie
-    { bg: '#f0fff4', room: '#a8d8a8', corridor: '#c8e6c9', wall: '#4caf50', name: 'Prairie' },
-    { bg: '#f0fff4', room: '#a8d8a8', corridor: '#c8e6c9', wall: '#4caf50', name: 'Prairie' },
-    { bg: '#f0fff4', room: '#a8d8a8', corridor: '#c8e6c9', wall: '#4caf50', name: 'Prairie' },
-    { bg: '#f0fff4', room: '#a8d8a8', corridor: '#c8e6c9', wall: '#4caf50', name: 'Prairie' },
-    { bg: '#f0fff4', room: '#a8d8a8', corridor: '#c8e6c9', wall: '#4caf50', name: 'Prairie' },
-    // 6-10 : forêt
-    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#009688', name: 'Forêt' },
-    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#009688', name: 'Forêt' },
-    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#009688', name: 'Forêt' },
-    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#009688', name: 'Forêt' },
-    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#009688', name: 'Forêt' },
-    // 11-15 : montagne
-    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Montagne' },
-    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Montagne' },
-    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Montagne' },
-    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Montagne' },
-    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Montagne' },
+    // 1-5 : forêt
+    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#2e7d32', name: 'Forêt' },
+    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#2e7d32', name: 'Forêt' },
+    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#2e7d32', name: 'Forêt' },
+    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#2e7d32', name: 'Forêt' },
+    { bg: '#e8f5e9', room: '#80cbc4', corridor: '#b2dfdb', wall: '#2e7d32', name: 'Forêt' },
+    // 6-10 : plage
+    { bg: '#e0f7fa', room: '#80deea', corridor: '#b2ebf2', wall: '#00838f', name: 'Plage' },
+    { bg: '#e0f7fa', room: '#80deea', corridor: '#b2ebf2', wall: '#00838f', name: 'Plage' },
+    { bg: '#e0f7fa', room: '#80deea', corridor: '#b2ebf2', wall: '#00838f', name: 'Plage' },
+    { bg: '#e0f7fa', room: '#80deea', corridor: '#b2ebf2', wall: '#00838f', name: 'Plage' },
+    { bg: '#e0f7fa', room: '#80deea', corridor: '#b2ebf2', wall: '#00838f', name: 'Plage' },
+    // 11-15 : ville
+    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Ville' },
+    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Ville' },
+    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Ville' },
+    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Ville' },
+    { bg: '#e3f2fd', room: '#90caf9', corridor: '#bbdefb', wall: '#1565c0', name: 'Ville' },
     // 16-20 : château
     { bg: '#f3e5f5', room: '#ce93d8', corridor: '#e1bee7', wall: '#7b1fa2', name: 'Château' },
     { bg: '#f3e5f5', room: '#ce93d8', corridor: '#e1bee7', wall: '#7b1fa2', name: 'Château' },
@@ -68,6 +68,43 @@ const CONFIG = {
     { bg: '#f3e5f5', room: '#ce93d8', corridor: '#e1bee7', wall: '#7b1fa2', name: 'Château' },
     { bg: '#f3e5f5', room: '#ce93d8', corridor: '#e1bee7', wall: '#7b1fa2', name: 'Château' },
   ],
+
+  // ── World Map — Mario-style worlds ─────────────────────────────
+  WORLDS: [
+    {
+      id: 0, name: 'Forêt Enchantée', emoji: '🌲', levels: [1,2,3,4,5],
+      // Map node position on world map canvas
+      mapX: 150, mapY: 420,
+      // Sky/ground palette for procedural backgrounds
+      sky:    { top: '#1A3D1A', mid: '#2E5E2E', bottom: '#4A7A4A', dayTop: '#3A8A3A', dayMid: '#60B060', dayBottom: '#90D890' },
+      ground: { dark: [20,40,15], light: [60,140,50] },
+      accent: '#2e7d32',
+    },
+    {
+      id: 1, name: 'Plage Magique', emoji: '🏖️', levels: [6,7,8,9,10],
+      mapX: 350, mapY: 280,
+      sky:    { top: '#0A2A4A', mid: '#104060', bottom: '#186888', dayTop: '#5ABCE0', dayMid: '#80D8F0', dayBottom: '#C8F0FC' },
+      ground: { dark: [30,28,18], light: [220,200,140] },
+      accent: '#00838f',
+    },
+    {
+      id: 2, name: 'Petite Ville', emoji: '🏘️', levels: [11,12,13,14,15],
+      mapX: 550, mapY: 380,
+      sky:    { top: '#1A1A3A', mid: '#2A2A55', bottom: '#3A3A70', dayTop: '#6090C0', dayMid: '#88B0D8', dayBottom: '#B0D0F0' },
+      ground: { dark: [25,22,20], light: [140,135,125] },
+      accent: '#1565c0',
+    },
+    {
+      id: 3, name: 'Château Royal', emoji: '🏰', levels: [16,17,18,19,20],
+      mapX: 750, mapY: 240,
+      sky:    { top: '#050010', mid: '#0D0825', bottom: '#1A103A', dayTop: '#5BA8E0', dayMid: '#90C8F0', dayBottom: '#C8E8FB' },
+      ground: { dark: [8,18,8], light: [72,160,60] },
+      accent: '#7b1fa2',
+    },
+  ],
+
+  // World map path connections (indices into WORLDS)
+  WORLD_PATHS: [[0,1],[1,2],[2,3]],
 
   ROOM_NAMES: [
     '📖 Lecture',
