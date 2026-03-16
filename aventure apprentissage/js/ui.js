@@ -128,7 +128,7 @@ const uiSystem = {
       } else if (type === 'calcul') {
         content.innerHTML = `
           <div class="challenge-instruction">Combien font...</div>
-          <div class="challenge-word calcul-word">${data.a} + ${data.b} = ?</div>
+          <div class="calcul-column">${this._buildCalculColumn(data.a, data.b)}</div>
         `;
         voiceInstruction = `Combien font ${data.a} plus ${data.b} ?`;
       } else if (type === 'anglais') {
@@ -145,18 +145,62 @@ const uiSystem = {
     // Explique le défi à voix haute (fire-and-forget), puis lance le micro après
     // un délai fixe — indépendant de onEnd pour fonctionner sur tous les navigateurs
     if (type === 'anglais') {
-      // 1) Annonce courte en français, puis prononce le mot anglais, puis écoute
+      // 1) Explain the French word first, then slowly pronounce in English, then listen
       this._setMicState('speaking');
-      speechSystem.speak('Écoute et répète !', 'fr-FR');
-      setTimeout(() => speechSystem.speak(data.expected[0], 'en-US'), 1500);
-      setTimeout(() => { if (challengeSystem.current) this._setMicState('ready'); }, 3000);
-      setTimeout(() => this.startMic(), 3500);
+      speechSystem.speak('En français, on dit : ' + data.fr + '.', 'fr-FR');
+      setTimeout(() => {
+        speechSystem.speak('En anglais, on dit :', 'fr-FR');
+      }, 2500);
+      setTimeout(() => {
+        speechSystem.speakSlow(data.expected[0], 'en-US');
+      }, 4500);
+      setTimeout(() => {
+        speechSystem.speak('Répète après moi !', 'fr-FR');
+      }, 7000);
+      setTimeout(() => {
+        speechSystem.speakSlow(data.expected[0], 'en-US');
+      }, 8500);
+      setTimeout(() => { if (challengeSystem.current) this._setMicState('ready'); }, 11000);
+      setTimeout(() => this.startMic(), 11500);
     } else {
       this._setMicState('speaking');
       speechSystem.speak(voiceInstruction, 'fr-FR');
       setTimeout(() => { if (challengeSystem.current) this._setMicState('ready'); }, 2500);
       setTimeout(() => this.startMic(), 3000);
     }
+  },
+
+  // Build column-style addition HTML (like school notebooks)
+  // Units, tens, hundreds are aligned and color-coded
+  _buildCalculColumn(a, b) {
+    const sum = a + b;
+    const maxLen = Math.max(String(a).length, String(b).length, String(sum).length);
+    const colors = ['#e040fb', '#1565c0', '#2e7d32']; // units=pink, tens=blue, hundreds=green
+
+    const _colorDigits = (num, padLen) => {
+      const s = String(num).padStart(padLen, '\u00A0'); // non-breaking space for padding
+      let html = '';
+      for (let i = 0; i < s.length; i++) {
+        const posFromRight = s.length - 1 - i;
+        const color = colors[Math.min(posFromRight, colors.length - 1)];
+        const ch = s[i] === '\u00A0' ? '&nbsp;' : s[i];
+        html += '<span class="calcul-digit" style="color:' + color + '">' + ch + '</span>';
+      }
+      return html;
+    };
+
+    // Build answer row with "?" placeholders, colored by position
+    let answerHtml = '';
+    for (let i = 0; i < maxLen; i++) {
+      const posFromRight = maxLen - 1 - i;
+      const color = colors[Math.min(posFromRight, colors.length - 1)];
+      answerHtml += '<span class="calcul-digit calcul-q" style="color:' + color + '">?</span>';
+    }
+
+    return '<div class="calcul-row">' + _colorDigits(a, maxLen) + '</div>'
+         + '<div class="calcul-row calcul-operator"><span class="calcul-plus">+</span>' + _colorDigits(b, maxLen) + '</div>'
+         + '<div class="calcul-line"></div>'
+         + '<div class="calcul-row calcul-answer">' + answerHtml + '</div>';
   },
 
   _renderDots(max, used) {
