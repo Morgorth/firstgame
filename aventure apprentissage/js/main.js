@@ -131,8 +131,6 @@ function showWorldMap() {
   }
   gameState.worldMap.selectedLevel = -1;
   gameState.worldMap.animFrame = 0;
-
-  requestAnimationFrame(gameLoop);
 }
 
 function startLevel(levelNum) {
@@ -165,9 +163,35 @@ function _resetLevelState() {
 function gameLoop() {
   gameState.frameCount++;
 
+  // Poll gamepad every frame (must be done before any input reading)
+  inputSystem.pollGamepad();
+
   // World map phase — render map and handle navigation
   if (gameState.phase === 'worldmap') {
+    _handleWorldMapGamepad();
     worldSystem.render(gameState);
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  // UI screens — handle gamepad buttons for overlays
+  if (gameState.phase === 'menu') {
+    _handleMenuGamepad();
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+  if (gameState.phase === 'challenge') {
+    _handleChallengeGamepad();
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+  if (gameState.phase === 'levelcomplete') {
+    _handleLevelCompleteGamepad();
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+  if (gameState.phase === 'gamecomplete') {
+    _handleGameCompleteGamepad();
     requestAnimationFrame(gameLoop);
     return;
   }
@@ -184,6 +208,10 @@ function gameLoop() {
     dy = webcamState.webcamInput.dy;
   } else {
     ({ dx, dy } = inputSystem.getKeyboardInput());
+    // Merge gamepad input (gamepad overrides if non-zero)
+    var gp = inputSystem.getGamepadInput();
+    if (gp.dx !== 0) dx = gp.dx;
+    if (gp.dy !== 0) dy = gp.dy;
   }
 
   // 2. Déplace le joueur
@@ -278,6 +306,69 @@ function handleWorldMapInput(e) {
         audioSystem.playSuccess();
       }
     }
+  }
+}
+
+// ── Gamepad navigation for world map ─────────────────────────────
+
+function _handleWorldMapGamepad() {
+  var wm = gameState.worldMap;
+
+  if (wm.selectedLevel === -1) {
+    // Navigating between worlds
+    if (inputSystem.isGamepadPressed('right')) {
+      if (wm.selectedWorld < CONFIG.WORLDS.length - 1) { wm.selectedWorld++; audioSystem.playStep(); }
+    } else if (inputSystem.isGamepadPressed('left')) {
+      if (wm.selectedWorld > 0) { wm.selectedWorld--; audioSystem.playStep(); }
+    } else if (inputSystem.isGamepadPressed('up') || inputSystem.isGamepadPressed('a')) {
+      if (worldSystem._isWorldUnlocked(wm.selectedWorld)) { wm.selectedLevel = 0; audioSystem.playStep(); }
+    } else if (inputSystem.isGamepadPressed('b')) {
+      gameState.running = false; uiSystem.showMenu();
+    }
+  } else {
+    // Navigating levels within a world
+    var world = CONFIG.WORLDS[wm.selectedWorld];
+    if (inputSystem.isGamepadPressed('right')) {
+      if (wm.selectedLevel < world.levels.length - 1) { wm.selectedLevel++; audioSystem.playStep(); }
+    } else if (inputSystem.isGamepadPressed('left')) {
+      if (wm.selectedLevel > 0) { wm.selectedLevel--; audioSystem.playStep(); }
+    } else if (inputSystem.isGamepadPressed('down') || inputSystem.isGamepadPressed('b')) {
+      wm.selectedLevel = -1; audioSystem.playStep();
+    } else if (inputSystem.isGamepadPressed('a') || inputSystem.isGamepadPressed('start')) {
+      var levelNum = world.levels[wm.selectedLevel];
+      if (worldSystem._isLevelUnlocked(levelNum)) { startLevel(levelNum); audioSystem.playSuccess(); }
+    }
+  }
+}
+
+// ── Gamepad for UI overlays ──────────────────────────────────────
+
+function _handleMenuGamepad() {
+  if (inputSystem.isGamepadPressed('a') || inputSystem.isGamepadPressed('start')) {
+    // Start game with keyboard+gamepad mode
+    uiSystem._onPlayKeyboard();
+  }
+}
+
+function _handleChallengeGamepad() {
+  if (inputSystem.isGamepadPressed('b')) {
+    challengeSystem.skip();
+  }
+}
+
+function _handleLevelCompleteGamepad() {
+  if (inputSystem.isGamepadPressed('a')) {
+    uiSystem._onNextLevel();
+  } else if (inputSystem.isGamepadPressed('b')) {
+    uiSystem._onBackToMap();
+  }
+}
+
+function _handleGameCompleteGamepad() {
+  if (inputSystem.isGamepadPressed('a')) {
+    uiSystem._onBackToMap();
+  } else if (inputSystem.isGamepadPressed('b')) {
+    uiSystem._onRestart();
   }
 }
 
@@ -396,7 +487,6 @@ function checkExitTrigger() {
 
 function _completeLevel() {
   gameState.phase = 'levelcomplete';
-  gameState.running = false;
 
   // Sauvegarde la progression
   const lvlNum = gameState.currentLevel;
@@ -455,6 +545,9 @@ window.addEventListener('load', () => {
 
   // Affiche le menu
   uiSystem.showMenu();
+
+  // Start the game loop immediately so gamepad polling works on all screens
+  requestAnimationFrame(gameLoop);
 
   // Déverrouille AudioContext ET speechSynthesis sur premier clic utilisateur
   document.addEventListener('click', () => {
