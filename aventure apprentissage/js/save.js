@@ -18,6 +18,7 @@ const saveSystem = {
   defaultProgress() {
     return {
       currentLevel: 1,
+      currentWorld: 0,
       levels: {},   // { levelNum: { completed: bool, roomsDone: [int], score: int } }
     };
   },

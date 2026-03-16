@@ -12,41 +12,64 @@ const worldSystem = {
     this.ctx = this.canvas.getContext('2d');
   },
 
+  // Returns the current world config for the active level
+  getCurrentWorld() {
+    for (const w of CONFIG.WORLDS) {
+      if (w.levels.includes(gameState.currentLevel)) return w;
+    }
+    return CONFIG.WORLDS[0];
+  },
+
+  // Returns the world theme id ('forest','beach','city','castle') for a level
+  getWorldTheme(levelNum) {
+    if (levelNum <= 5)  return 'forest';
+    if (levelNum <= 10) return 'beach';
+    if (levelNum <= 15) return 'city';
+    return 'castle';
+  },
+
   render(gs) {
     const ctx = this.ctx;
     if (!ctx) return;
 
+    // World map phase — render the overworld map instead
+    if (gs.phase === 'worldmap') {
+      this.renderWorldMap(gs);
+      return;
+    }
+
     // darkLevel: 0 = fully dark (start), 1 = fully bright (all challenges won)
     const darkLevel = Math.min(1, gs.roomsDone.length / CONFIG.ROOMS.length);
+    const theme = this.getWorldTheme(gs.currentLevel);
 
     ctx.clearRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
 
-    // 1. Ciel (nuit → jour selon darkLevel)
-    this._drawSky(ctx, gs.frameCount, darkLevel);
-    // 2. Montagnes
-    this._drawMountains(ctx, darkLevel);
-    // 3. Sol / pelouse
-    this._drawGround(ctx, darkLevel);
-    // 4. Allées de pierre
-    this._drawPaths(ctx);
-    // 5. Arbres arrière-plan
-    this._drawBackTrees(ctx, gs.frameCount);
-    // 6. Bâtiments
-    this._drawLeftDome(ctx, gs.frameCount);
-    this._drawRightConservatory(ctx, gs.frameCount);
-    this._drawGardenPavilion(ctx, 55, 345, 'left', gs.frameCount);
-    this._drawGardenPavilion(ctx, 725, 345, 'right', gs.frameCount);
-    this._drawFountain(ctx, gs.frameCount);
-    this._drawMainCastle(ctx, gs.frameCount);
-    // 7. Arbres premier plan
-    this._drawFrontTrees(ctx, gs.frameCount);
-    // 8. Décorations (haies, fleurs, lanternes)
-    this._drawDecorations(ctx, gs.frameCount);
-    // 9. Overlay sombre (s'estompe au fil des victoires)
-    this._drawDarkOverlay(ctx, darkLevel);
-    // 10. Créatures nocturnes (loups et chauves-souris)
-    this._drawWolves(ctx, gs.frameCount, darkLevel);
-    this._drawBats(ctx, gs.frameCount, darkLevel);
+    // 1. Themed background (sky + terrain + buildings)
+    if (theme === 'forest') {
+      this._drawForestBg(ctx, gs.frameCount, darkLevel, gs.currentLevel);
+    } else if (theme === 'beach') {
+      this._drawBeachBg(ctx, gs.frameCount, darkLevel, gs.currentLevel);
+    } else if (theme === 'city') {
+      this._drawCityBg(ctx, gs.frameCount, darkLevel, gs.currentLevel);
+    } else {
+      // Castle — original background
+      this._drawSky(ctx, gs.frameCount, darkLevel);
+      this._drawMountains(ctx, darkLevel);
+      this._drawGround(ctx, darkLevel);
+      this._drawPaths(ctx);
+      this._drawBackTrees(ctx, gs.frameCount);
+      this._drawLeftDome(ctx, gs.frameCount);
+      this._drawRightConservatory(ctx, gs.frameCount);
+      this._drawGardenPavilion(ctx, 55, 345, 'left', gs.frameCount);
+      this._drawGardenPavilion(ctx, 725, 345, 'right', gs.frameCount);
+      this._drawFountain(ctx, gs.frameCount);
+      this._drawMainCastle(ctx, gs.frameCount);
+      this._drawFrontTrees(ctx, gs.frameCount);
+      this._drawDecorations(ctx, gs.frameCount);
+      this._drawDarkOverlay(ctx, darkLevel);
+      this._drawWolves(ctx, gs.frameCount, darkLevel);
+      this._drawBats(ctx, gs.frameCount, darkLevel);
+    }
     // 11. Pulse des épreuves non complétées
     this._drawChallengePulse(ctx, gs);
     // 12. Marqueurs flottants (toujours bien visibles)
@@ -1881,7 +1904,10 @@ const worldSystem = {
     ctx.fillText(`🦄 ${name}`, 12, H - 44);
 
     ctx.textAlign = 'center';
-    ctx.fillText(`Niveau ${gs.currentLevel} / 20`, W / 2, H - 44);
+    const worldIdx = Math.floor((gs.currentLevel - 1) / 5);
+    const worldEmoji = CONFIG.WORLDS[Math.min(worldIdx, 3)].emoji;
+    const worldName = CONFIG.WORLDS[Math.min(worldIdx, 3)].name;
+    ctx.fillText(`${worldEmoji} ${worldName} — Niv. ${gs.currentLevel}`, W / 2, H - 44);
 
     ctx.textAlign = 'right';
     if (gs.roomsDone.length < CONFIG.challenge.gateScore) {
@@ -1987,9 +2013,962 @@ const worldSystem = {
     }
     ctx.globalAlpha = 1;
   },
-};
 
-// ── Utilitaires de dessin ─────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════
+  // ══  WORLD MAP — Mario-style overworld  ═══════════════════════════
+  // ══════════════════════════════════════════════════════════════════
+
+  renderWorldMap(gs) {
+    const ctx = this.ctx;
+    const W = CONFIG.canvas.width;
+    const H = CONFIG.canvas.height;
+    const frame = gs.frameCount;
+    const wm = gs.worldMap;
+    wm.animFrame++;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // ── Background: parchment / adventure map ──
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0,   '#1A0830');
+    bgGrad.addColorStop(0.3, '#2A1050');
+    bgGrad.addColorStop(0.7, '#1A2040');
+    bgGrad.addColorStop(1,   '#0A1020');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    const rng = _seededRNG(77);
+    ctx.fillStyle = '#FFF';
+    for (let i = 0; i < 80; i++) {
+      const sx = rng() * W;
+      const sy = rng() * H;
+      const twinkle = 0.3 + 0.7 * Math.sin(frame * 0.03 + i * 1.7);
+      ctx.globalAlpha = twinkle * 0.6;
+      ctx.beginPath();
+      ctx.arc(sx, sy, rng() * 1.5 + 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // ── Terrain patches around worlds ──
+    this._drawMapTerrain(ctx, frame);
+
+    // ── Draw paths between worlds ──
+    for (const [a, b] of CONFIG.WORLD_PATHS) {
+      const wa = CONFIG.WORLDS[a];
+      const wb = CONFIG.WORLDS[b];
+      // Determine if path is unlocked (world a completed)
+      const aComplete = this._isWorldComplete(a);
+      ctx.save();
+      ctx.setLineDash(aComplete ? [] : [8, 6]);
+      ctx.strokeStyle = aComplete ? '#FFD700' : 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = aComplete ? 4 : 2;
+      ctx.beginPath();
+      ctx.moveTo(wa.mapX, wa.mapY);
+      // Curved path
+      const mx = (wa.mapX + wb.mapX) / 2;
+      const my = Math.min(wa.mapY, wb.mapY) - 40;
+      ctx.quadraticCurveTo(mx, my, wb.mapX, wb.mapY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Animated dots on unlocked paths
+      if (aComplete) {
+        for (let d = 0; d < 5; d++) {
+          const t = ((frame * 0.008 + d * 0.2) % 1);
+          const dx = (1-t)*(1-t)*wa.mapX + 2*(1-t)*t*mx + t*t*wb.mapX;
+          const dy = (1-t)*(1-t)*wa.mapY + 2*(1-t)*t*my + t*t*wb.mapY;
+          ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * Math.PI);
+          ctx.fillStyle = '#FFD700';
+          ctx.beginPath();
+          ctx.arc(dx, dy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+    }
+
+    // ── Draw world nodes ──
+    for (let wi = 0; wi < CONFIG.WORLDS.length; wi++) {
+      const w = CONFIG.WORLDS[wi];
+      const unlocked = this._isWorldUnlocked(wi);
+      const complete = this._isWorldComplete(wi);
+      const selected = wm.selectedWorld === wi && wm.selectedLevel === -1;
+
+      this._drawWorldNode(ctx, w, wi, unlocked, complete, selected, frame);
+
+      // Draw level nodes within selected world
+      if (wm.selectedWorld === wi && unlocked) {
+        this._drawLevelNodes(ctx, w, wi, frame, wm);
+      }
+    }
+
+    // ── Title ──
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 28px system-ui';
+    ctx.fillStyle = '#FFD700';
+    ctx.shadowColor = 'rgba(255,200,0,0.5)';
+    ctx.shadowBlur = 12;
+    ctx.fillText('Carte du Monde', W / 2, 45);
+    ctx.shadowBlur = 0;
+
+    // Subtitle
+    ctx.font = '16px system-ui';
+    ctx.fillStyle = '#C8B0FF';
+    ctx.fillText('Choisis un monde et un niveau !', W / 2, 70);
+
+    // Controls hint
+    ctx.font = '13px system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText('← → pour choisir  •  ↑ ↓ pour les niveaux  •  Entrée pour jouer', W / 2, H - 15);
+    ctx.restore();
+
+    // ── HUD: profile info ──
+    ctx.save();
+    ctx.fillStyle = 'rgba(12,4,22,0.7)';
+    ctx.fillRect(0, H - 40, W, 40);
+    const profile = currentProfile || { name: 'Aventurier' };
+    ctx.font = 'bold 14px system-ui';
+    ctx.fillStyle = '#FFF';
+    ctx.textAlign = 'left';
+    ctx.fillText(`🦄 ${profile.name}`, 12, H - 18);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#FFD0A0';
+    ctx.fillText(`Progression : ${currentProgress.currentLevel - 1} / 20 niveaux`, W - 12, H - 18);
+    ctx.restore();
+  },
+
+  _isWorldUnlocked(worldIdx) {
+    if (worldIdx === 0) return true;
+    // A world is unlocked when the previous world's last level is completed
+    const prevWorld = CONFIG.WORLDS[worldIdx - 1];
+    const lastLevel = prevWorld.levels[prevWorld.levels.length - 1];
+    return !!(currentProgress.levels[lastLevel] && currentProgress.levels[lastLevel].completed);
+  },
+
+  _isWorldComplete(worldIdx) {
+    const w = CONFIG.WORLDS[worldIdx];
+    const lastLevel = w.levels[w.levels.length - 1];
+    return !!(currentProgress.levels[lastLevel] && currentProgress.levels[lastLevel].completed);
+  },
+
+  _isLevelUnlocked(levelNum) {
+    if (levelNum <= 1) return true;
+    // Level is unlocked if previous level is completed OR it's the currentLevel
+    return levelNum <= currentProgress.currentLevel;
+  },
+
+  _drawMapTerrain(ctx, frame) {
+    // Terrain patches for each world
+    const terrains = [
+      // Forest: green patches with trees
+      { cx: 150, cy: 420, color: '#1A4A1A', r: 80 },
+      // Beach: sand + water
+      { cx: 350, cy: 280, color: '#1A3A4A', r: 75 },
+      // City: gray patch
+      { cx: 550, cy: 380, color: '#2A2A3A', r: 70 },
+      // Castle: purple hilltop
+      { cx: 750, cy: 240, color: '#2A1A3A', r: 85 },
+    ];
+
+    for (let i = 0; i < terrains.length; i++) {
+      const t = terrains[i];
+      const rng = _seededRNG(i * 100 + 7);
+
+      // Main terrain ellipse
+      ctx.save();
+      ctx.fillStyle = t.color;
+      ctx.beginPath();
+      ctx.ellipse(t.cx, t.cy + 25, t.r * 1.4, t.r * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Theme-specific decorations
+      if (i === 0) {
+        // Forest: little trees
+        ctx.fillStyle = '#2E6E2E';
+        for (let j = 0; j < 8; j++) {
+          const tx = t.cx - 80 + rng() * 160;
+          const ty = t.cy - 15 + rng() * 60;
+          ctx.beginPath();
+          ctx.moveTo(tx, ty - 18);
+          ctx.lineTo(tx - 8, ty);
+          ctx.lineTo(tx + 8, ty);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillRect(tx - 2, ty, 4, 6);
+        }
+      } else if (i === 1) {
+        // Beach: waves
+        ctx.strokeStyle = 'rgba(100,200,255,0.4)';
+        ctx.lineWidth = 2;
+        for (let j = 0; j < 4; j++) {
+          const wy = t.cy + 15 + j * 10;
+          const wave = Math.sin(frame * 0.03 + j) * 8;
+          ctx.beginPath();
+          ctx.moveTo(t.cx - 70, wy);
+          ctx.quadraticCurveTo(t.cx - 30 + wave, wy - 8, t.cx, wy);
+          ctx.quadraticCurveTo(t.cx + 30 + wave, wy + 8, t.cx + 70, wy);
+          ctx.stroke();
+        }
+        // Palm tree
+        ctx.fillStyle = '#8B5A2B';
+        ctx.fillRect(t.cx + 50, t.cy - 5, 5, 25);
+        ctx.fillStyle = '#228B22';
+        for (let l = 0; l < 4; l++) {
+          const a = l * 0.8 - 0.4 + Math.sin(frame * 0.02) * 0.1;
+          ctx.beginPath();
+          ctx.moveTo(t.cx + 52, t.cy - 8);
+          ctx.quadraticCurveTo(t.cx + 52 + Math.cos(a) * 20, t.cy - 20, t.cx + 52 + Math.cos(a) * 30, t.cy - 5);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#228B22';
+          ctx.stroke();
+        }
+      } else if (i === 2) {
+        // City: small buildings
+        ctx.fillStyle = '#4A4A5A';
+        for (let j = 0; j < 5; j++) {
+          const bx = t.cx - 55 + j * 25;
+          const bh = 12 + rng() * 18;
+          ctx.fillRect(bx, t.cy + 5 - bh, 15, bh);
+          // Window
+          ctx.fillStyle = '#FFE040';
+          ctx.globalAlpha = 0.5 + 0.5 * Math.sin(frame * 0.04 + j);
+          ctx.fillRect(bx + 3, t.cy + 5 - bh + 3, 4, 4);
+          ctx.fillRect(bx + 9, t.cy + 5 - bh + 3, 4, 4);
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#4A4A5A';
+        }
+      } else {
+        // Castle: turrets
+        ctx.fillStyle = '#6A4A8A';
+        ctx.fillRect(t.cx - 20, t.cy - 30, 40, 45);
+        ctx.fillStyle = '#8A6AAA';
+        ctx.beginPath();
+        ctx.moveTo(t.cx - 25, t.cy - 30);
+        ctx.lineTo(t.cx, t.cy - 55);
+        ctx.lineTo(t.cx + 25, t.cy - 30);
+        ctx.closePath();
+        ctx.fill();
+        // Towers
+        ctx.fillStyle = '#5A3A7A';
+        ctx.fillRect(t.cx - 30, t.cy - 25, 12, 35);
+        ctx.fillRect(t.cx + 18, t.cy - 25, 12, 35);
+        // Flag
+        ctx.fillStyle = '#E040FB';
+        const wave = Math.sin(frame * 0.06) * 3;
+        ctx.beginPath();
+        ctx.moveTo(t.cx, t.cy - 55);
+        ctx.lineTo(t.cx + 15, t.cy - 50 + wave);
+        ctx.lineTo(t.cx, t.cy - 45);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  },
+
+  _drawWorldNode(ctx, world, idx, unlocked, complete, selected, frame) {
+    const x = world.mapX;
+    const y = world.mapY;
+    const r = selected ? 38 : 32;
+    const pulse = selected ? (0.9 + 0.1 * Math.sin(frame * 0.08)) : 1;
+
+    ctx.save();
+
+    if (!unlocked) {
+      ctx.globalAlpha = 0.35;
+    }
+
+    // Glow for selected
+    if (selected && unlocked) {
+      const glow = ctx.createRadialGradient(x, y, r * 0.5, x, y, r * 1.8);
+      glow.addColorStop(0, 'rgba(255,215,0,0.35)');
+      glow.addColorStop(1, 'rgba(255,215,0,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Circle background
+    const grad = ctx.createRadialGradient(x - 8, y - 8, 2, x, y, r);
+    grad.addColorStop(0, complete ? '#FFE070' : (unlocked ? '#6040A0' : '#2A2A3A'));
+    grad.addColorStop(1, complete ? '#C8A020' : (unlocked ? '#3A2060' : '#1A1A2A'));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Border
+    ctx.strokeStyle = complete ? '#FFD700' : (selected ? '#E040FB' : 'rgba(255,255,255,0.3)');
+    ctx.lineWidth = selected ? 3.5 : 2;
+    ctx.stroke();
+
+    // World emoji
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${r * 0.8}px system-ui`;
+    ctx.fillStyle = '#FFF';
+    ctx.fillText(world.emoji, x, y + 2);
+
+    // World name
+    ctx.font = 'bold 13px system-ui';
+    ctx.fillStyle = selected ? '#FFD700' : '#C8B0E0';
+    ctx.textBaseline = 'top';
+    ctx.fillText(world.name, x, y + r + 8);
+
+    // Lock icon
+    if (!unlocked) {
+      ctx.font = '20px system-ui';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#FFF';
+      ctx.globalAlpha = 0.7;
+      ctx.fillText('🔒', x, y);
+    }
+
+    // Completion stars
+    if (unlocked) {
+      const completedLevels = world.levels.filter(l =>
+        currentProgress.levels[l] && currentProgress.levels[l].completed
+      ).length;
+      ctx.font = '11px system-ui';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#FFD700';
+      let stars = '';
+      for (let s = 0; s < world.levels.length; s++) {
+        stars += s < completedLevels ? '★' : '☆';
+      }
+      ctx.fillText(stars, x, y + r + 22);
+    }
+
+    ctx.restore();
+  },
+
+  _drawLevelNodes(ctx, world, worldIdx, frame, wm) {
+    const levels = world.levels;
+    const baseX = world.mapX;
+    const baseY = world.mapY - 70;
+
+    // Draw a small arc of level nodes above the world node
+    for (let li = 0; li < levels.length; li++) {
+      const levelNum = levels[li];
+      const angle = Math.PI + (li / (levels.length - 1)) * Math.PI;
+      const nodeX = baseX + Math.cos(angle) * 90;
+      const nodeY = baseY + Math.sin(angle) * 30 - 20;
+      const unlocked = this._isLevelUnlocked(levelNum);
+      const completed = !!(currentProgress.levels[levelNum] && currentProgress.levels[levelNum].completed);
+      const selected = wm.selectedLevel === li;
+
+      ctx.save();
+
+      // Line from world to level
+      ctx.strokeStyle = unlocked ? 'rgba(255,215,0,0.4)' : 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY + 50);
+      ctx.lineTo(nodeX, nodeY);
+      ctx.stroke();
+
+      if (!unlocked) ctx.globalAlpha = 0.3;
+
+      const r = selected ? 20 : 16;
+
+      // Glow for selected
+      if (selected && unlocked) {
+        const glow = ctx.createRadialGradient(nodeX, nodeY, 4, nodeX, nodeY, r * 2);
+        glow.addColorStop(0, 'rgba(255,215,0,0.4)');
+        glow.addColorStop(1, 'rgba(255,215,0,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(nodeX, nodeY, r * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Node circle
+      ctx.fillStyle = completed ? '#FFD700' : (unlocked ? '#5030A0' : '#2A2A3A');
+      ctx.beginPath();
+      ctx.arc(nodeX, nodeY, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = selected ? '#FFD700' : (completed ? '#FFA000' : 'rgba(255,255,255,0.25)');
+      ctx.lineWidth = selected ? 2.5 : 1.5;
+      ctx.stroke();
+
+      // Level number
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${selected ? 14 : 12}px system-ui`;
+      ctx.fillStyle = completed ? '#4A2800' : '#FFF';
+      ctx.fillText(String(levelNum), nodeX, nodeY + 1);
+
+      // Completed check
+      if (completed) {
+        ctx.font = '10px system-ui';
+        ctx.fillStyle = '#2E7D32';
+        ctx.fillText('✓', nodeX + r - 2, nodeY - r + 4);
+      }
+
+      // Lock
+      if (!unlocked) {
+        ctx.globalAlpha = 0.6;
+        ctx.font = '12px system-ui';
+        ctx.fillText('🔒', nodeX, nodeY);
+      }
+
+      ctx.restore();
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // ══  THEMED BACKGROUNDS  ═════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════
+
+  // ── FOREST THEME ──────────────────────────────────────────────────
+  _drawForestBg(ctx, frame, darkLevel, levelNum) {
+    const W = CONFIG.canvas.width;
+    const H = CONFIG.canvas.height;
+    const t = darkLevel;
+    const seed = levelNum * 137;
+
+    // Sky: deep green-tinted night → bright green sky
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, 260);
+    skyGrad.addColorStop(0,   _lerpColorRGB([10, 25, 10], [50, 140, 80], t));
+    skyGrad.addColorStop(0.5, _lerpColorRGB([15, 35, 15], [80, 170, 100], t));
+    skyGrad.addColorStop(1,   _lerpColorRGB([20, 45, 20], [140, 210, 150], t));
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, 260);
+
+    // Stars when dark
+    if (t < 0.9) {
+      this._drawStars(ctx, frame, 1 - t);
+    }
+
+    // Clouds (day)
+    if (t > 0.2) {
+      ctx.save();
+      ctx.globalAlpha = t * 0.7;
+      const cx1 = ((frame * 0.12) % 1050) - 120;
+      const cx2 = ((frame * 0.08) % 1050) + 300;
+      this._drawCloud(ctx, cx1, 40, 110, 42);
+      this._drawCloud(ctx, cx2, 60, 90, 35);
+      ctx.restore();
+    }
+
+    // Forest hills (layered, procedural heights based on seed)
+    const rng = _seededRNG(seed);
+    ctx.fillStyle = _lerpColorRGB([8, 30, 8], [40, 100, 30], t);
+    ctx.beginPath();
+    ctx.moveTo(0, 240);
+    for (let x = 0; x <= W; x += 60) {
+      ctx.lineTo(x, 180 + rng() * 50);
+    }
+    ctx.lineTo(W, 260); ctx.lineTo(0, 260);
+    ctx.closePath();
+    ctx.fill();
+
+    // Closer hills
+    ctx.fillStyle = _lerpColorRGB([12, 40, 12], [55, 130, 45], t);
+    ctx.beginPath();
+    ctx.moveTo(0, 260);
+    for (let x = 0; x <= W; x += 45) {
+      ctx.lineTo(x, 215 + rng() * 40);
+    }
+    ctx.lineTo(W, 270); ctx.lineTo(0, 270);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ground
+    const groundGrad = ctx.createLinearGradient(0, 248, 0, H);
+    groundGrad.addColorStop(0,   _lerpColorRGB([15, 35, 10], [65, 145, 55], t));
+    groundGrad.addColorStop(0.5, _lerpColorRGB([18, 40, 12], [80, 160, 65], t));
+    groundGrad.addColorStop(1,   _lerpColorRGB([20, 45, 14], [95, 175, 75], t));
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, 248, W, H - 248);
+
+    // Dirt paths (procedural)
+    ctx.fillStyle = '#7A6040';
+    ctx.globalAlpha = 0.4 + t * 0.3;
+    this._drawPaths(ctx);
+    ctx.globalAlpha = 1;
+
+    // Large pine/deciduous trees (procedural positions from seed)
+    const rng2 = _seededRNG(seed + 50);
+    for (let i = 0; i < 14; i++) {
+      const tx = rng2() * W;
+      const ty = 230 + rng2() * 80;
+      const treeType = rng2() > 0.5 ? 'pine' : 'oak';
+      const treeH = 40 + rng2() * 35;
+      this._drawForestTree(ctx, tx, ty, treeH, treeType, frame, t);
+    }
+
+    // Mushrooms scattered
+    const rng3 = _seededRNG(seed + 200);
+    for (let i = 0; i < 8; i++) {
+      const mx = rng3() * W;
+      const my = 380 + rng3() * 160;
+      ctx.fillStyle = '#DD3333';
+      ctx.beginPath();
+      ctx.arc(mx, my - 4, 5, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = '#F0E0C0';
+      ctx.fillRect(mx - 2, my - 4, 4, 7);
+      // Dots on cap
+      ctx.fillStyle = '#FFF';
+      ctx.beginPath();
+      ctx.arc(mx - 2, my - 6, 1.5, 0, Math.PI * 2);
+      ctx.arc(mx + 2, my - 7, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Fireflies when dark
+    if (t < 0.7) {
+      ctx.fillStyle = '#AAFF00';
+      const rng4 = _seededRNG(seed + 300);
+      for (let i = 0; i < 12; i++) {
+        const fx = rng4() * W;
+        const fy = 260 + rng4() * 250;
+        const fa = (1 - t) * (0.3 + 0.7 * Math.sin(frame * 0.06 + i * 2));
+        ctx.globalAlpha = fa;
+        ctx.beginPath();
+        ctx.arc(fx + Math.sin(frame * 0.03 + i) * 8, fy, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Dark overlay
+    this._drawDarkOverlay(ctx, darkLevel);
+  },
+
+  _drawForestTree(ctx, x, y, h, type, frame, dayLevel) {
+    ctx.save();
+    // Trunk
+    ctx.fillStyle = _lerpColorRGB([30, 20, 10], [90, 60, 30], dayLevel);
+    ctx.fillRect(x - 4, y - h * 0.3, 8, h * 0.5);
+
+    if (type === 'pine') {
+      // Layered triangles
+      for (let layer = 0; layer < 3; layer++) {
+        const ly = y - h * 0.2 - layer * h * 0.25;
+        const lw = 20 - layer * 4;
+        ctx.fillStyle = _lerpColorRGB([10, 40 + layer * 15, 10], [30, 100 + layer * 25, 25], dayLevel);
+        ctx.beginPath();
+        ctx.moveTo(x, ly - h * 0.3);
+        ctx.lineTo(x - lw, ly);
+        ctx.lineTo(x + lw, ly);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else {
+      // Round oak canopy
+      const colors = ['#2A6A1A', '#358A25', '#40A030'];
+      for (let c = 0; c < 3; c++) {
+        const ox = x + Math.cos(c * 2.1) * 8;
+        const oy = y - h * 0.5 + Math.sin(c * 2.1) * 6;
+        ctx.fillStyle = _lerpColorRGB([10, 30 + c * 15, 8], [50 + c * 20, 120 + c * 20, 40], dayLevel);
+        ctx.beginPath();
+        ctx.arc(ox, oy, 14 + c * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Leaf fall animation
+    const sway = Math.sin(frame * 0.02 + x * 0.1) * 3;
+    ctx.fillStyle = 'rgba(100,200,50,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x + sway, y - h * 0.1, 3, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  },
+
+  // ── BEACH THEME ───────────────────────────────────────────────────
+  _drawBeachBg(ctx, frame, darkLevel, levelNum) {
+    const W = CONFIG.canvas.width;
+    const H = CONFIG.canvas.height;
+    const t = darkLevel;
+    const seed = levelNum * 211;
+
+    // Sky: tropical sunset/day
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, 220);
+    skyGrad.addColorStop(0,   _lerpColorRGB([5, 10, 30], [50, 180, 240], t));
+    skyGrad.addColorStop(0.6, _lerpColorRGB([10, 15, 40], [120, 210, 250], t));
+    skyGrad.addColorStop(1,   _lerpColorRGB([20, 20, 50], [200, 230, 255], t));
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, 220);
+
+    // Stars
+    if (t < 0.85) this._drawStars(ctx, frame, 1 - t);
+
+    // Sun (day)
+    if (t > 0.3) {
+      ctx.save();
+      ctx.globalAlpha = t * 0.9;
+      const sunGlow = ctx.createRadialGradient(750, 60, 0, 750, 60, 60);
+      sunGlow.addColorStop(0, 'rgba(255,230,100,0.8)');
+      sunGlow.addColorStop(0.5, 'rgba(255,200,50,0.3)');
+      sunGlow.addColorStop(1, 'rgba(255,180,0,0)');
+      ctx.fillStyle = sunGlow;
+      ctx.beginPath();
+      ctx.arc(750, 60, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#FFE040';
+      ctx.beginPath();
+      ctx.arc(750, 60, 25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Clouds
+    if (t > 0.2) {
+      ctx.save();
+      ctx.globalAlpha = t * 0.6;
+      this._drawCloud(ctx, ((frame * 0.1) % 1050) - 100, 30, 100, 38);
+      this._drawCloud(ctx, ((frame * 0.06) % 1050) + 400, 55, 80, 30);
+      ctx.restore();
+    }
+
+    // Ocean
+    const oceanY = 190;
+    const oceanGrad = ctx.createLinearGradient(0, oceanY, 0, 350);
+    oceanGrad.addColorStop(0, _lerpColorRGB([5, 20, 50], [30, 120, 200], t));
+    oceanGrad.addColorStop(0.5, _lerpColorRGB([8, 30, 60], [50, 150, 220], t));
+    oceanGrad.addColorStop(1, _lerpColorRGB([10, 35, 65], [80, 180, 230], t));
+    ctx.fillStyle = oceanGrad;
+    ctx.fillRect(0, oceanY, W, 160);
+
+    // Waves
+    ctx.strokeStyle = `rgba(255,255,255,${0.15 + t * 0.25})`;
+    ctx.lineWidth = 2;
+    for (let wi = 0; wi < 6; wi++) {
+      const wy = oceanY + 20 + wi * 25;
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 5) {
+        const yOff = Math.sin(x * 0.02 + frame * 0.04 + wi * 1.5) * 5;
+        if (x === 0) ctx.moveTo(x, wy + yOff);
+        else ctx.lineTo(x, wy + yOff);
+      }
+      ctx.stroke();
+    }
+
+    // Sandy beach
+    const sandY = 340;
+    const sandGrad = ctx.createLinearGradient(0, sandY, 0, H);
+    sandGrad.addColorStop(0,   _lerpColorRGB([40, 35, 20], [235, 215, 165], t));
+    sandGrad.addColorStop(0.3, _lerpColorRGB([45, 40, 22], [225, 205, 155], t));
+    sandGrad.addColorStop(1,   _lerpColorRGB([50, 42, 25], [210, 195, 140], t));
+    ctx.fillStyle = sandGrad;
+    ctx.fillRect(0, sandY, W, H - sandY);
+
+    // Shore foam line
+    ctx.strokeStyle = `rgba(255,255,255,${0.3 + t * 0.4})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 5) {
+      const yOff = Math.sin(x * 0.015 + frame * 0.03) * 4;
+      if (x === 0) ctx.moveTo(x, sandY + yOff);
+      else ctx.lineTo(x, sandY + yOff);
+    }
+    ctx.stroke();
+
+    // Paths on sand
+    ctx.globalAlpha = 0.3 + t * 0.2;
+    ctx.fillStyle = '#C8B480';
+    this._drawPaths(ctx);
+    ctx.globalAlpha = 1;
+
+    // Palm trees (procedural)
+    const rng = _seededRNG(seed);
+    for (let i = 0; i < 8; i++) {
+      const px = rng() * W;
+      const py = 310 + rng() * 120;
+      this._drawPalmTree(ctx, px, py, frame, t);
+    }
+
+    // Seashells
+    const rng2 = _seededRNG(seed + 100);
+    for (let i = 0; i < 10; i++) {
+      const sx = rng2() * W;
+      const sy = sandY + 10 + rng2() * (H - sandY - 80);
+      ctx.fillStyle = ['#FFE0C0', '#FFC8A0', '#FFB088', '#E0C0B0'][i % 4];
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3 + rng2() * 2, 0, Math.PI);
+      ctx.fill();
+    }
+
+    // Crabs when dark
+    if (t < 0.6) {
+      const rng3 = _seededRNG(seed + 300);
+      ctx.fillStyle = '#CC4422';
+      ctx.globalAlpha = (1 - t) * 0.8;
+      for (let i = 0; i < 3; i++) {
+        const cx = rng3() * W;
+        const cy = sandY + 30 + rng3() * 100;
+        const scuttle = Math.sin(frame * 0.08 + i * 2) * 5;
+        ctx.beginPath();
+        ctx.ellipse(cx + scuttle, cy, 8, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Claws
+        ctx.strokeStyle = '#CC4422';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + scuttle - 8, cy);
+        ctx.lineTo(cx + scuttle - 14, cy - 4);
+        ctx.moveTo(cx + scuttle + 8, cy);
+        ctx.lineTo(cx + scuttle + 14, cy - 4);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Dark overlay
+    this._drawDarkOverlay(ctx, darkLevel);
+  },
+
+  _drawPalmTree(ctx, x, y, frame, dayLevel) {
+    ctx.save();
+    const sway = Math.sin(frame * 0.015 + x * 0.05) * 4;
+
+    // Trunk (curved)
+    ctx.strokeStyle = _lerpColorRGB([40, 25, 10], [140, 95, 50], dayLevel);
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + sway * 2, y - 40, x + sway * 3, y - 70);
+    ctx.stroke();
+
+    // Coconuts
+    ctx.fillStyle = '#8B4513';
+    for (let c = 0; c < 2; c++) {
+      ctx.beginPath();
+      ctx.arc(x + sway * 3 + (c - 0.5) * 6, y - 68, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Fronds
+    const frondX = x + sway * 3;
+    const frondY = y - 72;
+    for (let f = 0; f < 6; f++) {
+      const angle = (f / 6) * Math.PI * 2 + Math.sin(frame * 0.02) * 0.1;
+      const length = 30 + Math.random() * 10;
+      ctx.strokeStyle = _lerpColorRGB([15, 45, 10], [40, 160, 30], dayLevel);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(frondX, frondY);
+      ctx.quadraticCurveTo(
+        frondX + Math.cos(angle) * length * 0.7,
+        frondY + Math.sin(angle) * length * 0.3 - 15,
+        frondX + Math.cos(angle) * length,
+        frondY + Math.sin(angle) * length * 0.5 + 10
+      );
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+
+  // ── CITY THEME ────────────────────────────────────────────────────
+  _drawCityBg(ctx, frame, darkLevel, levelNum) {
+    const W = CONFIG.canvas.width;
+    const H = CONFIG.canvas.height;
+    const t = darkLevel;
+    const seed = levelNum * 307;
+
+    // Sky
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, 240);
+    skyGrad.addColorStop(0,   _lerpColorRGB([10, 10, 30], [80, 130, 190], t));
+    skyGrad.addColorStop(0.5, _lerpColorRGB([15, 15, 40], [120, 165, 210], t));
+    skyGrad.addColorStop(1,   _lerpColorRGB([25, 25, 55], [180, 210, 240], t));
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, 240);
+
+    // Stars at night
+    if (t < 0.85) this._drawStars(ctx, frame, 1 - t);
+
+    // Clouds
+    if (t > 0.2) {
+      ctx.save();
+      ctx.globalAlpha = t * 0.65;
+      this._drawCloud(ctx, ((frame * 0.08) % 1050) - 80, 25, 120, 45);
+      this._drawCloud(ctx, ((frame * 0.05) % 1050) + 500, 50, 95, 36);
+      ctx.restore();
+    }
+
+    // Distant city skyline (procedural)
+    const rng = _seededRNG(seed);
+    ctx.fillStyle = _lerpColorRGB([15, 15, 25], [90, 95, 110], t);
+    ctx.beginPath();
+    ctx.moveTo(0, 240);
+    let bx = 0;
+    while (bx < W) {
+      const bw = 25 + rng() * 40;
+      const bh = 40 + rng() * 100;
+      ctx.lineTo(bx, 240 - bh);
+      ctx.lineTo(bx + bw, 240 - bh);
+      bx += bw + rng() * 8;
+    }
+    ctx.lineTo(W, 240);
+    ctx.closePath();
+    ctx.fill();
+
+    // Windows on distant buildings (twinkling at night)
+    if (t < 0.8) {
+      const rng1b = _seededRNG(seed + 5);
+      ctx.fillStyle = '#FFE040';
+      let bx2 = 0;
+      while (bx2 < W) {
+        const bw = 25 + rng1b() * 40;
+        const bh = 40 + rng1b() * 100;
+        rng1b(); // skip spacing
+        for (let wy = 240 - bh + 8; wy < 235; wy += 12) {
+          for (let wx = bx2 + 4; wx < bx2 + bw - 4; wx += 10) {
+            ctx.globalAlpha = (1 - t) * (0.3 + 0.7 * (rng1b() > 0.5 ? Math.sin(frame * 0.04 + wx + wy) * 0.5 + 0.5 : 0.2));
+            ctx.fillRect(wx, wy, 4, 5);
+          }
+        }
+        bx2 += bw + rng1b() * 8;
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Ground: pavement/park
+    const groundGrad = ctx.createLinearGradient(0, 248, 0, H);
+    groundGrad.addColorStop(0,   _lerpColorRGB([20, 20, 18], [130, 130, 120], t));
+    groundGrad.addColorStop(0.3, _lerpColorRGB([22, 25, 20], [100, 120, 90], t));
+    groundGrad.addColorStop(1,   _lerpColorRGB([25, 28, 22], [85, 110, 75], t));
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, 248, W, H - 248);
+
+    // Road
+    ctx.fillStyle = _lerpColorRGB([18, 18, 16], [75, 75, 70], t);
+    ctx.fillRect(0, 320, W, 35);
+    // Road lines
+    ctx.strokeStyle = '#FFE040';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([15, 10]);
+    ctx.beginPath();
+    ctx.moveTo(0, 338);
+    ctx.lineTo(W, 338);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Close buildings (procedural, colorful)
+    const rng2 = _seededRNG(seed + 100);
+    const buildingColors = ['#CC6644', '#88AA66', '#6688BB', '#AA7788', '#BB9955', '#7799AA'];
+    for (let i = 0; i < 10; i++) {
+      const bx3 = rng2() * W;
+      const bh3 = 50 + rng2() * 80;
+      const bw3 = 35 + rng2() * 30;
+      const by3 = 310 - bh3;
+      const color = buildingColors[Math.floor(rng2() * buildingColors.length)];
+
+      ctx.fillStyle = _lerpColorRGB(
+        [parseInt(color.slice(1,3),16)*0.3, parseInt(color.slice(3,5),16)*0.3, parseInt(color.slice(5,7),16)*0.3],
+        [parseInt(color.slice(1,3),16), parseInt(color.slice(3,5),16), parseInt(color.slice(5,7),16)],
+        t
+      );
+      ctx.fillRect(bx3, by3, bw3, bh3);
+
+      // Windows
+      for (let wy = by3 + 8; wy < by3 + bh3 - 10; wy += 14) {
+        for (let wx = bx3 + 5; wx < bx3 + bw3 - 8; wx += 12) {
+          const lit = rng2() > 0.3;
+          if (lit && t < 0.7) {
+            ctx.fillStyle = '#FFE040';
+            ctx.globalAlpha = (1 - t) * 0.7;
+          } else {
+            ctx.fillStyle = _lerpColorRGB([40, 50, 60], [150, 190, 220], t);
+            ctx.globalAlpha = 0.6;
+          }
+          ctx.fillRect(wx, wy, 6, 7);
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      // Door
+      ctx.fillStyle = '#3A2A1A';
+      ctx.fillRect(bx3 + bw3 / 2 - 6, by3 + bh3 - 18, 12, 18);
+
+      // Roof detail
+      ctx.fillStyle = _lerpColorRGB([30, 25, 20], [80, 60, 50], t);
+      ctx.fillRect(bx3 - 3, by3 - 4, bw3 + 6, 6);
+    }
+
+    // Paths
+    ctx.globalAlpha = 0.35 + t * 0.2;
+    this._drawPaths(ctx);
+    ctx.globalAlpha = 1;
+
+    // Street lamps
+    const rng3 = _seededRNG(seed + 200);
+    for (let i = 0; i < 8; i++) {
+      const lx = 50 + rng3() * (W - 100);
+      const ly = 355 + rng3() * 80;
+      this._drawStreetLamp(ctx, lx, ly, frame, t);
+    }
+
+    // Park trees (smaller)
+    const rng4 = _seededRNG(seed + 400);
+    for (let i = 0; i < 6; i++) {
+      const tx = rng4() * W;
+      const ty = 370 + rng4() * 150;
+      this._drawCityTree(ctx, tx, ty, frame, t);
+    }
+
+    // Dark overlay
+    this._drawDarkOverlay(ctx, darkLevel);
+  },
+
+  _drawStreetLamp(ctx, x, y, frame, dayLevel) {
+    ctx.save();
+    // Pole
+    ctx.fillStyle = _lerpColorRGB([20, 20, 20], [60, 60, 65], dayLevel);
+    ctx.fillRect(x - 2, y - 35, 4, 35);
+
+    // Lamp head
+    ctx.fillStyle = '#444';
+    ctx.fillRect(x - 8, y - 38, 16, 5);
+
+    // Light (stronger at night)
+    const glow = 1 - dayLevel;
+    if (glow > 0.1) {
+      const grad = ctx.createRadialGradient(x, y - 36, 2, x, y - 20, 35);
+      grad.addColorStop(0, `rgba(255,240,140,${glow * 0.7})`);
+      grad.addColorStop(1, 'rgba(255,200,80,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y - 20, 35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Bulb
+    ctx.fillStyle = `rgba(255,245,160,${0.5 + glow * 0.5})`;
+    ctx.beginPath();
+    ctx.arc(x, y - 36, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  },
+
+  _drawCityTree(ctx, x, y, frame, dayLevel) {
+    ctx.save();
+    ctx.fillStyle = _lerpColorRGB([30, 20, 10], [80, 55, 30], dayLevel);
+    ctx.fillRect(x - 3, y - 12, 6, 18);
+
+    ctx.fillStyle = _lerpColorRGB([15, 40, 12], [50, 130, 40], dayLevel);
+    ctx.beginPath();
+    ctx.arc(x, y - 20, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = _lerpColorRGB([20, 50, 15], [65, 150, 50], dayLevel);
+    ctx.beginPath();
+    ctx.arc(x - 6, y - 17, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 7, y - 18, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  },
+};
 
 function _roundRect(ctx, x, y, w, h, r) {
   ctx.moveTo(x + r, y);
