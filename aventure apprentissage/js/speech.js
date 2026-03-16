@@ -162,6 +162,14 @@ const speechSystem = {
       [/\bneuf\b/g, '9'],[/\bhuit\b/g, '8'],[/\bsept\b/g, '7'],[/\bsix\b/g, '6'],
       [/\bcinq\b/g, '5'],[/\bquatre\b/g, '4'],[/\btrois\b/g, '3'],[/\bdeux\b/g, '2'],
       [/\bune?\b/g, '1'],[/\bzéro\b/g, '0'],[/\bzero\b/g, '0'],
+      // Homophones courants — le STT confond souvent ces mots avec des nombres
+      [/\bsaint\b/g, '5'],[/\bsein\b/g, '5'],[/\bsain\b/g, '5'],  // cinq
+      [/\bsi\b/g, '6'],[/\bscie\b/g, '6'],                          // six
+      [/\bset\b/g, '7'],[/\bcet(te)?\b/g, '7'],                     // sept
+      [/\bvie\b/g, '20'],[/\bvin\b/g, '20'],                        // vingt
+      [/\bdis\b/g, '10'],[/\bdi\b/g, '10'],                         // dix
+      [/\bde\b/g, '2'],[/\bdieu\b/g, '2'],                          // deux
+      [/\bcat\b/g, '4'],[/\bcarte\b/g, '4'],                        // quatre (partial)
     ];
     let t = text;
     for (const [regex, replacement] of map) t = t.replace(regex, replacement);
