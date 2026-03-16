@@ -194,25 +194,55 @@ const speechSystem = {
     return dp[m][n];
   },
 
-  // Correspondance exacte + sous-chaîne + approximative (Levenshtein)
+  // Correspondance exacte + sous-chaîne + approximative (Levenshtein) + word-level fuzzy
   matches(spoken, expectedArray) {
     if (!spoken || !expectedArray) return false;
     const normSpoken = this.normalize(spoken);
     for (const exp of expectedArray) {
       const normExp = this.normalize(exp);
+      // 1. Exact match
       if (normSpoken === normExp) return true;
+      // 2. Spoken contains expected as substring
       if (normSpoken.includes(normExp)) return true;
-      // Only accept "expected contains spoken" if spoken is substantial — prevents
-      // a noise syllable ("ma") from matching a full word ("maman").
+      // 3. Expected contains spoken (if spoken is substantial)
       if (normSpoken.length >= 2 && normSpoken.length >= Math.ceil(normExp.length * 0.65) && normExp.includes(normSpoken)) return true;
-      // Fuzzy : tolérance 1 pour mots courts (≤4 chars), 2 pour mots longs
-      // Require spoken to be at least as long as expected to avoid noise false-positives.
+      // 4. Full-string Levenshtein
       if (normSpoken.length >= normExp.length - 1) {
         const maxDist = normExp.length <= 4 ? 1 : 2;
         if (this.levenshtein(normSpoken, normExp) <= maxDist) return true;
       }
+      // 5. Word-level fuzzy: check if all expected words appear among spoken words
+      //    Handles duplicates, filler words, and repeated answers in speech
+      if (this._wordsMatch(normSpoken, normExp)) return true;
     }
     return false;
+  },
+
+  // Check if all words of expected can be found (fuzzy) within spoken words.
+  // Each expected word is matched at most once, allowing duplicates in spoken.
+  _wordsMatch(normSpoken, normExp) {
+    const spokenWords = normSpoken.split(' ').filter(w => w.length > 0);
+    const expectedWords = normExp.split(' ').filter(w => w.length > 0);
+    if (expectedWords.length === 0 || spokenWords.length === 0) return false;
+
+    // For each expected word, find a fuzzy match among spoken words
+    const used = new Array(spokenWords.length).fill(false);
+    for (const ew of expectedWords) {
+      let found = false;
+      for (let i = 0; i < spokenWords.length; i++) {
+        if (used[i]) continue;
+        const sw = spokenWords[i];
+        // Exact word match
+        if (sw === ew) { used[i] = true; found = true; break; }
+        // Fuzzy word match — tolerance based on expected word length
+        const maxDist = ew.length <= 3 ? 1 : 2;
+        if (sw.length >= ew.length - 1 && this.levenshtein(sw, ew) <= maxDist) {
+          used[i] = true; found = true; break;
+        }
+      }
+      if (!found) return false;
+    }
+    return true;
   },
 
   // ── Synthèse vocale (TTS) ────────────────────────────────────────
