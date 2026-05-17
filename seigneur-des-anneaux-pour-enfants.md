@@ -409,8 +409,9 @@ pièce, bien à l'abri. Il avait dit vrai. On pouvait lui faire confiance.
 
 « Qui es-tu, à la fin ? » lui demanda Frodon le lendemain matin.
 
-« Je suis un ami de Gandalf, répondit l'homme. Regarde : il m'a laissé une
-lettre pour toi. Je suis un coureur des terres sauvages. Je connais les
+« Je suis un ami de Gandalf, répondit l'homme. Et tu peux me croire :
+Gandalf a laissé pour toi, ici même à l'auberge, une lettre où il parle de
+moi. Je suis un coureur des terres sauvages. Je connais les
 forêts, les collines et les chemins secrets. Et je peux vous guider jusqu'à
 Fondcombe. Mon vrai nom est Aragorn. »
 
@@ -625,12 +626,14 @@ siècles — il y avait une eau noire et silencieuse. Et la porte ne s'ouvrait
 qu'avec un mot de passe secret.
 
 Gandalf réfléchit longtemps. Il essaya des mots savants, des mots anciens.
-Rien. La porte restait close.
+Rien. La porte restait close. Le magicien finit par s'asseoir devant le
+rocher, songeur, pendant que ses amis attendaient, inquiets.
 
-C'est Frodon, finalement, qui trouva la réponse, et elle était toute simple :
-le mot de passe, c'était le mot « ami ». Gandalf le prononça dans la vieille
-langue, et lentement, dans un grand grincement, les deux battants de pierre
-s'écartèrent.
+Et puis, tout à coup, Gandalf bondit sur ses pieds en riant : il avait
+trouvé ! La réponse était d'une simplicité étonnante — c'était l'inscription
+gravée sur la porte elle-même qui la donnait. Il suffisait de dire le mot
+« ami ». Gandalf prononça donc ce mot dans la vieille langue des Elfes, et
+lentement, dans un grand grincement, les deux battants de pierre s'écartèrent.
 
 À peine étaient-ils entrés que, derrière eux, dans l'eau noire, quelque chose
 remua. De longs bras sortirent de l'étang et tâtonnèrent vers les compagnons.
