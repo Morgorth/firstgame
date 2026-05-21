@@ -212,6 +212,13 @@ document.getElementById('goDragonThemeBtn').addEventListener('click', () => sele
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
 
+// Touch nuke button — fires super weapon for player 0
+document.getElementById('touchNukeBtn').addEventListener('click', e => {
+    e.preventDefault();
+    if (!gameState.running) return;
+    activateSuperWeapon(0);
+});
+
 // ── Boot ────────────────────────────────────────────────────────────
 
 gameState.stars = createStars();

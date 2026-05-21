@@ -351,8 +351,12 @@ function update() {
             const targetLane = Math.min(player.targetLane, lanes.length - 1);
             player.x += (lanes[targetLane] - player.x) * 0.2;
         } else if (idx === 0) {
-            if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.x -= CONFIG.player.speed;
-            if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += CONFIG.player.speed;
+            if (touchInput.active) {
+                player.x += (touchInput.worldX - player.x) * 0.25;
+            } else {
+                if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.x -= CONFIG.player.speed;
+                if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += CONFIG.player.speed;
+            }
         }
 
         player.x = Math.max(50, Math.min(PLAY_AREA.width - 50, player.x));

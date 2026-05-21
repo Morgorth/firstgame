@@ -7,14 +7,45 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let PLAY_AREA = { width: 0, height: 0 };
 
+// Cap how tall the playable world can get relative to its width.
+// Without this, very tall portrait phones (h/w > 2) stretch the game into a
+// thin column with enemies that take forever to reach the player. We let the
+// existing render code letterbox the play area instead.
+const MAX_PLAY_ASPECT = 1.78;
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     PLAY_AREA.width = canvas.width * 2;
-    PLAY_AREA.height = canvas.height * 2;
+    PLAY_AREA.height = Math.min(canvas.height * 2, PLAY_AREA.width * MAX_PLAY_ASPECT);
+
+    // If a game is in progress, re-anchor lane positions and player coords
+    // so the player stays visible at the bottom after viewport changes
+    // (mobile URL bar collapse, device rotation, etc.).
+    if (typeof gameState !== 'undefined' && gameState && gameState.players) {
+        const n = gameState.numLanes || (gameState.playerCount === 2 ? 5 : 3);
+        const newLanes = [];
+        for (let i = 0; i < n; i++) newLanes.push(PLAY_AREA.width * ((i + 0.5) / n));
+        gameState.lanePositions = newLanes;
+        gameState.numLanes = n;
+
+        gameState.players.forEach(p => {
+            p.y = PLAY_AREA.height - 40;
+            const lane = Math.max(0, Math.min(n - 1, p.targetLane ?? 1));
+            p.x = newLanes[lane];
+        });
+        if (gameState.player) {
+            gameState.player.x = gameState.players[0].x;
+            gameState.player.y = gameState.players[0].y;
+        }
+    }
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', resizeCanvas);
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resizeCanvas);
+}
 
 // Current selections (set from UI before game starts).
 let controlMode = 'keyboard';
