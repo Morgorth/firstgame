@@ -24,6 +24,13 @@ function updateHUD() {
         _updateNukeEl(document.getElementById('nukeProgress'), 0);
     }
 
+    const touchNukeBtn = document.getElementById('touchNukeBtn');
+    if (touchNukeBtn) {
+        const ready = gameState.superWeaponCharges[0] > 0;
+        touchNukeBtn.classList.toggle('ready', ready);
+        touchNukeBtn.classList.toggle('disabled', !ready);
+    }
+
     updateActiveEffectsHUD();
 }
 

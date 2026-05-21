@@ -108,12 +108,19 @@
             <div class="ready-indicator" id="armsUpIndicator">WAVE YOUR HAND ABOVE YOUR HEAD!</div>
             <button class="btn" id="startBtn">START GAME</button>
             <div class="instructions" id="instructions">
-                MOVE: Arrow Keys / A-D / Mouse / Touch<br>
+                MOVE: Arrow Keys / A-D / Drag finger<br>
+                NUKE: Space bar / Tap NUKE button<br>
                 AUTO-FIRE: Always Active<br>
                 SHOOT GOLDEN SHIPS: Collect to grow your fleet!<br>
                 STOP ENEMIES: They cost 1 ship if they pass OR hit you!
             </div>
         </div>
+
+        <!-- Touch nuke button (mobile / coarse-pointer devices) -->
+        <button id="touchNukeBtn" class="touch-only" aria-label="Nuke">
+            <span class="touch-nuke-icon">💥</span>
+            <span class="touch-nuke-label">NUKE</span>
+        </button>
 
         <!-- Webcam overlay -->
         <div id="webcamContainer" class="hidden">

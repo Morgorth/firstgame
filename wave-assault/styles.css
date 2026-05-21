@@ -540,6 +540,56 @@ body { background: #0a0015; font-family: 'Rajdhani', sans-serif; overflow: hidde
     50%       { filter: drop-shadow(0 0 50px rgba(255,0,255,0.9)); }
 }
 
+/* === Touch / Mobile Controls === */
+.touch-only { display: none; }
+@media (pointer: coarse), (hover: none) {
+    .touch-only { display: flex; }
+}
+.touch-active .touch-only { display: flex; }
+/* But hide while a non-game overlay is up (start, game-over, registration, campaign-complete) */
+body:has(#startScreen:not(.hidden)) #touchNukeBtn,
+body:has(#gameOverScreen:not(.hidden)) #touchNukeBtn,
+body:has(#playerSetupScreen:not(.hidden)) #touchNukeBtn,
+body:has(#campaignCompleteScreen:not(.hidden)) #touchNukeBtn {
+    display: none;
+}
+#touchNukeBtn {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 3px solid #ff00ff;
+    background: radial-gradient(circle at 30% 30%, rgba(255,0,255,0.5), rgba(0,0,0,0.55));
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 0 25px rgba(255,0,255,0.55), inset 0 0 12px rgba(255,0,255,0.4);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+#touchNukeBtn:active { transform: scale(0.92); box-shadow: 0 0 35px rgba(255,0,255,0.8); }
+#touchNukeBtn.disabled {
+    opacity: 0.35;
+    border-color: rgba(255,255,255,0.3);
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), rgba(0,0,0,0.55));
+    box-shadow: none;
+}
+#touchNukeBtn.ready {
+    animation: nukePulse 0.8s ease-in-out infinite;
+}
+.touch-nuke-icon { font-size: 32px; line-height: 1; }
+.touch-nuke-label { font-size: 11px; letter-spacing: 2px; }
+
 /* === Responsive === */
 @media (max-width: 768px) {
     .game-title { font-size: 48px; }
@@ -551,4 +601,8 @@ body { background: #0a0015; font-family: 'Rajdhani', sans-serif; overflow: hidde
     #webcamContainer { width: 120px; height: 90px; bottom: 10px; right: 10px; }
     .theme-selection { flex-direction: row; gap: 10px; }
     .theme-btn { min-width: 100px; padding: 10px 15px; font-size: 12px; }
+    #touchNukeBtn { width: 76px; height: 76px; bottom: 16px; right: 16px; }
+    .touch-nuke-icon { font-size: 26px; }
+    .touch-nuke-label { font-size: 10px; }
+    .instructions { font-size: 14px; }
 }
